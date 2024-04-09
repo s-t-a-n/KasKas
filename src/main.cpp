@@ -1,15 +1,23 @@
+#include "Actuator.hpp"
+#include "Clock.hpp"
+#include "Sensor.hpp"
+
 #ifdef ARDUINO
 #    include <Arduino.h>
-void setup() {
-    // write your initialization code here
-}
-
-void loop() {
-    // write your code here
-}
-
-#else
-
-int main() { return 0; }
-
 #endif
+
+int setup() { return 0; }
+int loop() { return 0; }
+
+int main() {
+    int rval = 0;
+
+    rval = setup();
+    if (rval != 0) {
+        return rval;
+    }
+    while (rval == 0) {
+        rval = loop();
+    }
+    return rval;
+}
