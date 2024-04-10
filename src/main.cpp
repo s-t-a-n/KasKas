@@ -1,19 +1,24 @@
-#include "Actuator.hpp"
-#include "Clock.hpp"
-#include "Sensor.hpp"
-
 #ifdef ARDUINO
 #    include <Arduino.h>
 #endif
 
-int setup() { return 0; }
-int loop() { return 0; }
+
+#include "KasKas.hpp"
+
+auto kaskas = KasKas(KasKas::Config());
+
+int setup() {
+    return(kaskas.init());
+}
+int loop() {
+    return(kaskas.loop());
+}
 
 int main() {
     int rval = 0;
 
-    rval = setup();
-    if (rval != 0) {
+    // rval = setup();
+    if ((rval = setup()) != 0) {
         return rval;
     }
     while (rval == 0) {
