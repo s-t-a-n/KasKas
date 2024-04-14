@@ -7,6 +7,10 @@
 
 static auto KASKAS = KasKas(KasKas::Config());
 
+void block() {
+    while(true);
+}
+
 void setup() {
     if(KASKAS.init() != 0 ) {
         block();
@@ -19,9 +23,6 @@ void loop() {
    };
 }
 
-void block() {
-    while(true);
-}
 
 // int main() {
 //     setup();
