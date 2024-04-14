@@ -13,14 +13,11 @@ public:
 
     bool state() { return m_state; }
 
-    Relay(const int pin, const auto state = OFF) {
-        m_pin = pin;
-        m_state = state;
-
-        // use initializer list!
+    template <typename T>
+    Relay(const int pin, const T state = OFF) : m_pin(pin), m_state(static_cast<state_t>(state)) {
     }
 
 private:
-    state_t m_state;
     const int m_pin;
+    state_t m_state;
 };

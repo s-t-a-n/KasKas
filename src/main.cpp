@@ -1,28 +1,30 @@
-#ifdef ARDUINO
+#if defined(ARDUINO)
 #    include <Arduino.h>
 #endif
 
-
 #include "KasKas.hpp"
 
-auto kaskas = KasKas(KasKas::Config());
 
-int setup() {
-    return(kaskas.init());
-}
-int loop() {
-    return(kaskas.loop());
-}
+static auto KASKAS = KasKas(KasKas::Config());
 
-int main() {
-    int rval = 0;
-
-    // rval = setup();
-    if ((rval = setup()) != 0) {
-        return rval;
+void setup() {
+    if(KASKAS.init() != 0 ) {
+        block();
     }
-    while (rval == 0) {
-        rval = loop();
-    }
-    return rval;
 }
+
+void loop() {
+   if(KASKAS.loop() != 0) {
+        block();
+   };
+}
+
+void block() {
+    while(true);
+}
+
+// int main() {
+//     setup();
+//     while (HAS_ERROR == false) { loop(); }
+//     return ERROR;
+// }
