@@ -1,8 +1,6 @@
 #pragma once
 
-#include <Actuator.hpp>
-
-class Relay : public Actuator {
+class Relay {
 public:
     enum state_t { ON = 1, OFF = 0 };
 
@@ -13,9 +11,8 @@ public:
 
     bool state() { return m_state; }
 
-    template <typename T>
-    Relay(const int pin, const T state = OFF) : m_pin(pin), m_state(static_cast<state_t>(state)) {
-    }
+    template<typename T>
+    Relay(const int pin, const T&& state = OFF) : m_pin(pin), m_state(static_cast<state_t>(state)) {}
 
 private:
     const int m_pin;

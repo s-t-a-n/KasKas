@@ -1,9 +1,8 @@
 #pragma once
 
-#include "Actuator.hpp"
-#include "Clock.hpp"
-#include "Sensor.hpp"
-#include "implementations/Relay.hpp"
+#include "components/Clock.hpp"
+#include "components/Relay.hpp"
+// #include "spine/core/eventsystem.hpp"
 
 class KasKas {
 public:
