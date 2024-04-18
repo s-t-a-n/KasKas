@@ -1,38 +1,35 @@
-#if defined(ARDUINO)
+#if defined(ARDUINO) && defined(EMBEDDED)
 #    include <Arduino.h>
 #else
 #    include <ArduinoFake.h>
 #endif
 
-#include "KasKas.hpp"
-
-#include <spine/core/assert.hpp>
-#include <spine/core/exception.hpp>
-#include <spine/core/standard.hpp>
-#include <spine/core/system.hpp>
-
-namespace {
-
-using namespace spn::core;
-
-static auto KASKAS = KasKas(KasKas::Config());
+// macro
+#include <spine/platform/implementations/arduino.hpp>
+#include <spine/platform/platform.hpp>
+using namespace spn::platform;
+using HAL = Platform<Arduino>;
+// end macro
 
 void setup() {
-    if (KASKAS.init() != 0) {
-        halt("KasKas failed to initialize.");
-    }
+    // Serial.begin(9600);
+    // Serial.println("Wake up");
+    HAL::initialize();
+    HAL::print("hello");
+    auto pin = HAL::DigitalPin({.pin = 50, .active_on_low = false});
+    pin.set_state = (ON);
 }
-
 void loop() {
-    if (KASKAS.loop() != 0) {
-       halt("KasKas left loop.");
-    };
+    Serial.println("loop");
+    delay(1000);
 }
 
-} // namespace
-
-// int main() {
-//     setup();
-//     while (HAS_ERROR == false) { loop(); }
-//     return ERROR;
-// }
+#ifdef DEBUG
+int main(int argc, char** argv) {
+    setup();
+    while (true) {
+        loop();
+    }
+    return 0;
+}
+#endif
