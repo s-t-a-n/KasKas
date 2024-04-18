@@ -67,7 +67,7 @@
 //     kk->loop();
 // }
 
-// #ifdef DEBUG
+// #ifdef DEBUG_KASKAS
 // int main(int argc, char** argv) {
 //     setup();
 //     while (true) {

@@ -1,21 +1,22 @@
 #pragma once
 
-#include "Pin.hpp"
+// #include "Pin.hpp"
 
 #include <spine/core/exception.hpp>
 #include <spine/core/time.hpp>
+#include <spine/platform/hal.hpp>
 
 using spn::core::Exception;
 using spn::core::time::time_ms;
 using spn::core::time::Timer;
 
-class Relay : public DigitalOutputPin {
+class Relay {
 public:
     struct Config {
-        DigitalOutputPin::Config pin_cfg;
+        DigitalOutput::Config pin_cfg;
         time_ms backoff_time = 100;
 
-        Config(DigitalOutputPin::Config&& pin_cfg, time_ms backoff_time = 100)
+        Config(DigitalOutput::Config&& pin_cfg, time_ms backoff_time = 100)
             : pin_cfg(pin_cfg), backoff_time(backoff_time){};
     };
 
@@ -30,14 +31,16 @@ public:
         if (!_backoff_timer && _cfg.backoff_time > 0)
             _backoff_timer = new Timer();
 
-        DigitalOutputPin::set_state(state);
+        _pin.set_state(state);
     }
 
-    Relay(Config& cfg) : DigitalOutputPin(cfg.pin_cfg), _cfg(cfg) {}
-    Relay(Config&& cfg) : DigitalOutputPin(cfg.pin_cfg), _cfg(cfg) {}
+    void initialize(bool active = false) { _pin.initialize(active); }
+
+    Relay(Config&& cfg) : _cfg(cfg), _pin(std::move(_cfg.pin_cfg)) {}
     ~Relay() { delete _backoff_timer; }
 
 private:
     Config _cfg;
+    DigitalOutput _pin;
     Timer* _backoff_timer = nullptr;
 };

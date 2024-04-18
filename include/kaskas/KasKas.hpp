@@ -19,7 +19,7 @@ public:
     };
 
 public:
-    KasKas(Config cfg)
+    KasKas(Config& cfg)
         : _cfg(cfg), _ctrl(EventSystemController(cfg.esc_cfg)),
           _growlights(Growlights(_ctrl.eventSystem(), cfg.growlights_cfg)) {}
 
@@ -39,7 +39,7 @@ public:
         event = _ctrl.new_event(Events::BroadSpectrumTurnOn, time_ms(300), Event::Data());
         _ctrl.schedule(event);
 
-        Serial.println(int(event));
+        // Serial.println(long(event));
         Serial.println("3");
         delay(1000);
 
