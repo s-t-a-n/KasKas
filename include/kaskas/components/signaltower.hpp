@@ -1,15 +1,15 @@
 #pragma once
 
-#include <kaskas/components/Pin.hpp>
+#include <spine/platform/hal.hpp>
 
 class Signaltower {
 public:
     using Pin = unsigned char;
 
     struct Config {
-        DigitalOutputPin pin_red;
-        DigitalOutputPin pin_yellow;
-        DigitalOutputPin pin_green;
+        DigitalOutput pin_red;
+        DigitalOutput pin_yellow;
+        DigitalOutput pin_green;
     };
 
     Signaltower(Config& cfg) : _cfg(cfg) {}

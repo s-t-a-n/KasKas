@@ -7,6 +7,8 @@ enum class Events {
     OutOfWater, //
     WaterLevelCheck, //
     WaterInject, //
+    LightCycleStart, //
+    LightCycleEnd, //
     VioletSpectrumTurnOn, //
     VioletSpectrumTurnOff, //
     BroadSpectrumTurnOn, //

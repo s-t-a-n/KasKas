@@ -3,11 +3,10 @@
 // #include "Pin.hpp"
 
 #include <spine/core/exception.hpp>
-#include <spine/core/time.hpp>
+#include <spine/core/timers.hpp>
 #include <spine/platform/hal.hpp>
 
 using spn::core::Exception;
-using spn::core::time::time_ms;
 using spn::core::time::Timer;
 
 class Relay {
@@ -23,9 +22,9 @@ public:
     void set_state(DigitalState state) {
         // hard protect against flipping relay back on within backoff threshold
 
-        if (state == ON && _backoff_timer && _cfg.backoff_time > 0
-            && _backoff_timer->timeSinceLast() < _cfg.backoff_time) {
-            spn_throw(Exception("Tried to flip relay within backoff threshold"));
+        if (_backoff_timer && _cfg.backoff_time > 0 && _backoff_timer->timeSinceLast() < _cfg.backoff_time
+            && state == ON && _pin.state() == OFF) {
+            dbg::throw_exception(Exception("Tried to flip relay within backoff threshold"));
         }
 
         if (!_backoff_timer && _cfg.backoff_time > 0)
@@ -33,6 +32,7 @@ public:
 
         _pin.set_state(state);
     }
+    bool state() { return _pin.state(); }
 
     void initialize(bool active = false) { _pin.initialize(active); }
 
