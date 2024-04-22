@@ -127,7 +127,7 @@ private:
         const auto endtime_s = time_s(starttime_s + duration);
         if (nowtime_s > starttime_s && nowtime_s < endtime_s) {
             // now is ON time
-            DBG("Growlights: now is ON time, schedule TurnOn's and LightCycleEnd!")
+            DBG("Growlights: now is ON time, schedule TurnOn's and LightCycleEnd!");
             evsys()->schedule(evsys()->event(Events::BroadSpectrumTurnOn, time_s(10), Event::Data()));
             evsys()->schedule(evsys()->event(Events::VioletSpectrumTurnOn, time_s(15), Event::Data()));
             evsys()->schedule(evsys()->event(Events::LightCycleEnd, endtime_s - nowtime_s, Event::Data()));
@@ -135,13 +135,13 @@ private:
         }
         if (nowtime_s < starttime_s) {
             assert(nowtime_s < endtime_s);
-            DBG("Growlights: now is OFF time, scheduling LightCycleStart!")
+            DBG("Growlights: now is OFF time, scheduling LightCycleStart!");
             evsys()->schedule(evsys()->event(Events::LightCycleStart, starttime_s - nowtime_s, Event::Data()));
             return;
         }
         const auto starttime_tomorrow_s = starttime_s + 24 * 60 * 60;
         if (nowtime_s < starttime_tomorrow_s) {
-            DBG("Growlights: now is OFF time, scheduling LightCycleStart for tomorrow!")
+            DBG("Growlights: now is OFF time, scheduling LightCycleStart for tomorrow!");
             evsys()->schedule(evsys()->event(Events::LightCycleStart, starttime_tomorrow_s - nowtime_s, Event::Data()));
             return;
         }

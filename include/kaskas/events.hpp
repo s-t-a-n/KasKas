@@ -3,10 +3,12 @@
 namespace kaskas {
 
 enum class Events {
-    ClockSync, //
     OutOfWater, //
     WaterLevelCheck, //
-    WaterInject, //
+    WaterInjectCheck, //
+    WaterInjectStart, //
+    WaterInjectFollowUp, //
+    WaterInjectStop, //
     LightCycleStart, //
     LightCycleEnd, //
     VioletSpectrumTurnOn, //

@@ -3,7 +3,9 @@
 #include "kaskas/components/clock.hpp"
 #include "kaskas/components/relay.hpp"
 #include "kaskas/events.hpp"
+#include "kaskas/subsystems/fluidsystem.hpp"
 #include "kaskas/subsystems/growlights.hpp"
+#include "kaskas/subsystems/health.hpp"
 
 #include <spine/core/time.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
@@ -17,31 +19,34 @@ public:
     struct Config {
         EventSystem::Config esc_cfg;
         Growlights::Config growlights_cfg;
+        Fluidsystem::Config fluidsystem_cfg;
     };
 
 public:
-    KasKas(Config& cfg)
-        : _cfg(cfg), _ctrl(EventSystem(cfg.esc_cfg)), _growlights(Growlights(&_ctrl, cfg.growlights_cfg)) {}
+    explicit KasKas(Config& cfg)
+        : _cfg(cfg), //
+          _evsys(EventSystem(cfg.esc_cfg)), //
+          _growlights(Growlights(&_evsys, cfg.growlights_cfg)), //
+          _fluidsystem(&_evsys, cfg.fluidsystem_cfg) {}
 
-    ~KasKas() {}
+    ~KasKas() = default;
 
     int setup() {
         _growlights.initialize();
+        _fluidsystem.initialize();
 
-        //        _ctrl.schedule(_ctrl.event(Events::BroadSpectrumTurnOn, time_ms(1000), Event::Data()));
-        //        _ctrl.schedule(_ctrl.event(Events::BroadSpectrumTurnOff, time_ms(10000), Event::Data()));
-        //        _ctrl.schedule(_ctrl.event(Events::BroadSpectrumTurnOn, time_s(20), Event::Data()));
         return 0;
     }
     int loop() {
-        _ctrl.loop();
+        _evsys.loop();
         return 0;
     }
 
 private:
     Config _cfg;
-    EventSystem _ctrl;
+    EventSystem _evsys;
 
 private:
     Growlights _growlights;
+    Fluidsystem _fluidsystem;
 };
