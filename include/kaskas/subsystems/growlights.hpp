@@ -24,12 +24,14 @@ public:
         Relay violet_spectrum;
         Relay broad_spectrum;
 
-        int8_t starting_hour;
-        int8_t duration_hours;
+        time_h starting_hour;
+        time_h duration_hours;
     };
 
 public:
-    Growlights(EventSystem* evsys, Config& cfg) : EventHandler(evsys), _cfg(cfg) { assert(cfg.duration_hours <= 24); };
+    Growlights(EventSystem* evsys, Config& cfg) : EventHandler(evsys), _cfg(cfg) {
+        assert(cfg.duration_hours <= time_h(24));
+    };
 
     virtual void handle_event(Event* event) {
         switch (static_cast<Events>(event->id())) {
@@ -66,8 +68,9 @@ public:
         case Events::LightCycleEnd:
             evsys()->schedule(evsys()->event(Events::BroadSpectrumTurnOff, time_s(10), Event::Data()));
             evsys()->schedule(evsys()->event(Events::VioletSpectrumTurnOff, time_s(15), Event::Data()));
-            deploy_lightcycle();
             DBG("Growlights: Reached end of lightcycle");
+            deploy_lightcycle();
+
             break;
         default: break;
         }
@@ -93,14 +96,14 @@ private:
     void deploy_lightcycle() {
         // DateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour = 0, uint8_t min = 0, uint8_t sec = 0);
 
-        auto today_at = [](const DateTime& n, int8_t hours) {
-            return DateTime{n.getYear(), n.getMonth(), n.getDay(), hours, 0, 0};
+        auto today_at = [](const DateTime& n, const time_h& hours) {
+            return DateTime{n.getYear(), n.getMonth(), n.getDay(), hours.raw<int8_t>(), 0, 0};
         };
-        auto yesterday_at = [today_at](const DateTime& n, int8_t hours) {
+        auto yesterday_at = [today_at](const DateTime& n, time_h& hours) {
             auto today_epoch = today_at(n, hours).getUnixTime();
             return DateTime{today_epoch - 24 * 60 * 60};
         };
-        auto tomorrow_at = [today_at](const DateTime& n, int8_t hours) {
+        auto tomorrow_at = [today_at](const DateTime& n, time_h& hours) {
             auto today_epoch = today_at(n, hours).getUnixTime();
             return DateTime{today_epoch + 24 * 60 * 60};
         };
@@ -108,14 +111,14 @@ private:
         assert(Clock::is_ready());
 
         const auto now_dt = Clock::now();
-        const auto duration = _cfg.duration_hours * 60 * 60;
+        const auto duration = _cfg.duration_hours;
         const auto nowtime_s = time_s(now_dt.getUnixTime());
 
         // corner case: start time rolls around the 00:00 mark
-        auto between_days = _cfg.starting_hour + _cfg.duration_hours > 24;
+        auto between_days = time_h(_cfg.starting_hour) + _cfg.duration_hours > time_h(24);
         auto get_starttime_s = [today_at, yesterday_at, tomorrow_at](const DateTime& now_dt, bool between_days,
-                                                                     int8_t starting_hour, int8_t duration_hours) {
-            if (between_days && now_dt.getHour() < starting_hour + duration_hours - 24) {
+                                                                     time_h& starting_hour, time_h& duration_hours) {
+            if (between_days && time_h(now_dt.getHour()) < starting_hour + duration_hours - time_h(24)) {
                 // |0    | 24| |  |
                 // start ^ now ^  ^ end
                 return time_s{yesterday_at(now_dt, starting_hour).getUnixTime()};
@@ -136,12 +139,25 @@ private:
         if (nowtime_s < starttime_s) {
             assert(nowtime_s < endtime_s);
             DBG("Growlights: now is OFF time, scheduling LightCycleStart!");
+            {
+                char m[256];
+                snprintf(m, sizeof(m),
+                         "Growlights: now is OFF time, scheduling LightCycleStart at %i:00 in %lli hours.",
+                         DateTime(starttime_s.raw()).getHour(), time_h(starttime_s - nowtime_s).raw());
+                DBG(m);
+            }
             evsys()->schedule(evsys()->event(Events::LightCycleStart, starttime_s - nowtime_s, Event::Data()));
             return;
         }
-        const auto starttime_tomorrow_s = starttime_s + 24 * 60 * 60;
+        const auto starttime_tomorrow_s = starttime_s + time_d(1);
         if (nowtime_s < starttime_tomorrow_s) {
-            DBG("Growlights: now is OFF time, scheduling LightCycleStart for tomorrow!");
+            {
+                char m[256];
+                snprintf(m, sizeof(m),
+                         "Growlights: now is OFF time, scheduling LightCycleStart for tomorrow at %i:00 in %lli hours.",
+                         DateTime(starttime_tomorrow_s.raw()).getHour(), time_h(starttime_s - nowtime_s).raw());
+                DBG(m);
+            }
             evsys()->schedule(evsys()->event(Events::LightCycleStart, starttime_tomorrow_s - nowtime_s, Event::Data()));
             return;
         }

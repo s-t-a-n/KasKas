@@ -8,14 +8,14 @@ template<typename SensorSource, typename FilterType>
 class Sensor {
 public:
     struct Config {
-        using Sensor = SensorSource;
-        using Filter = FilterType;
+        //        using Sensor = SensorSource;
+        //        using Filter = FilterType;
 
-        Sensor sensor;
-        Filter filter;
+        typename SensorSource::Config sensor_cfg;
+        typename FilterType::Config filter_cfg;
     };
 
-    Sensor(Config&& cfg) : _cfg(std::move(cfg)), _src(std::move(cfg.sensor)), _flt(std::move(cfg.filter)) {
+    Sensor(Config&& cfg) : _cfg(std::move(cfg)), _src(std::move(cfg.sensor_cfg)), _flt(std::move(cfg.filter_cfg)) {
         //
     }
 
@@ -27,7 +27,7 @@ public:
     }
 
 private:
-    Config _cfg;
+    const Config _cfg;
 
     SensorSource _src;
     FilterType _flt;

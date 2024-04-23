@@ -1,6 +1,7 @@
 #pragma once
 
 #include "kaskas/components/clock.hpp"
+#include "kaskas/components/pump.hpp"
 #include "kaskas/components/relay.hpp"
 #include "kaskas/components/sensor.hpp"
 #include "kaskas/events.hpp"
@@ -27,22 +28,22 @@ public:
     using GroundMoistureSensorFilter = EWMA<double>;
     using GroundMoistureSensor = Sensor<AnalogueInput, GroundMoistureSensorFilter>;
 
+    // todo: this config has become bloated
     struct Config {
-        Relay pump;
-        GroundMoistureSensor ground_moisture_sensor;
+        Pump::Config pump_cfg;
+        GroundMoistureSensor::Config ground_moisture_sensor_cfg;
         float ground_moisture_threshold; // value between 0.0 and 1.0 with 1.0 being the moistest of states the
                                          // sensor can pick up
-        Interrupt interrupt;
-        uint16_t dosis_ml;
-        time_ms pump_check_interval;
-        uint8_t check_interval_hours;
-        float ml_calibration_factor;
-        time_s timeout;
-        time_s timeout_to_half_point;
+        uint16_t inject_dosis_ml; // dosis in ml to inject
+        time_m inject_check_interval; // interval between checking if injection is needed
     };
 
 public:
-    Fluidsystem(EventSystem* evsys, Config& cfg) : EventHandler(evsys), _cfg(cfg){};
+    Fluidsystem(EventSystem* evsys, Config& cfg)
+        : EventHandler(evsys), //
+          _cfg(cfg), //
+          _ground_moisture_sensor(std::move(cfg.ground_moisture_sensor_cfg)), //
+          _pump(std::move(cfg.pump_cfg)){};
 
     virtual void handle_event(Event* event) {
         switch (static_cast<Events>(event->id())) {
@@ -52,18 +53,15 @@ public:
             break;
         }
         case Events::WaterLevelCheck: {
-            // read waterlevel
             //            DBG("Fluidsystem: WaterLevelCheck");
-            _cfg.ground_moisture_sensor.update();
-
+            _ground_moisture_sensor.update();
             {
                 char m[256];
-                snprintf(m, sizeof(m), "Fluidsystem: Waterlevel: %f (threshold: %f)",
-                         _cfg.ground_moisture_sensor.value(), _cfg.ground_moisture_threshold);
+                snprintf(m, sizeof(m), "Fluidsystem: Waterlevel: %f (threshold: %f)", _ground_moisture_sensor.value(),
+                         _cfg.ground_moisture_threshold);
                 DBG(m);
             }
             evsys()->schedule(evsys()->event(Events::WaterLevelCheck, time_s(10), Event::Data()));
-
             break;
         }
         case Events::WaterInjectCheck: {
@@ -75,54 +73,57 @@ public:
                     m, sizeof(m),
                     "Fluidsystem: WaterInjectCheck: Moisture level at %f (threshold at %f, time since last injection: "
                     "%lli s)",
-                    _cfg.ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
-                    _pumptracker.time_since_last_injection().value / 1000);
+                    _ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
+                    time_s(_pump.time_since_last_injection()).raw());
                 DBG(m);
             }
-            const auto interval = _cfg.pump_check_interval * 60 * 60 * 1000;
-            if (_cfg.ground_moisture_sensor.value() > _cfg.ground_moisture_threshold
-                && _pumptracker.time_since_last_injection() > interval) {
+            if (_ground_moisture_sensor.value() < _cfg.ground_moisture_threshold
+                && _pump.time_since_last_injection() > _cfg.inject_check_interval) {
                 {
                     char m[256];
                     snprintf(
                         m, sizeof(m),
                         "Fluidsystem: Moisture level (%f) crossed threshold (%f) and %lli s since last, calling for "
                         "injection start.",
-                        _cfg.ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
-                        _pumptracker.time_since_last_injection().value / 1000);
+                        _ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
+                        time_s(_pump.time_since_last_injection()).raw());
                     DBG(m);
                 }
                 evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(1), Event::Data()));
             }
-
+            evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
             break;
         }
         case Events::WaterInjectStart: {
             DBG("Fluidsystem: WaterInjectStart");
-            reset_interrupt_counter();
-            _pumptracker.reset();
-            attach_interrupt(); //
-            _cfg.pump.set_state(DigitalState::ON);
-
-            evsys()->schedule(evsys()->event(Events::WaterInjectFollowUp, _cfg.pump_check_interval, Event::Data()));
+            _pump.start_injection();
+            evsys()->schedule(
+                evsys()->event(Events::WaterInjectFollowUp, _cfg.pump_cfg.reading_interval, Event::Data()));
             break;
         }
         case Events::WaterInjectFollowUp: {
             //                        DBG("Fluidsystem: WaterInjectFollowUp");
             bool stop = false;
-            _pumptracker.ml += ml_injected();
+            [[maybe_unused]] const auto injected = _pump.read_ml_injected();
 
-            constexpr bool no_reset = false;
-            if (_pumptracker.pump_timer.timeSinceLast(no_reset) > time_ms(_cfg.timeout_to_half_point)
-                && _pumptracker.ml < _cfg.dosis_ml / 2) {
+            //            {
+            //                char m[256];
+            //                snprintf(m, sizeof(m), "flowrate: %f, time_since_injection_start: %lli, pump_timeout:
+            //                %lli\n",
+            //                         _pump.flowrate_lm(), _pump.time_since_last_injection().raw(),
+            //                         _cfg.pump_cfg.pump_timeout.raw());
+            //                DBG(m);
+            //            }
+
+            if (_pump.time_since_injection_start() > _cfg.pump_cfg.pump_timeout && _pump.flowrate_lm() < 0.1) {
                 // not enough pumped within space of time
                 DBG("Fluidsystem: WaterInjectFollowUp: not enough pumped within space of time");
                 stop = true;
                 evsys()->schedule(evsys()->event(Events::OutOfWater, time_ms(100), Event::Data()));
             }
-            if (_pumptracker.ml >= _cfg.dosis_ml) {
+            if (_pump.ml_since_injection_start() >= _cfg.inject_dosis_ml) {
                 // reached dosis
-                DBG("Fluidsystem: WaterInjectFollowUp: Satisfied inject request");
+                DBG("Fluidsystem: WaterInjectFollowUp: Satisfied start_injection request");
                 stop = true;
             }
 
@@ -130,28 +131,29 @@ public:
                 DBG("Fluidsystem: Stopping injection");
                 evsys()->trigger(evsys()->event(Events::WaterInjectStop, time_ms(0), Event::Data()));
             } else {
-                evsys()->schedule(evsys()->event(Events::WaterInjectFollowUp, _cfg.pump_check_interval, Event::Data()));
+                evsys()->schedule(
+                    evsys()->event(Events::WaterInjectFollowUp, _cfg.pump_cfg.reading_interval, Event::Data()));
             }
             break;
         }
         case Events::WaterInjectStop: {
             DBG("Fluidsystem: WaterInjectStop");
-            detach_interrupt(); //
-            _cfg.pump.set_state(DigitalState::OFF);
+            _pump.stop_injection();
 
-            char msg[512];
-            snprintf(msg, sizeof(msg), "Fluidsystem: Pumped %lu ml in %lli ms (pumped in total: %lu L)",
-                     _pumptracker.ml, _pumptracker.pump_timer.timeSinceLast(false).value,
-                     _pumptracker.lifetime_pumped_ml);
-            DBG(msg);
+            {
+                char msg[512];
+                snprintf(msg, sizeof(msg), "Fluidsystem: Pumped %lu ml in %lli ms (pumped in total: %lu ml)",
+                         _pump.ml_since_injection_start(), _pump.time_since_injection_start().raw(),
+                         _pump.lifetime_pumped_ml());
+                DBG(msg);
+            }
             break;
         }
         default: assert(!"event not handled"); break;
         }
     }
     void initialize() {
-        _cfg.pump.initialize();
-        _cfg.interrupt.initialize();
+        _pump.initialize();
 
         evsys()->attach(Events::OutOfWater, this);
         evsys()->attach(Events::WaterLevelCheck, this);
@@ -161,70 +163,21 @@ public:
         evsys()->attach(Events::WaterInjectStop, this);
 
         evsys()->schedule(evsys()->event(Events::WaterLevelCheck, time_s(10), Event::Data()));
-        evsys()->schedule(
-            evsys()->event(Events::WaterInjectCheck, time_s(_cfg.check_interval_hours * 60 * 60), Event::Data()));
+        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
 
         {
             char msg[512];
-            snprintf(msg, sizeof(msg), "Fluidsystem: scheduling WaterInjectCheck event in %i hours.",
-                     _cfg.check_interval_hours);
+            snprintf(msg, sizeof(msg), "Fluidsystem: scheduling WaterInjectCheck event in %lli hours (%lli minutes).",
+                     time_h(_cfg.inject_check_interval).raw(), time_m(_cfg.inject_check_interval).raw());
             DBG(msg);
         }
-        //        _evsys.schedule(_evsys.event(Events::WaterInjectCheck, time_s(1), Event::Data()));
+        //        evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(5), Event::Data()));
+        //        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_s(30), Event::Data()));
     }
 
 private:
-    uint32_t ml_injected() {
-        detach_interrupt();
-        const auto time_since_last_check = _pumptracker.followup_timer.timeSinceLast();
+    const Config _cfg;
 
-        // Because this loop may not complete in exactly _cfg.pump_check_interval intervals we calculate
-        // the number of milliseconds that have passed since the last execution and use
-        // that to scale the output. We also apply the calibrationFactor to scale the output
-        // based on the number of pulses per second per units of measure (litres/minute in
-        // this case) coming from the sensor.
-        const auto pulse_count = interrupt_counter();
-        reset_interrupt_counter();
-
-        const auto flowrate_lm =
-            ((_cfg.pump_check_interval.value / time_since_last_check.value) * pulse_count) / _cfg.ml_calibration_factor;
-
-        // Divide the flow rate in litres/minute by 60 to determine how many litres have
-        // passed through the sensor in this interval, then multiply by 1000 to
-        // convert to millilitres.
-        //        auto injected = (flowrate_lm / 60) * _cfg.pump_check_interval.value;
-        auto injected = (flowrate_lm / 60) * _cfg.pump_check_interval.value;
-
-        attach_interrupt();
-        return injected;
-    }
-
-    // interrupt
-    void attach_interrupt();
-    void detach_interrupt();
-    static uint32_t interrupt_counter();
-    static void reset_interrupt_counter();
-
-    Config _cfg;
-
-    struct PumpTracker {
-        uint32_t lifetime_pumped_ml = 0;
-        uint32_t ml = 0;
-        Timer pump_timer; // tracks time since start of pumping
-        Timer followup_timer; // tracks time since last check
-
-        time_ms time_since_last_injection() { return followup_timer.timeSinceLast(false); }
-        void reset(bool reset_total = false) {
-            pump_timer.reset();
-            followup_timer.reset();
-            if (reset_total) {
-                lifetime_pumped_ml = 0;
-            } else {
-                lifetime_pumped_ml += ml;
-            }
-            ml = 0;
-        }
-    };
-
-    PumpTracker _pumptracker;
+    GroundMoistureSensor _ground_moisture_sensor;
+    Pump _pump;
 };

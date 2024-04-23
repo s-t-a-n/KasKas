@@ -19,15 +19,19 @@ public:
             : pin_cfg(pin_cfg), backoff_time(backoff_time){};
     };
 
+public:
+    Relay(Config&& cfg) : _cfg(cfg), _pin(std::move(_cfg.pin_cfg)) {}
+    ~Relay() { delete _backoff_timer; }
+
     void set_state(DigitalState state) {
         // hard protect against flipping relay back on within backoff threshold
 
-        if (_backoff_timer && _cfg.backoff_time > 0 && _backoff_timer->timeSinceLast() < _cfg.backoff_time
+        if (_backoff_timer && _cfg.backoff_time > time_ms(0) && _backoff_timer->timeSinceLast() < _cfg.backoff_time
             && state == ON && _pin.state() == OFF) {
             dbg::throw_exception(Exception("Tried to flip relay within backoff threshold"));
         }
 
-        if (!_backoff_timer && _cfg.backoff_time > 0)
+        if (!_backoff_timer && _cfg.backoff_time > time_s(0))
             _backoff_timer = new Timer();
 
         _pin.set_state(state);
@@ -35,9 +39,6 @@ public:
     bool state() { return _pin.state(); }
 
     void initialize(bool active = false) { _pin.initialize(active); }
-
-    Relay(Config&& cfg) : _cfg(cfg), _pin(std::move(_cfg.pin_cfg)) {}
-    ~Relay() { delete _backoff_timer; }
 
 private:
     Config _cfg;
