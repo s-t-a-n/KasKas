@@ -13,14 +13,14 @@ class Relay {
 public:
     struct Config {
         DigitalOutput::Config pin_cfg;
-        time_ms backoff_time = 100;
+        time_ms backoff_time;
 
-        Config(DigitalOutput::Config&& pin_cfg, time_ms backoff_time = 100)
-            : pin_cfg(pin_cfg), backoff_time(backoff_time){};
+        // Config(DigitalOutput::Config&& pin_cfg, time_ms backoff_time = time_ms{100})
+        // : pin_cfg(pin_cfg), backoff_time(backoff_time){};
     };
 
 public:
-    Relay(Config&& cfg) : _cfg(cfg), _pin(std::move(_cfg.pin_cfg)) {}
+    explicit Relay(const Config&& cfg) : _cfg(cfg), _pin(std::move(_cfg.pin_cfg)) {}
     ~Relay() { delete _backoff_timer; }
 
     void set_state(DigitalState state) {
@@ -41,7 +41,7 @@ public:
     void initialize(bool active = false) { _pin.initialize(active); }
 
 private:
-    Config _cfg;
+    const Config _cfg;
     DigitalOutput _pin;
     Timer* _backoff_timer = nullptr;
 };

@@ -12,22 +12,24 @@ void setup() {
                                        .events_cap = 128,
                                        .handler_cap = 2,
                                        .delay_between_ticks = true,
-                                       .min_delay_between_ticks = time_ms(1),
-                                       .max_delay_between_ticks = time_ms(1000)};
+                                       .min_delay_between_ticks = time_ms{1},
+                                       .max_delay_between_ticks = time_ms{1000}};
 
     auto growlights_cfg = Growlights::Config{
-        .violet_spectrum = Relay(Relay::Config{
-            .pin_cfg = DigitalOutput::Config{.pin = 34, // 50 for led green
-                                             .active_on_low = true}, //
-            .backoff_time = time_ms(1000) //
-        }),
-        .broad_spectrum = Relay(Relay::Config{
-            .pin_cfg = DigitalOutput::Config{.pin = 35, // 51 for led yellow
-                                             .active_on_low = true}, //
-            .backoff_time = time_ms(1000) //
-        }), //
-        .starting_hour = 6, //
-        .duration_hours = 18 //
+        .violet_spectrum_cfg =
+            Relay::Config{
+                .pin_cfg = DigitalOutput::Config{.pin = 34, // 50 for led green
+                                                 .active_on_low = true}, //
+                .backoff_time = time_ms(1000) //
+            },
+        .broad_spectrum_cfg =
+            Relay::Config{
+                .pin_cfg = DigitalOutput::Config{.pin = 35, // 51 for led yellow
+                                                 .active_on_low = true}, //
+                .backoff_time = time_ms(1000) //
+            }, //
+        .starting_hour = time_h{6}, //
+        .duration_hours = time_h{16} //
     };
 
     auto pump_cfg = Pump::Config{
@@ -42,10 +44,10 @@ void setup() {
             Interrupt::Config{
                 .pin = 2, //
                 .mode = Interrupt::Mode::FALLING, //
-                .pull_up = true, //
+                .pull_up = false, //
             },
-        .ml_calibration_factor = 25.8,
-        .reading_interval = time_ms(250),
+        .ml_pulse_calibration = 25.8, //
+        .reading_interval = time_ms(250), //
         .pump_timeout = time_s(10),
     };
 
@@ -57,7 +59,7 @@ void setup() {
         .ground_moisture_sensor_cfg =
             GroundMoistureSensorConfig{.sensor_cfg =
                                            AnalogueInput::Config{.pin = A1, .pull_up = false, .resolution = 10}, //
-                                       .filter_cfg = GroundMoistureSensorFilter::Config{.K = 100, .invert = true}},
+                                       .filter_cfg = GroundMoistureSensorFilter::Config{.K = 100, .invert = false}},
         .ground_moisture_threshold = 0.5,
 
         .inject_dosis_ml = 250,

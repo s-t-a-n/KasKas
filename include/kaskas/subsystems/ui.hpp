@@ -23,7 +23,7 @@ public:
         evsys()->attach(Events::OutOfWater, this);
     }
 
-    virtual void handle_event(Event* event) {
+    void handle_event(Event* event) override {
         //
         switch (static_cast<Events>(event->id())) {
         case Events::WakeUp: {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kaskas/components/clock.hpp"
+#include "kaskas/components/implementations/DS3231_RTC_EEPROM.hpp"
 #include "kaskas/components/relay.hpp"
 #include "kaskas/events.hpp"
 
@@ -21,41 +21,43 @@ using EventSystem = spn::core::EventSystem;
 class Growlights : public EventHandler {
 public:
     struct Config {
-        Relay violet_spectrum;
-        Relay broad_spectrum;
+        Relay::Config violet_spectrum_cfg;
+        Relay::Config broad_spectrum_cfg;
 
         time_h starting_hour;
         time_h duration_hours;
     };
 
 public:
-    Growlights(EventSystem* evsys, Config& cfg) : EventHandler(evsys), _cfg(cfg) {
+    Growlights(EventSystem* evsys, Config& cfg)
+        : EventHandler(evsys), _cfg(cfg), _violet_spectrum(std::move(_cfg.violet_spectrum_cfg)),
+          _broad_spectrum(std::move(_cfg.broad_spectrum_cfg)) {
         assert(cfg.duration_hours <= time_h(24));
     };
 
-    virtual void handle_event(Event* event) {
+    void handle_event(Event* event) override {
         switch (static_cast<Events>(event->id())) {
         case Events::VioletSpectrumTurnOn:
-            if (_cfg.violet_spectrum.state() == OFF) {
-                _cfg.violet_spectrum.set_state(ON);
+            if (_violet_spectrum.state() == OFF) {
+                _violet_spectrum.set_state(ON);
                 DBG("Growlights: Turning violet spectrum LEDs: ON");
             }
             break;
         case Events::VioletSpectrumTurnOff:
-            if (_cfg.violet_spectrum.state() == ON) {
-                _cfg.violet_spectrum.set_state(OFF);
+            if (_violet_spectrum.state() == ON) {
+                _violet_spectrum.set_state(OFF);
                 DBG("Growlights: Turning violet spectrum LEDs: OFF");
             }
             break;
         case Events::BroadSpectrumTurnOn:
-            if (_cfg.broad_spectrum.state() == OFF) {
-                _cfg.broad_spectrum.set_state(ON);
+            if (_broad_spectrum.state() == OFF) {
+                _broad_spectrum.set_state(ON);
                 DBG("Growlights: Turning broad spectrum LEDs: ON");
             }
             break;
         case Events::BroadSpectrumTurnOff:
-            if (_cfg.broad_spectrum.state() == ON) {
-                _cfg.broad_spectrum.set_state(OFF);
+            if (_broad_spectrum.state() == ON) {
+                _broad_spectrum.set_state(OFF);
                 DBG("Growlights: Turning broad spectrum LEDs: OFF");
             }
             break;
@@ -77,8 +79,8 @@ public:
     }
 
     void initialize() {
-        _cfg.broad_spectrum.initialize();
-        _cfg.violet_spectrum.initialize();
+        _broad_spectrum.initialize();
+        _violet_spectrum.initialize();
 
         Clock::initialize();
 
@@ -99,11 +101,11 @@ private:
         auto today_at = [](const DateTime& n, const time_h& hours) {
             return DateTime{n.getYear(), n.getMonth(), n.getDay(), hours.raw<int8_t>(), 0, 0};
         };
-        auto yesterday_at = [today_at](const DateTime& n, time_h& hours) {
+        auto yesterday_at = [today_at](const DateTime& n, const time_h& hours) {
             auto today_epoch = today_at(n, hours).getUnixTime();
             return DateTime{today_epoch - 24 * 60 * 60};
         };
-        auto tomorrow_at = [today_at](const DateTime& n, time_h& hours) {
+        auto tomorrow_at = [today_at](const DateTime& n, const time_h& hours) {
             auto today_epoch = today_at(n, hours).getUnixTime();
             return DateTime{today_epoch + 24 * 60 * 60};
         };
@@ -117,7 +119,8 @@ private:
         // corner case: start time rolls around the 00:00 mark
         auto between_days = time_h(_cfg.starting_hour) + _cfg.duration_hours > time_h(24);
         auto get_starttime_s = [today_at, yesterday_at, tomorrow_at](const DateTime& now_dt, bool between_days,
-                                                                     time_h& starting_hour, time_h& duration_hours) {
+                                                                     const time_h& starting_hour,
+                                                                     const time_h& duration_hours) {
             if (between_days && time_h(now_dt.getHour()) < starting_hour + duration_hours - time_h(24)) {
                 // |0    | 24| |  |
                 // start ^ now ^  ^ end
@@ -128,7 +131,7 @@ private:
 
         const auto starttime_s = get_starttime_s(now_dt, between_days, _cfg.starting_hour, _cfg.duration_hours);
         const auto endtime_s = time_s(starttime_s + duration);
-        if (nowtime_s > starttime_s && nowtime_s < endtime_s) {
+        if (nowtime_s >= starttime_s && nowtime_s < endtime_s) {
             // now is ON time
             DBG("Growlights: now is ON time, schedule TurnOn's and LightCycleEnd!");
             evsys()->schedule(evsys()->event(Events::BroadSpectrumTurnOn, time_s(10), Event::Data()));
@@ -138,7 +141,6 @@ private:
         }
         if (nowtime_s < starttime_s) {
             assert(nowtime_s < endtime_s);
-            DBG("Growlights: now is OFF time, scheduling LightCycleStart!");
             {
                 char m[256];
                 snprintf(m, sizeof(m),
@@ -165,5 +167,8 @@ private:
     }
 
 private:
-    Config _cfg;
+    const Config _cfg;
+
+    Relay _violet_spectrum;
+    Relay _broad_spectrum;
 };

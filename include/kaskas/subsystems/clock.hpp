@@ -25,7 +25,7 @@ public:
 public:
     Clock(EventSystem* evsys, Config& cfg) : EventHandler(evsys), _cfg(cfg){};
 
-    virtual void handle_event(Event* event) {
+    void handle_event(Event* event) override {
         switch (static_cast<Events>(event->id())) {
         case Events::ClockSync: DBG(""); break;
 
@@ -40,5 +40,5 @@ public:
     }
 
 private:
-    Config _cfg;
+    const Config _cfg;
 };

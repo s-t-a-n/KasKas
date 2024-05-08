@@ -5,7 +5,7 @@
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
-#include <spine/filter/EWMA.hpp>
+#include <spine/filter/implementations/ewma.hpp>
 #include <spine/platform/hal.hpp>
 
 #include <AH/STL/cstdint>
@@ -13,6 +13,7 @@
 using spn::core::Exception;
 using spn::core::time::Timer;
 
+// simple Pump
 struct Pump {
 private:
     using Flowrate = spn::filter::EWMA<double>;
@@ -21,7 +22,7 @@ public:
     struct Config {
         Relay::Config pump_relay_cfg;
         Interrupt::Config interrupt_cfg;
-        double ml_calibration_factor;
+        double ml_pulse_calibration; // experimentally found flow sensor calibration factor
         time_ms reading_interval;
         time_s pump_timeout;
     };
@@ -29,7 +30,7 @@ public:
 public:
     explicit Pump(Config&& cfg)
         : _cfg(cfg), _pump(std::move(cfg.pump_relay_cfg)), _interrupt(std::move(cfg.interrupt_cfg)),
-          _flowrate(Flowrate::Config((cfg.pump_timeout / cfg.reading_interval).raw() / 2)) {}
+          _flowrate(Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw() / 2.0, .invert = false}) {}
 
     void initialize() {
         _pump.initialize();
@@ -48,12 +49,13 @@ public:
         const auto time_since_last_reading = _last_reading.timeSinceLast(true);
         const auto pulse_count = read_pulsecount();
         const auto flowrate_lm =
-            ((_cfg.reading_interval.raw() / time_since_last_reading.raw()) * pulse_count) / _cfg.ml_calibration_factor;
+            ((_cfg.reading_interval.raw() / time_since_last_reading.raw()) * pulse_count) / _cfg.ml_pulse_calibration;
         _flowrate.new_reading(flowrate_lm);
         // Divide the flow rate in litres/minute by 60 to determine how many litres have
-        // passed through the sensor in this interval, then multiply by 1000 to
+        // passed through the sensor in this interval, then multiply by the milliseconds passed to
         // convert to millilitres.
-        const auto ml_since_last = (flowrate_lm / 60) * _cfg.reading_interval.raw();
+        //        const auto ml_since_last = (flowrate_lm / 60) * 1000; // ?????
+        const auto ml_since_last = (flowrate_lm / 60) * time_since_last_reading.raw();
         _ml += ml_since_last;
         return ml_since_last;
     }
@@ -64,7 +66,6 @@ public:
         _last_injection.reset();
         _flowrate.reset_to(0);
         _ml = 0;
-
         reset_interrupt_counter();
         attach_interrupt();
         _pump.set_state(DigitalState::ON);

@@ -15,11 +15,16 @@ public:
         typename FilterType::Config filter_cfg;
     };
 
-    Sensor(Config&& cfg) : _cfg(std::move(cfg)), _src(std::move(cfg.sensor_cfg)), _flt(std::move(cfg.filter_cfg)) {
+    Sensor(const Config&& cfg)
+        : _cfg(std::move(cfg)), _src(std::move(cfg.sensor_cfg)), _flt(std::move(cfg.filter_cfg)) {
         //
     }
 
-    void update() { _value = _flt.value(_src.read()); }
+    void update() {
+        const auto reading = _src.read();
+        assert(reading >= 0 && reading <= 1);
+        _value = _flt.value(reading);
+    }
 
     double value() {
         assert(_value != DefaultSensorValue);

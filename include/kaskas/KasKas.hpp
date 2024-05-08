@@ -26,8 +26,8 @@ public:
 public:
     explicit KasKas(Config& cfg)
         : _cfg(cfg), //
-          _evsys(EventSystem(cfg.esc_cfg)), //
-          _growlights(Growlights(&_evsys, cfg.growlights_cfg)), //
+          _evsys({cfg.esc_cfg}), //
+          _growlights({&_evsys, cfg.growlights_cfg}), //
           _fluidsystem(&_evsys, cfg.fluidsystem_cfg), //
           _ui(&_evsys, cfg.ui_cfg) {}
 

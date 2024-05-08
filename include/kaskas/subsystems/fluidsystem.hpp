@@ -9,7 +9,7 @@
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
-#include <spine/filter/EWMA.hpp>
+#include <spine/filter/implementations/ewma.hpp>
 #include <spine/platform/hal.hpp>
 
 #include <AH/STL/cstdint>
@@ -28,7 +28,6 @@ public:
     using GroundMoistureSensorFilter = EWMA<double>;
     using GroundMoistureSensor = Sensor<AnalogueInput, GroundMoistureSensorFilter>;
 
-    // todo: this config has become bloated
     struct Config {
         Pump::Config pump_cfg;
         GroundMoistureSensor::Config ground_moisture_sensor_cfg;
@@ -45,7 +44,7 @@ public:
           _ground_moisture_sensor(std::move(cfg.ground_moisture_sensor_cfg)), //
           _pump(std::move(cfg.pump_cfg)){};
 
-    virtual void handle_event(Event* event) {
+    void handle_event(Event* event) override {
         switch (static_cast<Events>(event->id())) {
         case Events::OutOfWater: {
             //
@@ -55,12 +54,20 @@ public:
         case Events::WaterLevelCheck: {
             //            DBG("Fluidsystem: WaterLevelCheck");
             _ground_moisture_sensor.update();
+
+            //            {
+            // #include <Arduino.h>
+            //                Serial.println(analogRead(A2));
+            //                Serial.println("hello?");
+            //            }
+
             {
                 char m[256];
                 snprintf(m, sizeof(m), "Fluidsystem: Waterlevel: %f (threshold: %f)", _ground_moisture_sensor.value(),
                          _cfg.ground_moisture_threshold);
                 DBG(m);
             }
+
             evsys()->schedule(evsys()->event(Events::WaterLevelCheck, time_s(10), Event::Data()));
             break;
         }
@@ -78,7 +85,8 @@ public:
                 DBG(m);
             }
             if (_ground_moisture_sensor.value() < _cfg.ground_moisture_threshold
-                && _pump.time_since_last_injection() > _cfg.inject_check_interval) {
+                && _pump.time_since_last_injection()
+                       >= _cfg.inject_check_interval + _pump.time_since_injection_start() + time_s(10)) {
                 {
                     char m[256];
                     snprintf(
@@ -171,7 +179,7 @@ public:
                      time_h(_cfg.inject_check_interval).raw(), time_m(_cfg.inject_check_interval).raw());
             DBG(msg);
         }
-        //        evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(5), Event::Data()));
+        //        evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(30), Event::Data()));
         //        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_s(30), Event::Data()));
     }
 

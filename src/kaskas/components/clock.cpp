@@ -1,4 +1,4 @@
-#include "kaskas/components/clock.hpp"
+#include "kaskas/components/implementations/DS3231_RTC_EEPROM.hpp"
 
 namespace kaskas::components::clock {
 
