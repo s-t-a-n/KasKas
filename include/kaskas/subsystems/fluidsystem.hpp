@@ -1,10 +1,11 @@
 #pragma once
 
-#include "kaskas/components/clock.hpp"
-#include "kaskas/components/pump.hpp"
-#include "kaskas/components/relay.hpp"
-#include "kaskas/components/sensor.hpp"
+#include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
+#include "kaskas/io/clock.hpp"
+#include "kaskas/io/pump.hpp"
+#include "kaskas/io/relay.hpp"
+#include "kaskas/io/sensor.hpp"
 
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
@@ -14,6 +15,8 @@
 
 #include <AH/STL/cstdint>
 
+using kaskas::Component;
+using kaskas::io::Pump;
 using spn::core::Exception;
 using spn::core::time::Timer;
 using spn::eventsystem::Event;
@@ -23,7 +26,7 @@ using spn::filter::EWMA;
 using Events = kaskas::Events;
 using EventSystem = spn::core::EventSystem;
 
-class Fluidsystem : public EventHandler {
+class Fluidsystem final : public Component {
 public:
     using GroundMoistureSensorFilter = EWMA<double>;
     using GroundMoistureSensor = Sensor<AnalogueInput, GroundMoistureSensorFilter>;
@@ -38,14 +41,41 @@ public:
     };
 
 public:
+    explicit Fluidsystem(Config& cfg) : Fluidsystem(nullptr, cfg) {}
     Fluidsystem(EventSystem* evsys, Config& cfg)
-        : EventHandler(evsys), //
+        : Component(evsys), //
           _cfg(cfg), //
           _ground_moisture_sensor(std::move(cfg.ground_moisture_sensor_cfg)), //
           _pump(std::move(cfg.pump_cfg)){};
 
-    void handle_event(Event* event) override {
-        switch (static_cast<Events>(event->id())) {
+    void initialize() override {
+        _pump.initialize();
+
+        assert(evsys());
+        evsys()->attach(Events::OutOfWater, this);
+        evsys()->attach(Events::WaterLevelCheck, this);
+        evsys()->attach(Events::WaterInjectCheck, this);
+        evsys()->attach(Events::WaterInjectStart, this);
+        evsys()->attach(Events::WaterInjectFollowUp, this);
+        evsys()->attach(Events::WaterInjectStop, this);
+
+        evsys()->schedule(evsys()->event(Events::WaterLevelCheck, time_s(10), Event::Data()));
+        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
+
+        {
+            char msg[512];
+            snprintf(msg, sizeof(msg), "Fluidsystem: scheduling WaterInjectCheck event in %lli hours (%lli minutes).",
+                     time_h(_cfg.inject_check_interval).raw(), time_m(_cfg.inject_check_interval).raw());
+            DBG(msg);
+        }
+        //        evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(30), Event::Data()));
+        //        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_s(30), Event::Data()));
+    }
+
+    void safe_shutdown(State state) override { _pump.stop_injection(); }
+
+    void handle_event(const Event& event) override {
+        switch (static_cast<Events>(event.id())) {
         case Events::OutOfWater: {
             //
             DBG("Fluidsystem: OutOfWater");
@@ -159,28 +189,6 @@ public:
         }
         default: assert(!"event not handled"); break;
         }
-    }
-    void initialize() {
-        _pump.initialize();
-
-        evsys()->attach(Events::OutOfWater, this);
-        evsys()->attach(Events::WaterLevelCheck, this);
-        evsys()->attach(Events::WaterInjectCheck, this);
-        evsys()->attach(Events::WaterInjectStart, this);
-        evsys()->attach(Events::WaterInjectFollowUp, this);
-        evsys()->attach(Events::WaterInjectStop, this);
-
-        evsys()->schedule(evsys()->event(Events::WaterLevelCheck, time_s(10), Event::Data()));
-        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
-
-        {
-            char msg[512];
-            snprintf(msg, sizeof(msg), "Fluidsystem: scheduling WaterInjectCheck event in %lli hours (%lli minutes).",
-                     time_h(_cfg.inject_check_interval).raw(), time_m(_cfg.inject_check_interval).raw());
-            DBG(msg);
-        }
-        //        evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(30), Event::Data()));
-        //        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_s(30), Event::Data()));
     }
 
 private:

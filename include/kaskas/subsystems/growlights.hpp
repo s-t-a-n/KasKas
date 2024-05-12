@@ -1,9 +1,11 @@
 #pragma once
 
-#include "kaskas/components/implementations/DS3231_RTC_EEPROM.hpp"
-#include "kaskas/components/relay.hpp"
+#include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
+#include "kaskas/io/implementations/DS3231_RTC_EEPROM.hpp"
+#include "kaskas/io/relay.hpp"
 
+#include <kaskas/component.hpp>
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
@@ -17,8 +19,9 @@ using spn::eventsystem::EventHandler;
 
 using Events = kaskas::Events;
 using EventSystem = spn::core::EventSystem;
+using kaskas::Component;
 
-class Growlights : public EventHandler {
+class Growlights final : public Component {
 public:
     struct Config {
         Relay::Config violet_spectrum_cfg;
@@ -29,14 +32,38 @@ public:
     };
 
 public:
+    explicit Growlights(Config& cfg) : Growlights(nullptr, cfg) {}
     Growlights(EventSystem* evsys, Config& cfg)
-        : EventHandler(evsys), _cfg(cfg), _violet_spectrum(std::move(_cfg.violet_spectrum_cfg)),
+        : Component(evsys), _cfg(cfg), _violet_spectrum(std::move(_cfg.violet_spectrum_cfg)),
           _broad_spectrum(std::move(_cfg.broad_spectrum_cfg)) {
         assert(cfg.duration_hours <= time_h(24));
     };
 
-    void handle_event(Event* event) override {
-        switch (static_cast<Events>(event->id())) {
+    void initialize() override {
+        _broad_spectrum.initialize();
+        _violet_spectrum.initialize();
+
+        Clock::initialize();
+
+        assert(evsys());
+        evsys()->attach(Events::VioletSpectrumTurnOn, this);
+        evsys()->attach(Events::VioletSpectrumTurnOff, this);
+        evsys()->attach(Events::BroadSpectrumTurnOn, this);
+        evsys()->attach(Events::BroadSpectrumTurnOff, this);
+        evsys()->attach(Events::LightCycleStart, this);
+        evsys()->attach(Events::LightCycleEnd, this);
+
+        deploy_lightcycle();
+    }
+
+    void safe_shutdown(State state) override {
+        _violet_spectrum.set_state(LogicalState::OFF);
+        HAL::delay(time_ms(300));
+        _broad_spectrum.set_state(LogicalState::OFF);
+    }
+
+    void handle_event(const Event& event) override {
+        switch (static_cast<Events>(event.id())) {
         case Events::VioletSpectrumTurnOn:
             if (_violet_spectrum.state() == OFF) {
                 _violet_spectrum.set_state(ON);
@@ -74,24 +101,8 @@ public:
             deploy_lightcycle();
 
             break;
-        default: break;
+        default: assert(!"Event was not handled!"); break;
         }
-    }
-
-    void initialize() {
-        _broad_spectrum.initialize();
-        _violet_spectrum.initialize();
-
-        Clock::initialize();
-
-        evsys()->attach(Events::VioletSpectrumTurnOn, this);
-        evsys()->attach(Events::VioletSpectrumTurnOff, this);
-        evsys()->attach(Events::BroadSpectrumTurnOn, this);
-        evsys()->attach(Events::BroadSpectrumTurnOff, this);
-        evsys()->attach(Events::LightCycleStart, this);
-        evsys()->attach(Events::LightCycleEnd, this);
-
-        deploy_lightcycle();
     }
 
 private:
@@ -144,8 +155,8 @@ private:
             {
                 char m[256];
                 snprintf(m, sizeof(m),
-                         "Growlights: now is OFF time, scheduling LightCycleStart at %i:00 in %lli hours.",
-                         DateTime(starttime_s.raw()).getHour(), time_h(starttime_s - nowtime_s).raw());
+                         "Growlights: now is OFF time, scheduling LightCycleStart at %i:00 in %lli minutes.",
+                         DateTime(starttime_s.raw()).getHour(), time_m(starttime_s - nowtime_s).raw());
                 DBG(m);
             }
             evsys()->schedule(evsys()->event(Events::LightCycleStart, starttime_s - nowtime_s, Event::Data()));

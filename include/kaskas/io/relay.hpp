@@ -23,7 +23,7 @@ public:
     explicit Relay(const Config&& cfg) : _cfg(cfg), _pin(std::move(_cfg.pin_cfg)) {}
     ~Relay() { delete _backoff_timer; }
 
-    void set_state(DigitalState state) {
+    void set_state(LogicalState state) {
         // hard protect against flipping relay back on within backoff threshold
 
         if (_backoff_timer && _cfg.backoff_time > time_ms(0) && _backoff_timer->timeSinceLast() < _cfg.backoff_time

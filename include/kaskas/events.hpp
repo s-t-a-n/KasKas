@@ -5,6 +5,8 @@ namespace kaskas {
 enum class Events {
     WakeUp, //
     OutOfWater, //
+    VentilationStart, //
+    VentilationStop, //
     WaterLevelCheck, //
     WaterInjectCheck, //
     WaterInjectStart, //

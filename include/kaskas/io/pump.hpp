@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kaskas/components/relay.hpp"
+#include "kaskas/io/relay.hpp"
 
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
@@ -10,6 +10,7 @@
 
 #include <AH/STL/cstdint>
 
+namespace kaskas::io {
 using spn::core::Exception;
 using spn::core::time::Timer;
 
@@ -68,11 +69,11 @@ public:
         _ml = 0;
         reset_interrupt_counter();
         attach_interrupt();
-        _pump.set_state(DigitalState::ON);
+        _pump.set_state(LogicalState::ON);
     }
 
     void stop_injection() {
-        _pump.set_state(DigitalState::OFF);
+        _pump.set_state(LogicalState::OFF);
         detach_interrupt();
         _lifetime_ml += _ml;
         _flowrate.reset_to(0);
@@ -117,3 +118,4 @@ private:
     Timer _last_reading; // tracks time since last interrupt reading
     Timer _last_injection; // tracks time since last injection
 };
+} // namespace kaskas::io

@@ -1,31 +1,44 @@
 #pragma once
 
-#include "kaskas/components/signaltower.hpp"
+#include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
+#include "kaskas/io/signaltower.hpp"
 
 #include <spine/eventsystem/eventsystem.hpp>
 
 using spn::eventsystem::EventHandler;
 
-class UI : public EventHandler {
+class UI : public Component {
 public:
     struct Config {
         Signaltower::Config signaltower_cfg;
     };
 
 public:
-    UI(EventSystem* evsys, Config& cfg) : EventHandler(evsys), _cfg(cfg), _signaltower(cfg.signaltower_cfg){};
+    explicit UI(Config& cfg) : UI(nullptr, cfg) {}
+    UI(EventSystem* evsys, Config& cfg) : Component(evsys), _cfg(cfg), _signaltower(cfg.signaltower_cfg){};
 
-    void initialize() {
+    void initialize() override {
         //
         _signaltower.initialize();
+
+        assert(evsys());
         evsys()->attach(Events::WakeUp, this);
         evsys()->attach(Events::OutOfWater, this);
     }
 
-    void handle_event(Event* event) override {
+    void safe_shutdown(State state) override {
+        DBGF("UI: Safeshutdown");
+        switch (state) {
+        case State::SAFE: _signaltower.signal(Signaltower::State::Yellow); break;
+        case State::CRITICAL: _signaltower.signal(Signaltower::State::Red); break;
+        default: break;
+        }
+    }
+
+    void handle_event(const Event& event) override {
         //
-        switch (static_cast<Events>(event->id())) {
+        switch (static_cast<Events>(event.id())) {
         case Events::WakeUp: {
             //
             DBG("UI: WakeUp");
@@ -38,10 +51,7 @@ public:
             _signaltower.signal(Signaltower::State::Yellow);
             break;
         }
-        default:
-            HAL::println(static_cast<int>(event->id()));
-            assert(!"Event was not handled!");
-            break;
+        default: assert(!"Event was not handled!"); break;
         };
     }
 

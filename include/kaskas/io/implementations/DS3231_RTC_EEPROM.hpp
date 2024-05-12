@@ -1,7 +1,7 @@
 #pragma once
 
 // #include <AH/Arduino-Wrapper.h>
-#include "kaskas/components/clock.hpp"
+#include "kaskas/io/clock.hpp"
 
 #include <DS3231-RTC.h>
 #include <spine/core/debugging.hpp>
@@ -9,7 +9,7 @@
 
 #include <AH/STL/cstdint>
 
-namespace kaskas::components::clock {
+namespace kaskas::io::clock {
 
 // threadsafe, not so much
 class DS3231Clock final : Clock<DS3231Clock> {
@@ -60,6 +60,6 @@ private:
     }
 };
 
-} // namespace kaskas::components::clock
+} // namespace kaskas::io::clock
 
-using Clock = kaskas::components::clock::DS3231Clock;
+using Clock = kaskas::io::clock::DS3231Clock;

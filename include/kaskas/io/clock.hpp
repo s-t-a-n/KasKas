@@ -10,7 +10,7 @@
 #include <DS3231-RTC.h>
 using DateTime = DS3231::DateTime;
 
-namespace kaskas::components::clock {
+namespace kaskas::io {
 
 template<typename ClockImp>
 class Clock {
@@ -27,4 +27,4 @@ public:
 private:
 };
 
-} // namespace kaskas::components::clock
+} // namespace kaskas::io
