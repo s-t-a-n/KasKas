@@ -5,12 +5,12 @@
 #include "kaskas/io/clock.hpp"
 #include "kaskas/io/pump.hpp"
 #include "kaskas/io/relay.hpp"
-#include "kaskas/io/sensor.hpp"
 
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/filter/implementations/ewma.hpp>
+#include <spine/io/sensor.hpp>
 #include <spine/platform/hal.hpp>
 
 #include <AH/STL/cstdint>

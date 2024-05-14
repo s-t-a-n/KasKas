@@ -1,10 +1,23 @@
 #include "kaskas/KasKas.hpp"
+#include "kaskas/io/implementations/DS18B20_Temp_Probe.hpp"
 
+#include <spine/controller/pid.hpp>
 #include <spine/core/debugging.hpp>
+#include <spine/filter/implementations/ewma.hpp>
+
+using spn::filter::EWMA;
 
 using KasKas = kaskas::KasKas;
 
 static KasKas* kk;
+
+using spn::controller::Pid;
+Pid* pid = nullptr;
+
+using kaskas::io::DS18B20TempProbe;
+DS18B20TempProbe* probe = nullptr;
+
+AnalogueOutput* heater = nullptr;
 
 void setup() {
     HAL::initialize(HAL::Config{.baudrate = 115200});
@@ -30,6 +43,7 @@ void setup() {
                                     Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = 32, .active_on_low = true},
                                                   .backoff_time = time_s(10)},
                                 .on_time = time_m(30),
+
                                 .off_time = time_h(3)};
         auto ventilation = std::make_unique<Ventilation>(ventilation_cfg);
         kk->hotload_component(std::move(ventilation));
@@ -77,7 +91,6 @@ void setup() {
             .pump_timeout = time_s(10),
         };
 
-        //    using GroundMoistureSensor = Fluidsystem::GroundMoistureSensor;
         using GroundMoistureSensorFilter = Fluidsystem::GroundMoistureSensorFilter;
         using GroundMoistureSensorConfig = Fluidsystem::GroundMoistureSensor::Config;
         auto fluidsystem_cfg = Fluidsystem::Config{
@@ -115,7 +128,8 @@ void setup() {
     kk->initialize();
 }
 void loop() {
-    //    DBG("loop");
+    DBG("loop");
+    HAL::delay(time_ms(1000));
     kk->loop();
 }
 

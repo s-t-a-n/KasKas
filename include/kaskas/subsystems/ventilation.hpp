@@ -42,6 +42,7 @@ public:
     void safe_shutdown(State state) override {
         DBGF("Ventilation: safe shutdown");
         // fade instead of cut to minimalize surges
+        HAL::delay_ms(100);
         _fan.fade_to(0.0);
         _heater.fade_to(0.0);
         _power.set_state(LogicalState::OFF);
@@ -54,9 +55,9 @@ public:
             //
             DBG("Ventilation: Started.");
             _power.set_state(LogicalState::ON);
-            _fan.set_value(1.0);
+            // _fan.set_value(1.0);
+            _fan.fade_to(1.0);
 
-            // const auto time_from_now = time_m(20);
             const auto time_from_now = _cfg.on_time;
             DBGF("Ventilation: Scheduling VentilationStop in %u minutes.", time_m(time_from_now).raw<unsigned>());
             evsys()->schedule(evsys()->event(Events::VentilationStop, time_from_now, Event::Data()));
@@ -65,10 +66,10 @@ public:
         case Events::VentilationStop: {
             //
             DBG("Ventilation: Stopped.");
-            _fan.set_value(0.0);
+            // _fan.set_value(0.0);
+            _fan.fade_to(0.0);
             _power.set_state(LogicalState::OFF);
 
-            // const auto time_from_now = time_m(20);
             const auto time_from_now = _cfg.off_time;
             DBGF("Ventilation: Scheduling VentilationStart in %u minutes.", time_m(time_from_now).raw<unsigned>());
             evsys()->schedule(evsys()->event(Events::VentilationStart, time_from_now, Event::Data()));
