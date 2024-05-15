@@ -15,6 +15,8 @@
 
 #include <AH/STL/cstdint>
 
+namespace kaskas::component {
+
 using kaskas::Component;
 using kaskas::io::Pump;
 using spn::core::Exception;
@@ -35,7 +37,7 @@ public:
         Pump::Config pump_cfg;
         GroundMoistureSensor::Config ground_moisture_sensor_cfg;
         float ground_moisture_threshold; // value between 0.0 and 1.0 with 1.0 being the moistest of states the
-                                         // sensor can pick up
+        // sensor can pick up
         uint16_t inject_dosis_ml; // dosis in ml to inject
         time_m inject_check_interval; // interval between checking if injection is needed
     };
@@ -197,3 +199,5 @@ private:
     GroundMoistureSensor _ground_moisture_sensor;
     Pump _pump;
 };
+
+} // namespace kaskas::component

@@ -12,6 +12,7 @@
 
 #include <AH/STL/cstdint>
 
+namespace kaskas::component {
 using spn::core::Exception;
 using spn::core::time::Timer;
 using spn::eventsystem::Event;
@@ -183,3 +184,5 @@ private:
     Relay _violet_spectrum;
     Relay _broad_spectrum;
 };
+
+} // namespace kaskas::component

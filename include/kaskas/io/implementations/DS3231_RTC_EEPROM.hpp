@@ -5,6 +5,7 @@
 
 #include <DS3231-RTC.h>
 #include <spine/core/debugging.hpp>
+#include <spine/core/exception.hpp>
 #include <spine/platform/hal.hpp>
 
 #include <AH/STL/cstdint>
@@ -34,7 +35,7 @@ public:
             DBGF("Clock is ready. The reported time is %u:%u @ %u:%u:%u", n.getHour(), n.getMinute(), n.getDay(),
                  n.getMonth(), n.getYear());
         } else {
-            DBG("Clock failed to initialize. Maybe set the time?");
+            dbg::throw_exception(spn::core::assertion_error("Clock failed to initialize. Maybe set the time?"));
         }
     }
     static DateTime now() { return get_instance()->rtclib.now(); }

@@ -6,6 +6,7 @@
 
 #include <spine/eventsystem/eventsystem.hpp>
 
+namespace kaskas::component {
 using spn::eventsystem::EventHandler;
 
 class UI : public Component {
@@ -60,3 +61,5 @@ private:
 
     Signaltower _signaltower;
 };
+
+} // namespace kaskas::component

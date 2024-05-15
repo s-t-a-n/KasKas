@@ -2,13 +2,29 @@
 
 #include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
+#include "kaskas/io/implementations/DS18B20_Temp_Probe.hpp"
+#include "kaskas/io/implementations/SHT31_TempHumidityProbe.hpp"
 #include "kaskas/io/relay.hpp"
 
+#include <spine/controller/pid.hpp>
+#include <spine/core/debugging.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
+#include <spine/filter/implementations/bandpass.hpp>
+#include <spine/filter/implementations/ewma.hpp>
+#include <spine/io/sensor.hpp>
+#include <spine/platform/hal.hpp>
 
+namespace kaskas::component {
+
+using kaskas::Component;
+using spn::core::Exception;
+using spn::core::time::Timer;
+using Events = kaskas::Events;
+using spn::eventsystem::Event;
 using spn::eventsystem::EventHandler;
+using EventSystem = spn::core::EventSystem;
 
-class Ventilation final : public Component {
+class ClimateControl final : public kaskas::Component {
 public:
     struct Config {
         AnalogueOutput::Config fan_pwm_cfg;
@@ -19,8 +35,8 @@ public:
     };
 
 public:
-    explicit Ventilation(Config& cfg) : Ventilation(nullptr, cfg) {}
-    Ventilation(EventSystem* evsys, Config& cfg)
+    explicit ClimateControl(Config& cfg) : ClimateControl(nullptr, cfg) {}
+    ClimateControl(spn::core::EventSystem* evsys, Config& cfg)
         : Component(evsys), _cfg(cfg), _fan(std::move(cfg.fan_pwm_cfg)), _heater(std::move(cfg.heater_pwm_cfg)),
           _power(std::move(cfg.airconditioning_power_cfg)){};
 
@@ -86,3 +102,5 @@ private:
     AnalogueOutput _heater;
     Relay _power;
 };
+
+} // namespace kaskas::component

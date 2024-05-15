@@ -4,10 +4,10 @@
 #include "kaskas/events.hpp"
 #include "kaskas/io/clock.hpp"
 #include "kaskas/io/relay.hpp"
+#include "kaskas/subsystems/climatecontrol.hpp"
 #include "kaskas/subsystems/fluidsystem.hpp"
 #include "kaskas/subsystems/growlights.hpp"
 #include "kaskas/subsystems/ui.hpp"
-#include "kaskas/subsystems/ventilation.hpp"
 
 #include <spine/core/exception.hpp>
 #include <spine/core/time.hpp>
