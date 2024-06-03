@@ -36,6 +36,8 @@ public:
 
         _pin.set_state(state);
     }
+    void set_state(bool state) { set_state(state ? LogicalState::ON : LogicalState::OFF); }
+
     bool state() { return _pin.state(); }
 
     void initialize(bool active = false) { _pin.initialize(active); }

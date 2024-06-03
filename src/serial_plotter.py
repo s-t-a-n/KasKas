@@ -26,35 +26,45 @@ def epoch(dt64) -> int:
 
 
 timestamps: list[np.datetime64] = []
-values: list[float] = []
+collector: list[list[float]] = []
 
 epoch_start = epoch(np.datetime64('now'))
 
-def new_datapoint(value: float):
+def new_datapoint(value: float, idx: int ):
     global timestamps
-    global values
+    global collector
     global epoch_start
-    timestamp = epoch(np.datetime64('now')) - epoch_start
-    timestamps.append(timestamp)
-    values.append(value)
-    print(f"{timestamp}: {value}")
+    
+    while len(collector) < idx + 1:
+        collector.append([])
+    
+    if(idx == 0):
+        timestamp = epoch(np.datetime64('now')) - epoch_start
+        timestamps.append(timestamp)
 
-ser = serial.Serial('/dev/ttyACM1', 115200, timeout=1)
+    collector[idx].append(value)
+    
+ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
 
 def animate(i) -> None:
     global timestamps
-    global values
+    global collector
 
     line = ser.readline().decode("utf-8").replace('\r', '').replace('\n', '')   # read a '\n' terminated line
-    if (is_float(line)):
-        new_datapoint(float(line))
+    values = line.split('|')
+    if (len(values) > 0 and is_float(values[0])):
+        ax1.clear()
+        for idx, v in enumerate(values):
+            new_datapoint(float(v), idx)
+            ax1.plot(timestamps, collector[idx])
+        print(f"{timestamps[-1]}: {line}")
+        
     else:
         if( len(line) > 1):
             print(line)
     
-    ax1.clear()
-    ax1.plot(timestamps, values)
+
 
 
 
@@ -70,7 +80,7 @@ def animate(i) -> None:
 # time.sleep(5)
 # new_datapoint( 5);
 
-ani = animation.FuncAnimation(fig, animate, interval=1000)
+ani = animation.FuncAnimation(fig, animate, interval=100)
 plt.show()
 
 ser.close()

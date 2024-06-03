@@ -21,7 +21,8 @@ private:
 
 public:
     struct Config {
-        Relay::Config pump_relay_cfg;
+        // Relay::Config pump_relay_cfg;
+        AnalogueOutput pump_cfg;
         Interrupt::Config interrupt_cfg;
         double ml_pulse_calibration; // experimentally found flow sensor calibration factor
         time_ms reading_interval;
@@ -30,7 +31,7 @@ public:
 
 public:
     explicit Pump(Config&& cfg)
-        : _cfg(cfg), _pump(std::move(cfg.pump_relay_cfg)), _interrupt(std::move(cfg.interrupt_cfg)),
+        : _cfg(cfg), _pump(std::move(cfg.pump_cfg)), _interrupt(std::move(cfg.interrupt_cfg)),
           _flowrate(Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw() / 2.0, .invert = false}) {}
 
     void initialize() {
@@ -69,11 +70,12 @@ public:
         _ml = 0;
         reset_interrupt_counter();
         attach_interrupt();
-        _pump.set_state(LogicalState::ON);
+        // _pump.set_state(LogicalState::ON);
+        _pump.set_value(LogicalState::ON);
     }
 
     void stop_injection() {
-        _pump.set_state(LogicalState::OFF);
+        _pump.set_value(LogicalState::OFF);
         detach_interrupt();
         _lifetime_ml += _ml;
         _flowrate.reset_to(0);
@@ -106,7 +108,7 @@ private:
 private:
     const Config _cfg;
 
-    Relay _pump;
+    AnalogueOutput _pump;
     Interrupt _interrupt;
 
     spn::filter::EWMA<double> _flowrate; // tracks flowrate in liters per minute

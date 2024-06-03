@@ -15,13 +15,12 @@ namespace kaskas::io::clock {
 // threadsafe, not so much
 class DS3231Clock final : Clock<DS3231Clock> {
 public:
-public:
     static void initialize() {
         auto ds3231 = get_instance();
 
         if (ds3231->is_initialized)
             return;
-        DBG("Initializing DS3231Clock");
+        // DBG("Initializing DS3231Clock");
 
         ds3231->is_initialized = true;
         HAL::I2C::initialize();
@@ -32,10 +31,10 @@ public:
 
         if (is_ready()) {
             const auto n = now();
-            DBGF("Clock is ready. The reported time is %u:%u @ %u:%u:%u", n.getHour(), n.getMinute(), n.getDay(),
-                 n.getMonth(), n.getYear());
+            DBGF("DS3231Clock initialized. The reported time is %u:%u @ %u:%u:%u", n.getHour(), n.getMinute(),
+                 n.getDay(), n.getMonth(), n.getYear());
         } else {
-            dbg::throw_exception(spn::core::assertion_error("Clock failed to initialize. Maybe set the time?"));
+            dbg::throw_exception(spn::core::assertion_error("DS3231Clock failed to initialize. Maybe set the time?"));
         }
     }
     static DateTime now() { return get_instance()->rtclib.now(); }
@@ -43,6 +42,8 @@ public:
     static UnixTime epoch() { return get_instance()->rtclib.now().getUnixTime(); }
 
     static bool is_ready() { return get_instance()->ds3231.oscillatorCheck(); }
+
+    static float reference_temperature() { return get_instance()->ds3231.getTemperature(); }
 
     struct ds3231_singleton {
         bool is_initialized = false;

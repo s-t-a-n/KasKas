@@ -129,10 +129,9 @@ private:
         const auto nowtime_s = time_s(now_dt.getUnixTime());
 
         // corner case: start time rolls around the 00:00 mark
-        auto between_days = time_h(_cfg.starting_hour) + _cfg.duration_hours > time_h(24);
-        auto get_starttime_s = [today_at, yesterday_at, tomorrow_at](const DateTime& now_dt, bool between_days,
-                                                                     const time_h& starting_hour,
-                                                                     const time_h& duration_hours) {
+        auto between_days = time_h(_cfg.starting_hour) + _cfg.duration_hours >= time_h(24);
+        auto get_starttime_s = [today_at, yesterday_at](const DateTime& now_dt, bool between_days,
+                                                        const time_h& starting_hour, const time_h& duration_hours) {
             if (between_days && time_h(now_dt.getHour()) < starting_hour + duration_hours - time_h(24)) {
                 // |0    | 24| |  |
                 // start ^ now ^  ^ end
@@ -153,26 +152,17 @@ private:
         }
         if (nowtime_s < starttime_s) {
             assert(nowtime_s < endtime_s);
-            {
-                char m[256];
-                snprintf(m, sizeof(m),
-                         "Growlights: now is OFF time, scheduling LightCycleStart at %i:00 in %lli minutes.",
-                         DateTime(starttime_s.raw()).getHour(), time_m(starttime_s - nowtime_s).raw());
-                DBG(m);
-            }
+            DBGF("Growlights: now is OFF time, scheduling LightCycleStart at %i:00 in %u minutes.",
+                 DateTime(starttime_s.raw()).getHour(), time_m(starttime_s - nowtime_s).printable());
             evsys()->schedule(evsys()->event(Events::LightCycleStart, starttime_s - nowtime_s, Event::Data()));
             return;
         }
         const auto starttime_tomorrow_s = starttime_s + time_d(1);
+        const auto time_until_start = starttime_tomorrow_s - nowtime_s;
         if (nowtime_s < starttime_tomorrow_s) {
-            {
-                char m[256];
-                snprintf(m, sizeof(m),
-                         "Growlights: now is OFF time, scheduling LightCycleStart for tomorrow at %i:00 in %lli hours.",
-                         DateTime(starttime_tomorrow_s.raw()).getHour(), time_h(starttime_s - nowtime_s).raw());
-                DBG(m);
-            }
-            evsys()->schedule(evsys()->event(Events::LightCycleStart, starttime_tomorrow_s - nowtime_s, Event::Data()));
+            DBGF("Growlights: now is OFF time, scheduling LightCycleStart for tomorrow at %i:00 in %u hours.",
+                 DateTime(starttime_tomorrow_s.raw()).getHour(), time_h(time_until_start).printable());
+            evsys()->schedule(evsys()->event(Events::LightCycleStart, time_until_start, Event::Data()));
             return;
         }
         assert(!"Growlights: deploy_lightcycle has not send out lightcycle events");

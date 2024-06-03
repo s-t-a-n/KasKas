@@ -16,6 +16,7 @@ template<typename ClockImp>
 class Clock {
 public:
     using UnixTime = uint32_t;
+    using Impl = ClockImp;
 
 public:
     static void initialize() { ClockImp::initialize(); }
@@ -23,6 +24,8 @@ public:
     static void set_time(const DateTime& datetime) { ClockImp::set_time(datetime); }
     static UnixTime epoch() { return ClockImp::epoch(); }
     static bool is_ready() { return ClockImp::is_ready(); }
+
+    static float reference_temperature() { return ClockImp::reference_temperature(); }
 
 private:
 };

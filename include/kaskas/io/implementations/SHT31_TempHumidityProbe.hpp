@@ -22,6 +22,7 @@ public:
     SHT31TempHumidityProbe(const Config& cfg) : _cfg(cfg), _sht31(SHT31(_cfg.i2c_address)) {}
 
     void initialize(TwoWire* wire = &Wire) {
+        // DBGF("initializing SHT31TempHumidityProbe");
         assert(wire != nullptr);
         Wire.begin();
         Wire.setClock(100000);
@@ -39,16 +40,19 @@ public:
     }
     double read_temperature() {
         SHT31TempHumidityProbe::update();
-        return _sht31.getTemperature();
+        return temperature();
     }
     double read_humidity() {
         SHT31TempHumidityProbe::update();
-        return _sht31.getHumidity();
+        return humidity();
     }
+    double temperature() { return _sht31.getTemperature(); }
+    double humidity() { return _sht31.getHumidity(); }
+
     bool update() {
         _sht31.readData();
         _sht31.requestData();
-        auto timeout = AlarmTimer(HAL::millis() + _cfg.request_timeout);
+        auto timeout = AlarmTimer(_cfg.request_timeout);
         while (!timeout.expired()) {
             delay(1);
             if (_sht31.dataReady()) {

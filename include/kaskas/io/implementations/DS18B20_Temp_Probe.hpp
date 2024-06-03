@@ -20,6 +20,8 @@ public:
         if (_ds18b20_probe_selector == 0) {
             dbg::throw_exception(spn::core::assertion_error("DS18B20TempProbe could not be initialized"));
         }
+
+        DBGF("DS18B20TempProbe initialized. Temperature: %.2f °C", read());
     }
     double read() { return _ds18b20.getTempC(); }
 

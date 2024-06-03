@@ -64,12 +64,8 @@ public:
         evsys()->schedule(evsys()->event(Events::WaterLevelCheck, time_s(10), Event::Data()));
         evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
 
-        {
-            char msg[512];
-            snprintf(msg, sizeof(msg), "Fluidsystem: scheduling WaterInjectCheck event in %lli hours (%lli minutes).",
-                     time_h(_cfg.inject_check_interval).raw(), time_m(_cfg.inject_check_interval).raw());
-            DBG(msg);
-        }
+        DBGF("Fluidsystem: scheduling WaterInjectCheck event in %u hours (%u minutes).",
+             time_h(_cfg.inject_check_interval).printable(), time_m(_cfg.inject_check_interval).printable());
         //        evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(30), Event::Data()));
         //        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_s(30), Event::Data()));
     }
@@ -86,49 +82,25 @@ public:
         case Events::WaterLevelCheck: {
             //            DBG("Fluidsystem: WaterLevelCheck");
             _ground_moisture_sensor.update();
-
-            //            {
-            // #include <Arduino.h>
-            //                Serial.println(analogRead(A2));
-            //                Serial.println("hello?");
-            //            }
-
-            {
-                char m[256];
-                snprintf(m, sizeof(m), "Fluidsystem: Waterlevel: %f (threshold: %f)", _ground_moisture_sensor.value(),
-                         _cfg.ground_moisture_threshold);
-                DBG(m);
-            }
+            DBGF("Fluidsystem: Waterlevel: %.2f (threshold: %.2f)", _ground_moisture_sensor.value(),
+                 _cfg.ground_moisture_threshold);
 
             evsys()->schedule(evsys()->event(Events::WaterLevelCheck, time_s(10), Event::Data()));
             break;
         }
         case Events::WaterInjectCheck: {
             // should injection take place?
-            DBG("Fluidsystem: WaterInjectCheck");
-            {
-                char m[256];
-                snprintf(
-                    m, sizeof(m),
-                    "Fluidsystem: WaterInjectCheck: Moisture level at %f (threshold at %f, time since last injection: "
-                    "%lli s)",
-                    _ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
-                    time_s(_pump.time_since_last_injection()).raw());
-                DBG(m);
-            }
+            // DBG("Fluidsystem: WaterInjectCheck");
+            DBGF("Fluidsystem: WaterInjectCheck: Moisture level at %.2f (threshold at %.2f, time since last injection: "
+                 "%u s)",
+                 _ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
+                 time_s(_pump.time_since_last_injection()).printable());
             if (_ground_moisture_sensor.value() < _cfg.ground_moisture_threshold
-                && _pump.time_since_last_injection()
-                       >= _cfg.inject_check_interval + _pump.time_since_injection_start() + time_s(10)) {
-                {
-                    char m[256];
-                    snprintf(
-                        m, sizeof(m),
-                        "Fluidsystem: Moisture level (%f) crossed threshold (%f) and %lli s since last, calling for "
-                        "injection start.",
-                        _ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
-                        time_s(_pump.time_since_last_injection()).raw());
-                    DBG(m);
-                }
+                && _pump.time_since_last_injection() >= _cfg.inject_check_interval) {
+                DBGF("Fluidsystem: Moisture level (%.2f) crossed threshold (%.2f) and %u s since last, calling for "
+                     "injection start.",
+                     _ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
+                     time_s(_pump.time_since_last_injection()).printable());
                 evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(1), Event::Data()));
             }
             evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
@@ -145,15 +117,6 @@ public:
             //                        DBG("Fluidsystem: WaterInjectFollowUp");
             bool stop = false;
             [[maybe_unused]] const auto injected = _pump.read_ml_injected();
-
-            //            {
-            //                char m[256];
-            //                snprintf(m, sizeof(m), "flowrate: %f, time_since_injection_start: %lli, pump_timeout:
-            //                %lli\n",
-            //                         _pump.flowrate_lm(), _pump.time_since_last_injection().raw(),
-            //                         _cfg.pump_cfg.pump_timeout.raw());
-            //                DBG(m);
-            //            }
 
             if (_pump.time_since_injection_start() > _cfg.pump_cfg.pump_timeout && _pump.flowrate_lm() < 0.1) {
                 // not enough pumped within space of time
@@ -179,14 +142,8 @@ public:
         case Events::WaterInjectStop: {
             DBG("Fluidsystem: WaterInjectStop");
             _pump.stop_injection();
-
-            {
-                char msg[512];
-                snprintf(msg, sizeof(msg), "Fluidsystem: Pumped %lu ml in %lli ms (pumped in total: %lu ml)",
-                         _pump.ml_since_injection_start(), _pump.time_since_injection_start().raw(),
-                         _pump.lifetime_pumped_ml());
-                DBG(msg);
-            }
+            DBGF("Fluidsystem: Pumped %lu ml in %lli ms (pumped in total: %lu ml)", _pump.ml_since_injection_start(),
+                 _pump.time_since_injection_start().raw(), _pump.lifetime_pumped_ml());
             break;
         }
         default: assert(!"event not handled"); break;
