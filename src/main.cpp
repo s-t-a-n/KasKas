@@ -92,16 +92,29 @@ void setup() {
     //     DBGF("hello loop: us: %i", microseconds.raw<>())
     // }
 
-    DigitalOutput led_blue(DigitalOutput::Config{.pin = PB7, .active_on_low = false});
-    led_blue.initialize();
-    led_blue.set_state(LogicalState::ON);
-
-    DigitalOutput led_red(DigitalOutput::Config{.pin = PB14, .active_on_low = false});
-    led_red.initialize();
-    led_red.set_state(LogicalState::ON);
+    // DigitalOutput led_blue(DigitalOutput::Config{.pin = PB7, .active_on_low = false});
+    // led_blue.initialize();
+    // led_blue.set_state(LogicalState::ON);
+    //
+    // DigitalOutput led_red(DigitalOutput::Config{.pin = PB14, .active_on_low = false});
+    // led_red.initialize();
+    // led_red.set_state(LogicalState::ON);
 
     // ub.initialize();
 
+    // const auto orig = time_ms(500000000000);
+    // auto t = time_us(orig);
+    // assert(500000000000000 * 1000 == 500000000000000000);
+    // assert(time_ms(t) == orig);
+    // assert(t.raw<>() == orig.raw<>() * 1000);
+    //
+    // time_ms a, b, c;
+    // a = b = c = time_ms{};
+    // a.operator+=(time_ms(1));
+    // assert(a == time_ms(1));
+    // assert(b == time_ms(0));
+    // assert(a != b);
+    // assert(b == c);
     // return;
 
     {
@@ -117,8 +130,8 @@ void setup() {
 
     {
         const auto sample_interval = time_ms(1000);
-        const auto min_surface_setpoint = 16.0;
-        const auto max_surface_setpoint = 40.0;
+        const auto surface_offset = 10.0; // maximum offset above heater temperature
+        const auto max_surface_setpoint = 40.0; // maximum allowed heater setpoint
 
         auto cc_cfg = ClimateControl::Config{
             .power_cfg = Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = 4, .active_on_low = true},
@@ -138,6 +151,7 @@ void setup() {
                                                           .output_upper_limit = 255,
                                                           .sample_interval = sample_interval},
                                    .heater_cfg = AnalogueOutput::Config{.pin = 6, .active_on_low = true},
+                                   .max_heater_setpoint = max_surface_setpoint,
                                    .tempprobe_cfg = DS18B20TempProbe::Config{.pin = 3},
                                    .tempprobe_filter_cfg = BandPass::Config{.mode = BandPass::Mode::RELATIVE,
                                                                             .mantissa = 1,
@@ -145,18 +159,26 @@ void setup() {
                                                                             .offset = 0}},
                 .schedule_cfg =
                     Schedule::Config{
-                        .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0},
+                        .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 27.0}, // 16.0
                                    Schedule::Block{.start = time_h(7), .duration = time_h(2), .value = 18.0},
                                    Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
                                    Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
                                    Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
                                    Schedule::Block{.start = time_h(12), .duration = time_h(8), .value = 27.0},
-                                   Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0},
-                                   Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}},
-                .climate_control = PID::Config{.tunings = PID::Tunings{.Kp = 10, .Ki = 3}, // p 20, i 10
-                                               .output_lower_limit = min_surface_setpoint,
-                                               .output_upper_limit = max_surface_setpoint,
-                                               .sample_interval = time_s(10)},
+                                   Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 27.0}, // 24.0
+                                   Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 27.0}}}, // 16.0
+                .climate_control =
+                    PID::Config{
+                        .tunings =
+                            // PID::Tunings{.Kp = 83.337071, .Ki = 69.931949, .Kd = 281.240273}, // 15 cycles @ sp 24.0
+                        // PID::Tunings{.Kp = 4.712104, .Ki = 0.120193, .Kd = 121.930091}, // 5 cycles @ sp 27.0
+                        // PID::Tunings{
+                        // .Kp = 0.607973, .Ki = 0.010657, .Kd = 22.892299}, // 5 cycles @ sp 27.0, new offset max +5
+                        PID::Tunings{.Kp = 2.102306, .Ki = 0.050510, .Kd = 57.781325}, // 10 cycles @ sp 27.0, new
+                                                                                       // offset max +10
+                        .output_lower_limit = 0,
+                        .output_upper_limit = surface_offset,
+                        .sample_interval = time_s(10)},
                 .check_interval = time_s(1)}};
 
         auto ventilation = std::make_unique<ClimateControl>(cc_cfg);

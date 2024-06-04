@@ -108,7 +108,7 @@ public:
         evsys()->attach(Events::HeatingCycleStop, this);
 
         // starts autotuning now!
-        evsys()->schedule(evsys()->event(Events::HeatingAutoTuneClimateControl, time_s(1), Event::Data()));
+        // evsys()->schedule(evsys()->event(Events::HeatingAutoTuneClimateControl, time_s(1), Event::Data()));
 
         auto time_from_now = time_s(20);
         DBGF("ClimateControl: Scheduling VentilationCheck in %u seconds.", time_from_now.printable());
@@ -172,19 +172,18 @@ public:
         case Events::HeatingAutoTuneClimateControl: {
             DBG("HeatingAutoTuneClimateControl: start.");
 
-            const auto autotune_setpoint = 25.0;
+            const auto autotune_setpoint = 27.0;
             const auto autotune_startpoint = autotune_setpoint - 0.5;
 
             _power.set_state(LogicalState::ON);
 
             // remove residual heat first
-            AlarmTimer cooloff(time_s(90));
             _fan.set_value(LogicalState::ON);
-            for (auto t = _temperature_humidity_probe.read_temperature(); t > autotune_startpoint || !cooloff.expired();
+            for (auto t = _temperature_humidity_probe.read_temperature(); t > autotune_startpoint;
                  t = _temperature_humidity_probe.read_temperature()) {
-                DBGF("Ventilating for %u s and temperature %.2f C is lower than startpoint %.2f C before autotune "
+                DBGF("Ventilating for temperature %.2f C is lower than startpoint %.2f C before autotune "
                      "start",
-                     time_s(cooloff.time_from_now()).printable(), t, autotune_startpoint);
+                     t, autotune_startpoint);
                 HAL::delay(time_s(1));
             }
             _fan.set_value(LogicalState::OFF);
@@ -192,8 +191,10 @@ public:
             _climate_control.set_target_setpoint(autotune_setpoint);
 
             const auto process_setter = [&](double sp) {
-                DBGF("Setting heater SP to: %f", sp);
-                _heater.set_setpoint(sp);
+                const auto new_setpoint = calculate_heater_setpoint(sp);
+                DBGF("Autotune: Setting heater setpoint to: %.3f (response: %.3f, heater temp: %.2f)", new_setpoint, sp,
+                     _heater.temperature());
+                _heater.set_setpoint(new_setpoint);
             };
             const auto process_getter = [&]() { return _temperature_humidity_probe.read_temperature(); };
             const auto process_loop = [&]() {
@@ -204,7 +205,7 @@ public:
             _climate_control.autotune(PID::TuneConfig{.setpoint = autotune_setpoint,
                                                       .startpoint = autotune_startpoint,
                                                       .satured_at_start = true,
-                                                      .cycles = 15},
+                                                      .cycles = 10},
                                       process_setter, process_getter, process_loop);
             adjust_power_state();
             break;
@@ -262,31 +263,45 @@ public:
     }
 
 private:
+    double calculate_heater_setpoint(const double pid_response) {
+        return _heater.temperature() + pid_response
+               - _cfg.heating.climate_control.output_upper_limit * (pid_response == 0);
+    }
+
+    ///
+    void update_climate_controller() {
+        const auto climate_temperature = _temperature_humidity_probe.read_temperature();
+        _climate_control.new_reading(climate_temperature);
+        // auto new_offset = _climate_control.response();
+        // auto new_setpoint = _heater.temperature() + new_offset - (new_offset == 0);
+        const auto response = _climate_control.response();
+        const auto new_setpoint = calculate_heater_setpoint(response);
+
+        if (_print_interval.expired()) {
+            DBGF("Heating: outside T %.2f C,  climate T %.2f C, climate sp T %.2f C, surface T %.2f C, sp %.2f C, "
+                 "response: %.2f C, new heater sp %.2f",
+                 Clock::reference_temperature(), climate_temperature, _climate_control.setpoint(),
+                 _heater.temperature(), _heater.setpoint(), response, new_setpoint);
+        }
+        _heater.set_setpoint(new_setpoint);
+    }
+
     /// continuous checking of heating status
     void heating_control_loop() {
         guard_temperature_limits();
         adjust_heater_fan_state();
 
         if (_climate_control.setpoint() == 0.0) {
-            _heater.set_setpoint(0.0);
+            // turn off the heater completely
+            _heater.set_setpoint(0);
             return;
         }
 
-        const auto climate_temperature = _temperature_humidity_probe.read_temperature();
-        _climate_control.new_reading(climate_temperature);
-        auto new_setpoint = _climate_control.response();
+        update_climate_controller();
 
         HAL::print(_heater.temperature());
         HAL::print("|");
         HAL::println(_temperature_humidity_probe.temperature());
-
-        if (_print_interval.expired()) {
-            DBGF("Heating: outside T %.2f C,  climate T %.2f C, climate sp T %.2f C, surface T %.2f C, sp %.2f C, new "
-                 "heater sp %.2f",
-                 Clock::reference_temperature(), climate_temperature, _climate_control.setpoint(),
-                 _heater.temperature(), _heater.setpoint(), new_setpoint);
-        }
-        _heater.set_setpoint(new_setpoint);
     }
 
     /// continuous checking of ventilation status

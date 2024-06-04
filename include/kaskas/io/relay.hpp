@@ -40,7 +40,7 @@ public:
 
     bool state() { return _pin.state(); }
 
-    void initialize(bool active = false) { _pin.initialize(active); }
+    void initialize(bool active = false) { _pin.initialize(); }
 
 private:
     const Config _cfg;

@@ -44,7 +44,7 @@ def new_datapoint(value: float, idx: int ):
 
     collector[idx].append(value)
     
-ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
+ser = serial.Serial('/dev/ttyACM1', 115200, timeout=1)
 
 
 def animate(i) -> None:

@@ -7,7 +7,8 @@ namespace kaskas {
 
 enum class Events {
     WakeUp, //
-    UserButtonCheck,
+    UIButtonCheck,
+    UIWatchDog,
     OutOfWater,
     VentilationFollowUp,
     VentilationStart,

@@ -25,7 +25,12 @@ constexpr int TRP_STABLE_TIMEWINDOW = 40;
 
 // minimal change in degrees within timewindow TRP_CHANGING_TIMEWINDOW
 constexpr double TRP_CHANGING_MINIMAL_DELTA_C = 4.0;
-constexpr int TRP_CHANGING_TIMEWINDOW = 40;
+constexpr double TRP_CHANGING_TIMEWINDOW = 40;
+
+class ThermalRunAway {
+public:
+    double* _setpoint;
+};
 
 template<typename TempProbeType>
 class Heater {
@@ -39,6 +44,7 @@ public:
     struct Config {
         PID::Config pid_cfg;
         AnalogueOutput::Config heater_cfg;
+        double max_heater_setpoint = 60.0; // don't allow higher setpoints than `max_heater_setpoint`
 
         typename TempProbeType::Config tempprobe_cfg;
         BandPass::Config tempprobe_filter_cfg = // example medium band pass to reject significant outliers
@@ -119,7 +125,7 @@ public:
         return _pid.autotune(cfg, process_setter, process_getter);
     }
 
-    void set_setpoint(const Value setpoint) { _pid.set_target_setpoint(setpoint); }
+    void set_setpoint(const Value setpoint) { _pid.set_target_setpoint(std::min(_cfg.max_heater_setpoint, setpoint)); }
     Value setpoint() const { return _pid.setpoint(); }
 
     Value temperature() const { return _temperature.value(); }
@@ -129,7 +135,6 @@ public:
 
     void safe_shutdown(bool critical = false) {
         if (critical) {
-            _heating_element.set_value(0);
         }
         _heating_element.fade_to(0);
     }
