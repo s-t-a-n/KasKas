@@ -21,9 +21,10 @@ public:
             dbg::throw_exception(spn::core::assertion_error("DS18B20TempProbe could not be initialized"));
         }
 
-        DBGF("DS18B20TempProbe initialized. Temperature: %.2f °C", read());
+        DBGF("DS18B20TempProbe initialized. Temperature: %.2f °C", read_temperature());
     }
-    double read() { return _ds18b20.getTempC(); }
+    double read_temperature() { return _ds18b20.getTempC(); }
+    double read() { return read_temperature(); }
 
 private:
     const Config _cfg;

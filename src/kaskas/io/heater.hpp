@@ -38,13 +38,14 @@ public:
     enum class State { IDLE, COOLING_DOWN, HEATING_UP, STEADY_STATE, THERMAL_RUN_AWAY };
 
     using Value = double;
-    using BandPass = spn::filter::BandPass<double>;
+
+    using BandPass = spn::filter::BandPass<Value>;
     using TemperatureSensor = Sensor<TempProbeType, BandPass>;
 
     struct Config {
         PID::Config pid_cfg;
         AnalogueOutput::Config heater_cfg;
-        double max_heater_setpoint = 60.0; // don't allow higher setpoints than `max_heater_setpoint`
+        double max_heater_setpoint = 60.0;
 
         typename TempProbeType::Config tempprobe_cfg;
         BandPass::Config tempprobe_filter_cfg = // example medium band pass to reject significant outliers

@@ -159,26 +159,14 @@ void setup() {
                                                                             .offset = 0}},
                 .schedule_cfg =
                     Schedule::Config{
-                        .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 27.0}, // 16.0
+                        .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0}, // 16.0
                                    Schedule::Block{.start = time_h(7), .duration = time_h(2), .value = 18.0},
                                    Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
                                    Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
                                    Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
                                    Schedule::Block{.start = time_h(12), .duration = time_h(8), .value = 27.0},
-                                   Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 27.0}, // 24.0
-                                   Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 27.0}}}, // 16.0
-                .climate_control =
-                    PID::Config{
-                        .tunings =
-                            // PID::Tunings{.Kp = 83.337071, .Ki = 69.931949, .Kd = 281.240273}, // 15 cycles @ sp 24.0
-                        // PID::Tunings{.Kp = 4.712104, .Ki = 0.120193, .Kd = 121.930091}, // 5 cycles @ sp 27.0
-                        // PID::Tunings{
-                        // .Kp = 0.607973, .Ki = 0.010657, .Kd = 22.892299}, // 5 cycles @ sp 27.0, new offset max +5
-                        PID::Tunings{.Kp = 2.102306, .Ki = 0.050510, .Kd = 57.781325}, // 10 cycles @ sp 27.0, new
-                                                                                       // offset max +10
-                        .output_lower_limit = 0,
-                        .output_upper_limit = surface_offset,
-                        .sample_interval = time_s(10)},
+                                   Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0}, // 24.0
+                                   Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}}, // 16.0
                 .check_interval = time_s(1)}};
 
         auto ventilation = std::make_unique<ClimateControl>(cc_cfg);
