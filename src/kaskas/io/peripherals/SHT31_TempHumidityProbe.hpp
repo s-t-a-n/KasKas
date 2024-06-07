@@ -1,9 +1,13 @@
 #pragma once
 
+#include "kaskas/io/peripheral.hpp"
+#include "kaskas/io/providers/analogue_value.hpp"
+
 #include <SHT31.h>
 #include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
+#include <spine/filter/implementations/bandpass.hpp>
 
 #include <AH/STL/cstdint>
 
@@ -11,24 +15,34 @@ namespace kaskas::io {
 
 using spn::core::time::AlarmTimer;
 
-class SHT31TempHumidityProbe {
+class SHT31TempHumidityProbe : public Peripheral {
 public:
     struct Config {
         uint8_t i2c_address = SHT_DEFAULT_ADDRESS;
         time_ms request_timeout = time_ms(100);
+
+        time_ms sampling_interval = time_s(1);
+
+        BandPass::Config filter_cfg = // example medium band pass to reject significant outliers
+            BandPass::Config{.mode = BandPass::Mode::RELATIVE, .mantissa = 1, .decades = 0.01, .offset = 0};
     };
 
 public:
-    SHT31TempHumidityProbe(const Config& cfg) : _cfg(cfg), _sht31(SHT31(_cfg.i2c_address)) {}
+    SHT31TempHumidityProbe(const Config& cfg)
+        : Peripheral(cfg.sampling_interval), _cfg(cfg), _sht31(SHT31(_cfg.i2c_address)),
+          _temperature_filter(std::move(_cfg.filter_cfg)), _humidity_filter(std::move(_cfg.filter_cfg)) {}
 
-    void initialize(TwoWire* wire = &Wire) {
+    void initialize() override {
         // DBGF("initializing SHT31TempHumidityProbe");
+        TwoWire* wire = &Wire;
         assert(wire != nullptr);
         Wire.begin();
         Wire.setClock(100000);
         _sht31.begin();
 
-        if (!update() || !is_ready()) {
+        update();
+
+        if (!is_ready()) {
             dbg::throw_exception(spn::core::assertion_error("SHT31TempHumidityProbe could not be initialized"));
         }
         DBGF("SHT31TempHumidityProbe initialized. Humidity: %f %%, temperature: %f °C", read_humidity(),
@@ -38,18 +52,8 @@ public:
         _sht31.heatOff();
         assert(!_sht31.isHeaterOn());
     }
-    double read_temperature() {
-        SHT31TempHumidityProbe::update();
-        return temperature();
-    }
-    double read_humidity() {
-        SHT31TempHumidityProbe::update();
-        return humidity();
-    }
-    double temperature() { return _sht31.getTemperature(); }
-    double humidity() { return _sht31.getHumidity(); }
 
-    bool update() {
+    void update() override {
         _sht31.readData();
         _sht31.requestData();
         auto timeout = AlarmTimer(_cfg.request_timeout);
@@ -65,9 +69,31 @@ public:
 
         if (timeout.expired()) {
             DBGF("SHT31TempHumidityProbe: request expired. is the connection okay?");
-            return false;
+
+            // todo: handle this through hardware stack
+            assert(!"SHT31TempHumidityProbe: request expired. is the connection okay?");
         }
-        return true;
+    }
+    void safe_shutdown(bool critical) override {
+        _sht31.heatOff(); // make sure that heater is off
+    }
+
+    double read_temperature() {
+        SHT31TempHumidityProbe::update();
+        return temperature();
+    }
+    double read_humidity() {
+        SHT31TempHumidityProbe::update();
+        return humidity();
+    }
+    double temperature() { return _sht31.getTemperature(); }
+    double humidity() { return _sht31.getHumidity(); }
+
+    AnalogueValue temperature_provider() {
+        return {[this]() { return this->temperature(); }};
+    }
+    AnalogueValue humidity_provider() {
+        return {[this]() { return this->humidity(); }};
     }
 
     bool is_ready() {
@@ -86,5 +112,8 @@ public:
 private:
     const Config _cfg;
     SHT31 _sht31;
+
+    BandPass _temperature_filter;
+    BandPass _humidity_filter;
 };
 } // namespace kaskas::io

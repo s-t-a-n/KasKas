@@ -1,14 +1,14 @@
 #pragma once
 
-#include "../../../../../.platformio/packages/toolchain-gccarmnoneeabi/arm-none-eabi/include/sys/_intsup.h"
+#include "../io/peripherals/relay.hpp"
 #include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
-#include "kaskas/io/clock.hpp"
-#include "kaskas/io/heater.hpp"
-#include "kaskas/io/implementations/DS18B20_Temp_Probe.hpp"
-#include "kaskas/io/implementations/DS3231_RTC_EEPROM.hpp"
-#include "kaskas/io/implementations/SHT31_TempHumidityProbe.hpp"
-#include "kaskas/io/relay.hpp"
+#include "kaskas/io/controllers//heater.hpp"
+#include "kaskas/io/peripherals/DS18B20_Temp_Probe.hpp"
+#include "kaskas/io/peripherals/DS3231_RTC_EEPROM.hpp"
+#include "kaskas/io/peripherals/SHT31_TempHumidityProbe.hpp"
+#include "kaskas/io/peripherals/fan.hpp"
+#include "kaskas/io/providers/clock.hpp"
 
 #include <spine/controller/pid.hpp>
 #include <spine/controller/sr_latch.hpp>
@@ -52,10 +52,11 @@ constexpr double MAX_SURFACE_TEMPERATURE = 65.0;
 class ClimateControl final : public kaskas::Component {
 public:
     struct Config {
-        Relay::Config power_cfg;
+        io::HardwareStack::Idx hws_power_idx;
 
         struct Ventilation {
-            AnalogueOutput::Config fan_cfg;
+            io::HardwareStack::Idx hws_climate_fan_idx;
+
             time_s single_shot_length; // duration that ventilation will be on at minimum
             double low_humidity;
             double high_humidity;
@@ -63,7 +64,8 @@ public:
             time_s maximal_interval; // maximal length of time that no ventilation takes place
         } ventilation;
         struct Heating {
-            AnalogueOutput::Config fan_cfg;
+            io::HardwareStack::Idx hws_heating_element_fan_idx;
+
             Heater::Config heater_cfg;
             Schedule::Config schedule_cfg;
             PID::Config climate_control;
@@ -72,11 +74,12 @@ public:
     };
 
 public:
-    explicit ClimateControl(const Config& cfg) : ClimateControl(nullptr, cfg) {}
-    ClimateControl(EventSystem* evsys, const Config& cfg)
-        : Component(evsys), _cfg(std::move(cfg)), _fan(std::move(cfg.ventilation.fan_cfg)),
-          _heater_fan(std::move(cfg.heating.fan_cfg)), _heater(std::move(cfg.heating.heater_cfg)),
-          _heating_schedule(std::move(_cfg.heating.schedule_cfg)),
+    ClimateControl(io::HardwareStack& hws, const Config& cfg) : ClimateControl(hws, nullptr, cfg) {}
+    ClimateControl(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
+        : Component(evsys, hws), _cfg(std::move(cfg)),
+          _climate_fan(_hws.analogue_output(_cfg.ventilation.hws_climate_fan_idx)),
+          _heating_element_fan(_hws.analogue_output(_cfg.heating.hws_heating_element_fan_idx)),
+          _heater(std::move(cfg.heating.heater_cfg)), _heating_schedule(std::move(_cfg.heating.schedule_cfg)),
           _temperature_humidity_probe(SHT31TempHumidityProbe::Config{}),
           _climate_control(std::move(_cfg.heating.climate_control)),
           _ventilation_control(SRLatch::Config{.high = _cfg.ventilation.high_humidity,
@@ -85,12 +88,12 @@ public:
                                                .maximal_on_time = _cfg.ventilation.single_shot_length,
                                                .minimal_off_time = _cfg.ventilation.minimal_interval,
                                                .maximal_off_time = _cfg.ventilation.maximal_interval}),
-          _power(std::move(cfg.power_cfg)){};
+          _power(_hws.digital_output(_cfg.hws_power_idx)){};
 
     void initialize() override {
         //
-        _fan.initialize();
-        _heater_fan.initialize();
+        _climate_fan.initialize();
+        _heating_element_fan.initialize();
         _heater.initialize();
         _power.initialize();
         _climate_control.initialize();
@@ -124,7 +127,7 @@ public:
         DBGF("ClimateControl: safe shutdown");
         // fade instead of cut to minimalize surges
         HAL::delay_ms(100);
-        _fan.fade_to(0.0);
+        _climate_fan.fade_to(0.0);
         HAL::delay_ms(100);
         _heater.safe_shutdown(state == State::CRITICAL);
         HAL::delay_ms(100);
@@ -133,9 +136,10 @@ public:
 
     void handle_event(const Event& event) override {
         const auto now_s = [&]() {
-            assert(Clock::is_ready());
-            const auto now_dt = Clock::now();
-            return time_s(time_h(now_dt.getHour())) + time_m(now_dt.getMinute());
+            // assert(Clock::is_ready());
+            // const auto now_dt = Clock::now();
+            // return time_s(time_h(now_dt.getHour())) + time_m(now_dt.getMinute());
+            return time_s(1);
         };
         // const auto scheduled_next_block = [&]() { return; };
         // const auto scheduled_value = [&]() { return _heating_schedule.value_at(now_s()); };
@@ -151,7 +155,7 @@ public:
         case Events::VentilationStart: {
             DBG("Ventilation: Started.");
             _power.set_state(LogicalState::ON);
-            _fan.fade_to(LogicalState::ON);
+            _climate_fan.fade_to(LogicalState::ON);
 
             const auto time_from_now = _cfg.ventilation.single_shot_length;
             DBGF("Ventilation: Scheduling VentilationStop in %u minutes.", time_m(time_from_now).raw<unsigned>());
@@ -161,7 +165,7 @@ public:
         }
         case Events::VentilationStop: {
             DBG("Ventilation: Stopped.");
-            _fan.fade_to(LogicalState::OFF);
+            _climate_fan.fade_to(LogicalState::OFF);
             adjust_power_state();
             break;
         }
@@ -178,7 +182,7 @@ public:
             _power.set_state(LogicalState::ON);
 
             // remove residual heat first
-            _fan.set_value(LogicalState::ON);
+            _climate_fan.set_value(LogicalState::ON);
             for (auto t = _temperature_humidity_probe.read_temperature(); t > autotune_startpoint;
                  t = _temperature_humidity_probe.read_temperature()) {
                 DBGF("Ventilating for temperature %.2f C is lower than startpoint %.2f C before autotune "
@@ -186,7 +190,7 @@ public:
                      t, autotune_startpoint);
                 HAL::delay(time_s(1));
             }
-            _fan.set_value(LogicalState::OFF);
+            _climate_fan.set_value(LogicalState::OFF);
 
             _climate_control.set_target_setpoint(autotune_setpoint);
 
@@ -278,10 +282,10 @@ private:
         const auto new_setpoint = calculate_heater_setpoint(response);
 
         if (_print_interval.expired()) {
-            DBGF("Heating: outside T %.2f C,  climate T %.2f C, climate sp T %.2f C, surface T %.2f C, sp %.2f C, "
-                 "response: %.2f C, new heater sp %.2f",
-                 Clock::reference_temperature(), climate_temperature, _climate_control.setpoint(),
-                 _heater.temperature(), _heater.setpoint(), response, new_setpoint);
+            // DBGF("Heating: outside T %.2f C,  climate T %.2f C, climate sp T %.2f C, surface T %.2f C, sp %.2f C, "
+            // "response: %.2f C, new heater sp %.2f",
+            // Clock::reference_temperature(), climate_temperature, _climate_control.setpoint(),
+            // _heater.temperature(), _heater.setpoint(), response, new_setpoint);
         }
         _heater.set_setpoint(new_setpoint);
     }
@@ -309,7 +313,7 @@ private:
         const auto climate_humidity = _temperature_humidity_probe.read_humidity();
         _ventilation_control.new_reading(climate_humidity);
         const auto next_state = _ventilation_control.response();
-        const auto last_state = _fan.value() != 0.0;
+        const auto last_state = _climate_fan.value() != 0.0;
         DBGF("Ventilation: current humidity %.2f %%, fan state: %i, next fan state: %i", climate_humidity, last_state,
              next_state);
         // the SRLatch maintains pacing, so we can safely call ventilation start here without timing checks
@@ -321,16 +325,16 @@ private:
 
     /// If no power is needed, turn off the power
     void adjust_power_state() {
-        if (_climate_control.setpoint() == 0 && _heater.setpoint() == 0 && _fan.value() == 0)
+        if (_climate_control.setpoint() == 0 && _heater.setpoint() == 0 && _climate_fan.value() == 0)
             _power.set_state(LogicalState::OFF);
     }
 
     /// Activate heater fan when heating or when cooling down
     void adjust_heater_fan_state() {
         if (_heater.state() != Heater::State::IDLE) {
-            _heater_fan.set_value(LogicalState::ON);
+            _heating_element_fan.set_value(LogicalState::ON);
         } else {
-            _heater_fan.set_value(LogicalState::OFF);
+            _heating_element_fan.set_value(LogicalState::OFF);
         }
     }
 
@@ -344,20 +348,19 @@ private:
             || _temperature_humidity_probe.temperature() > MAX_INSIDE_TEMPERATURE) {
             dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Climate temperature out of limits"));
         }
-        const auto outside_temperature = Clock::reference_temperature();
-        if (outside_temperature < MIN_OUTSIDE_TEMPERATURE || outside_temperature > MAX_OUTSIDE_TEMPERATURE) {
-            dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Outside temperature out of limits"));
-        }
+        // const auto outside_temperature = Clock::reference_temperature();
+        // if (outside_temperature < MIN_OUTSIDE_TEMPERATURE || outside_temperature > MAX_OUTSIDE_TEMPERATURE) {
+        // dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Outside temperature out of limits"));
+        // }
     }
 
 private:
     const Config _cfg;
 
-    AnalogueOutput _fan;
-
-    AnalogueOutput _heater_fan;
+    AnalogueOutput& _climate_fan;
 
     Heater _heater;
+    AnalogueOutput& _heating_element_fan;
 
     Schedule _heating_schedule;
 
@@ -367,7 +370,7 @@ private:
     PID _climate_control;
     SRLatch _ventilation_control;
 
-    Relay _power;
+    DigitalOutput _power;
 
     IntervalTimer _print_interval = IntervalTimer(time_s(10));
 };

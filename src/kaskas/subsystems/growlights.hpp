@@ -2,8 +2,7 @@
 
 #include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
-#include "kaskas/io/implementations/DS3231_RTC_EEPROM.hpp"
-#include "kaskas/io/relay.hpp"
+#include "kaskas/io/providers/digital_value.hpp"
 
 #include <kaskas/component.hpp>
 #include <spine/core/exception.hpp>
@@ -44,7 +43,7 @@ public:
         _broad_spectrum.initialize();
         _violet_spectrum.initialize();
 
-        Clock::initialize();
+        // Clock::initialize();
 
         assert(evsys());
         evsys()->attach(Events::VioletSpectrumTurnOn, this);
@@ -122,9 +121,11 @@ private:
             return DateTime{today_epoch + 24 * 60 * 60};
         };
 
-        assert(Clock::is_ready());
+        // assert(Clock::is_ready());
 
-        const auto now_dt = Clock::now();
+        // const auto now_dt = Clock::now();
+        const auto now_dt = DateTime();
+
         const auto duration = _cfg.duration_hours;
         const auto nowtime_s = time_s(now_dt.getUnixTime());
 

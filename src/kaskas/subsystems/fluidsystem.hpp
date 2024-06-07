@@ -1,10 +1,10 @@
 #pragma once
 
+#include "../io/peripherals/relay.hpp"
 #include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
-#include "kaskas/io/clock.hpp"
-#include "kaskas/io/pump.hpp"
-#include "kaskas/io/relay.hpp"
+#include "kaskas/io/providers/clock.hpp"
+#include "kaskas/io/providers/pump.hpp"
 
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
@@ -43,9 +43,9 @@ public:
     };
 
 public:
-    explicit Fluidsystem(Config& cfg) : Fluidsystem(nullptr, cfg) {}
-    Fluidsystem(EventSystem* evsys, Config& cfg)
-        : Component(evsys), //
+    Fluidsystem(io::HardwareStack& hws, Config& cfg) : Fluidsystem(hws, nullptr, cfg) {}
+    Fluidsystem(io::HardwareStack& hws, EventSystem* evsys, Config& cfg)
+        : Component(evsys, hws), //
           _cfg(cfg), //
           _ground_moisture_sensor(std::move(cfg.ground_moisture_sensor_cfg)), //
           _pump(std::move(cfg.pump_cfg)){};

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kaskas/io/relay.hpp"
+#include "../peripherals/relay.hpp"
 
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>

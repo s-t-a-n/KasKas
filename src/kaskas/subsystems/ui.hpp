@@ -2,7 +2,7 @@
 
 #include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
-#include "kaskas/io/signaltower.hpp"
+#include "kaskas/io/providers/signaltower.hpp"
 
 #include <spine/core/exception.hpp>
 #include <spine/eventsystem/eventsystem.hpp>

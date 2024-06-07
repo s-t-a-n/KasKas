@@ -2,48 +2,55 @@
 
 // #include "Pin.hpp"
 
-#include <spine/core/exception.hpp>
-#include <spine/core/timers.hpp>
+#include "kaskas/io/peripherals/digital_output.hpp"
+
+// #include <spine/core/exception.hpp>
+// #include <spine/core/timers.hpp>
+#include "kaskas/io/providers/digital_value.hpp"
+
 #include <spine/platform/hal.hpp>
 
+namespace kaskas::io {
 using spn::core::Exception;
 using spn::core::time::Timer;
 
-class Relay {
+class Relay : public Peripheral {
 public:
     struct Config {
-        DigitalOutput::Config pin_cfg;
+        HAL::DigitalOutput::Config pin_cfg;
         time_ms backoff_time;
-
-        // Config(DigitalOutput::Config&& pin_cfg, time_ms backoff_time = time_ms{100})
-        // : pin_cfg(pin_cfg), backoff_time(backoff_time){};
     };
 
 public:
     explicit Relay(const Config&& cfg) : _cfg(cfg), _pin(std::move(_cfg.pin_cfg)) {}
-    ~Relay() { delete _backoff_timer; }
+
+    void initialize() override { _pin.initialize(); }
+
+    void safe_shutdown(bool critical) override { _pin.set_state(LogicalState::OFF); }
 
     void set_state(LogicalState state) {
         // hard protect against flipping relay back on within backoff threshold
-
         if (_backoff_timer && _cfg.backoff_time > time_ms(0) && _backoff_timer->timeSinceLast() < _cfg.backoff_time
             && state == ON && _pin.state() == OFF) {
             dbg::throw_exception(Exception("Tried to flip relay within backoff threshold"));
         }
 
         if (!_backoff_timer && _cfg.backoff_time > time_s(0))
-            _backoff_timer = new Timer();
+            _backoff_timer = std::make_optional(Timer());
 
         _pin.set_state(state);
     }
     void set_state(bool state) { set_state(state ? LogicalState::ON : LogicalState::OFF); }
 
-    bool state() { return _pin.state(); }
+    LogicalState state() const { return static_cast<LogicalState>(_pin.state()); }
 
-    void initialize(bool active = false) { _pin.initialize(); }
+    DigitalValue state_provider() const {
+        return {[this]() { return state(); }};
+    }
 
 private:
     const Config _cfg;
     DigitalOutput _pin;
-    Timer* _backoff_timer = nullptr;
+    std::optional<Timer> _backoff_timer = std::nullopt;
 };
+} // namespace kaskas::io

@@ -1,9 +1,11 @@
 #pragma once
 
+#include "io/peripherals/relay.hpp"
 #include "kaskas/component.hpp"
+#include "kaskas/data_providers.hpp"
 #include "kaskas/events.hpp"
-#include "kaskas/io/clock.hpp"
-#include "kaskas/io/relay.hpp"
+#include "kaskas/io/providers/clock.hpp"
+#include "kaskas/io/stack.hpp"
 #include "kaskas/subsystems/climatecontrol.hpp"
 #include "kaskas/subsystems/fluidsystem.hpp"
 #include "kaskas/subsystems/growlights.hpp"
@@ -17,6 +19,7 @@
 #include <spine/structure/vector.hpp>
 
 #include <AH/STL/vector>
+#include <utility>
 namespace kaskas {
 
 using spn::core::Event;
@@ -31,9 +34,8 @@ public:
     };
 
 public:
-    explicit KasKas(Config& cfg)
-        : _cfg(cfg), //
-          _evsys({cfg.esc_cfg}), //
+    explicit KasKas(Config& cfg, std::shared_ptr<io::HardwareStack> hws)
+        : _cfg(cfg), _evsys({cfg.esc_cfg}), _hws(std::move(hws)),
           _components(std::vector<std::unique_ptr<Component>>()) {}
     KasKas(const KasKas& other) = delete;
     KasKas(KasKas&& other) = delete;
@@ -44,7 +46,7 @@ public:
 
     int initialize() {
         // set the global exception handler;
-        spn::core::set_machine_exception_handler(new KasKasExceptionHandler{*this});
+        set_machine_exception_handler(new KasKasExceptionHandler{*this});
 
         // initialize all components
         for (const auto& component : _components) {
@@ -57,6 +59,7 @@ public:
     void hotload_component(std::unique_ptr<Component> component) {
         //
         component->attach_event_system(&_evsys);
+        // component->attach_hardware_stack(_hws);
         _components.emplace_back(std::move(component));
     }
 
@@ -72,7 +75,7 @@ private:
     public:
         KasKasExceptionHandler(KasKas& kaskas) : _kk(kaskas) {}
 
-        void handle_exception(const Exception& exception) override {
+        void handle_exception(const spn::core::Exception& exception) override {
             //
             DBGF("KasKasExceptionHandler: Handling exception: %s", exception.error_type());
             for (auto& sf : _kk._components) {
@@ -87,6 +90,7 @@ private:
 private:
     Config _cfg;
     EventSystem _evsys;
+    std::shared_ptr<io::HardwareStack> _hws;
     std::vector<std::unique_ptr<Component>> _components;
 };
 } // namespace kaskas

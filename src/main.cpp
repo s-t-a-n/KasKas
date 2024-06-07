@@ -1,5 +1,8 @@
-#include "kaskas/KasKas.hpp"
-#include "kaskas/io/implementations/DS18B20_Temp_Probe.hpp"
+#include "kaskas/io/peripherals/DS18B20_Temp_Probe.hpp"
+#include "kaskas/io/peripherals/analogue_input.hpp"
+#include "kaskas/io/peripherals/analogue_output.hpp"
+#include "kaskas/io/stack.hpp"
+#include "kaskas/kaskas.hpp"
 
 #include <spine/controller/pid.hpp>
 #include <spine/core/debugging.hpp>
@@ -8,8 +11,10 @@
 using spn::filter::EWMA;
 
 using KasKas = kaskas::KasKas;
+using HardwareStack = kaskas::io::HardwareStack;
 
-static KasKas* kk;
+static std::unique_ptr<KasKas> kk;
+static std::shared_ptr<HardwareStack> hws;
 
 using kaskas::io::DS18B20TempProbe;
 
@@ -27,95 +32,93 @@ using spn::controller::PID;
 using BandPass = spn::filter::BandPass<double>;
 using Heater = kaskas::io::Heater<DS18B20TempProbe>;
 using kaskas::io::SHT31TempHumidityProbe;
+using kaskas::io::clock::DS3231Clock;
 using spn::controller::SRLatch;
 using spn::core::time::Schedule;
 
 // volatile uint8_t interruptor = 0;
 // DigitalInput ub();
 
+kaskas::io::HardwareStack* S = nullptr;
+
+namespace Peripherals {
+enum PeripheralsEnum {
+    DS18B20,
+    SHT31,
+    DS3231,
+    SOIL_MOISTURE_SENSOR,
+    CLIMATE_FAN,
+    HEATING_SURFACE_FAN,
+    HEATING_ELEMENT,
+    HEATING_POWER_RELAY,
+    SIZE,
+};
+}
+
 void setup() {
     HAL::initialize(HAL::Config{.baudrate = 115200});
     HAL::println("Wake up");
 
-    // PID p(PID::Config{.tunings = PID::Tunings{.Kp = 60.841, .Ki = 0.376, .Kd = 0.1},
-    //                   .output_lower_limit = 0,
-    //                   .output_upper_limit = 255,
-    //                   .sample_interval = time_ms(1000)});
-    // p.initialize();
-    // p.set_target_setpoint(22.25);
-    // p.new_reading(19.88);
-    //
-    // while (true) {
-    //     p.new_reading(20.187500);
-    //     DBGF("response: %f", p.response());
-    //     HAL::delay(time_s(1));
-    // }
-    // return;
+    {
+        using namespace kaskas::io;
 
-    // Heater h(Heater::Config{.pid_cfg = PID::Config{.tunings = PID::Tunings{.Kp = 60.841, .Ki = 0.376, .Kd = 0.1},
-    //                                                .output_lower_limit = 0,
-    //                                                .output_upper_limit = 255,
-    //                                                .sample_interval = time_ms(1000)},
-    //                         .heater_cfg = AnalogueOutput::Config{.pin = 6, .active_on_low = true},
-    //                         .tempprobe_cfg = DS18B20TempProbe::Config{.pin = 3},
-    //                         .tempprobe_filter_cfg = BandPass::Config{
-    //                             .mode = BandPass::Mode::RELATIVE, .mantissa = 1, .decades = 0.01, .offset = 0}});
-    // h.initialize();
-    // h.set_setpoint(5.0);
-    // h.update();
-    // return;
+        auto stack_cfg = HardwareStack::Config{.max_providers = Providers::SIZE, .max_peripherals = Peripherals::SIZE};
 
-    // AnalogueOutput a(AnalogueOutput::Config{.pin = 6, .active_on_low = true});
-    // a.initialize();
-    // while (true) {
-    //     a.fade_to(1.0);
-    //     HAL::delay(time_s(1));
-    //     a.fade_to(0.0);
-    //     HAL::delay(time_s(1));
-    // }
-    // return;
+        auto sf = HardwareStackFactory(std::move(stack_cfg));
 
-    // const auto callback = []() { interruptor++; };
-    //
-    // Interrupt i(
-    //     Interrupt::Config{.pin = PC13, .mode = Interrupt::TriggerType::RISING_AND_FALLING_EDGE, .pull_up = true});
-    // i.initialize();
-    // i.attach_interrupt(callback);
+        {
+            const auto cfg = DS18B20TempProbe::Config{.pin = 3, .sampling_interval = time_ms(250)};
+            auto peripheral = std::make_unique<DS18B20TempProbe>(std::move(cfg));
+            auto provider = std::make_shared<AnalogueValue>(peripheral->temperature_provider());
 
-    // while (true) {
-    //     time_us microseconds = HAL::micros();
-    //
-    //     const auto interval = time_us(1);
-    //     while (HAL::micros() - microseconds < time_s(1)) {
-    //         HAL::delay_us(interval);
-    //     }
-    //     DBGF("hello loop: us: %i", microseconds.raw<>())
-    // }
+            sf.hotload_provider(Providers::HEATER_SURFACE_TEMP, std::move(provider));
+            sf.hotload_peripheral(Peripherals::DS18B20, std::move(peripheral));
+        }
 
-    // DigitalOutput led_blue(DigitalOutput::Config{.pin = PB7, .active_on_low = false});
-    // led_blue.initialize();
-    // led_blue.set_state(LogicalState::ON);
-    //
-    // DigitalOutput led_red(DigitalOutput::Config{.pin = PB14, .active_on_low = false});
-    // led_red.initialize();
-    // led_red.set_state(LogicalState::ON);
+        {
+            const auto cfg = SHT31TempHumidityProbe::Config{.sampling_interval = time_s(1)};
+            auto peripheral = std::make_unique<SHT31TempHumidityProbe>(std::move(cfg));
+            auto temperature_provider = std::make_shared<AnalogueValue>(peripheral->temperature_provider());
+            auto humidity_provider = std::make_shared<AnalogueValue>(peripheral->humidity_provider());
 
-    // ub.initialize();
+            sf.hotload_provider(Providers::CLIMATE_TEMP, std::move(temperature_provider));
+            sf.hotload_provider(Providers::CLIMATE_HUMIDITY, std::move(humidity_provider));
+            sf.hotload_peripheral(Peripherals::SHT31, std::move(peripheral));
+        }
 
-    // const auto orig = time_ms(500000000000);
-    // auto t = time_us(orig);
-    // assert(500000000000000 * 1000 == 500000000000000000);
-    // assert(time_ms(t) == orig);
-    // assert(t.raw<>() == orig.raw<>() * 1000);
-    //
-    // time_ms a, b, c;
-    // a = b = c = time_ms{};
-    // a.operator+=(time_ms(1));
-    // assert(a == time_ms(1));
-    // assert(b == time_ms(0));
-    // assert(a != b);
-    // assert(b == c);
-    // return;
+        {
+            const auto cfg = DS3231Clock::Config{.update_interval = time_s(1)};
+            auto peripheral = std::make_unique<DS3231Clock>(std::move(cfg));
+            auto clock_provider = std::make_shared<Clock>(peripheral->clock_provider());
+            auto temperature_provider = std::make_shared<AnalogueValue>(peripheral->temperature_provider());
+
+            sf.hotload_provider(Providers::CLOCK, std::move(clock_provider));
+            sf.hotload_provider(Providers::OUTSIDE_TEMP, std::move(temperature_provider));
+            sf.hotload_peripheral(Peripherals::DS3231, std::move(peripheral));
+        }
+
+        {
+            const auto cfg = AnalogueInputPeripheral::Config{.sampling_interval = time_s(10)};
+            auto peripheral = std::make_unique<AnalogueInputPeripheral>(std::move(cfg));
+            auto moisture_provider = std::make_shared<AnalogueValue>(peripheral->analogue_value_provider());
+
+            sf.hotload_provider(Providers::SOIL_MOISTURE, std::move(moisture_provider));
+            sf.hotload_peripheral(Peripherals::SOIL_MOISTURE_SENSOR, std::move(peripheral));
+        }
+
+        {
+            const auto cfg = Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = 13, .active_on_low = true},
+                                           .backoff_time = time_s(10)};
+            auto peripheral = std::make_unique<Relay>(std::move(cfg));
+            auto state_provider = std::make_shared<DigitalValue>(peripheral->state_provider());
+
+            sf.hotload_provider(Providers::HEATING_POWER, std::move(state_provider));
+            sf.hotload_peripheral(Peripherals::HEATING_POWER_RELAY, std::move(peripheral));
+        }
+
+        hws = sf.stack();
+        hws->initialize();
+    }
 
     {
         auto esc_cfg = EventSystem::Config{.events_count = static_cast<size_t>(Events::Size),
@@ -125,7 +128,7 @@ void setup() {
                                            .min_delay_between_ticks = time_ms{1},
                                            .max_delay_between_ticks = time_ms{1000}};
         auto kk_cfg = KasKas::Config{.esc_cfg = esc_cfg, .component_cap = 16};
-        kk = new KasKas(kk_cfg);
+        kk = std::make_unique<KasKas>(kk_cfg);
     }
 
     {
@@ -248,6 +251,28 @@ void loop() {
         // DBGF("interruptor: %i", interruptor);
         // DBGF("ub: %i", ub.state() == LogicalState::ON ? 1 : 0);
         HAL::delay(time_ms(1000));
+
+        // const auto t = S->temperature(Providers::HEATER_SURFACE_TEMP);
+        // DBGF("HEATER_SURFACE_TEMP : %f", t.value());
+        //
+        // const auto tcc = S->temperature(Providers::CLIMATE_TEMP);
+        // DBGF("CLIMATE_TEMP : %f", tcc.value());
+        //
+        // const auto hcc = S->humidity(Providers::CLIMATE_HUMIDITY);
+        // DBGF("CLIMATE_HUMIDITY : %f", hcc.value());
+        //
+        // const auto clock = S->clock(Providers::CLOCK);
+        // const auto dt = clock.now();
+        // const auto ot = S->temperature(Providers::OUTSIDE_TEMP);
+        //
+        // DBGF("CLOCK: %.2i:%.2i", dt.getHour(), dt.getMinute());
+        // DBGF("CLOCK epoch: %i", static_cast<unsigned long>(clock.epoch()));
+        // DBGF("OUTSIDE_TEMP : %f", ot.value());
+        //
+        // const auto sm = S->moisture(Providers::SOIL_MOISTURE);
+        // DBGF("SOIL_MOISTURE : %f", sm.value());
+        // S->update_all();
+
     } else {
         kk->loop();
     }
