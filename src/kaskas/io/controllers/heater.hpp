@@ -1,5 +1,7 @@
 #pragma once
 
+#include "kaskas/io/stack.hpp"
+
 #include <spine/controller/pid.hpp>
 #include <spine/core/debugging.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
@@ -32,39 +34,31 @@ public:
     double* _setpoint;
 };
 
-template<typename TempProbeType>
 class Heater {
 public:
     enum class State { IDLE, COOLING_DOWN, HEATING_UP, STEADY_STATE, THERMAL_RUN_AWAY };
 
     using Value = double;
 
-    using BandPass = spn::filter::BandPass<Value>;
-    using TemperatureSensor = Sensor<TempProbeType, BandPass>;
-
     struct Config {
         PID::Config pid_cfg;
-        AnalogueOutput::Config heater_cfg;
         double max_heater_setpoint = 60.0;
 
-        typename TempProbeType::Config tempprobe_cfg;
-        BandPass::Config tempprobe_filter_cfg = // example medium band pass to reject significant outliers
-            BandPass::Config{.mode = BandPass::Mode::RELATIVE, .mantissa = 1, .decades = 0.01, .offset = 0};
+        HardwareStack::Idx temperature_sensor_idx;
+        HardwareStack::Idx heating_element_idx;
     };
 
 public:
-    Heater(const Config&& cfg)
-        : _cfg(cfg), _pid(std::move(_cfg.pid_cfg)), _heating_element(std::move(_cfg.heater_cfg)),
-          _temperature(typename TemperatureSensor::Config{.sensor_cfg = _cfg.tempprobe_cfg,
-                                                          .filter_cfg = _cfg.tempprobe_filter_cfg}),
+    Heater(const Config&& cfg, io::HardwareStack& hws)
+        : _cfg(cfg), _hws(hws), _pid(std::move(_cfg.pid_cfg)),
+          _heating_element(_hws.analogue_actuator(_cfg.heating_element_idx)),
+          _temperature(_hws.analog_sensor(_cfg.temperature_sensor_idx)),
           _update_interval(IntervalTimer(_cfg.pid_cfg.sample_interval)) {}
 
     void initialize() {
         _pid.initialize();
-        _heating_element.initialize();
-        _temperature.initialize();
 
-        const auto current_temp = _temperature.read();
+        const auto current_temp = _temperature.value();
         _pid.new_reading(current_temp);
 
         _lowest_reading = current_temp;
@@ -76,7 +70,7 @@ public:
 
     void update() {
         if (_update_interval.expired()) {
-            const auto current_temp = _temperature.read();
+            const auto current_temp = _temperature.value();
             _pid.new_reading(current_temp);
             const auto response = _pid.response();
             const auto normalized_response = _pid.setpoint() > 0 ? response / _cfg.pid_cfg.output_upper_limit : 0;
@@ -109,12 +103,12 @@ public:
     //     }
     // }
 
-    bool autotune(PID::TuneConfig&& cfg) {
+    void autotune(PID::TuneConfig&& cfg) {
         // block_until_setpoint(startpoint);
         // set_setpoint(setpoint);
         const auto process_setter = [&](double pwm_value) {
             //
-            const auto normalized_response = (pwm_value - _cfg.pid_cfg.output_lower_limit_)
+            const auto normalized_response = (pwm_value - _cfg.pid_cfg.output_lower_limit)
                                              / (_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit);
             DBGF("Setting heating element to output: %f", normalized_response);
             _heating_element.fade_to(normalized_response);
@@ -123,7 +117,7 @@ public:
             update();
             return temperature();
         };
-        return _pid.autotune(cfg, process_setter, process_getter);
+        _pid.autotune(cfg, process_setter, process_getter);
     }
 
     void set_setpoint(const Value setpoint) { _pid.set_target_setpoint(std::min(_cfg.max_heater_setpoint, setpoint)); }
@@ -177,14 +171,16 @@ private:
 
 private:
     const Config _cfg;
+    HardwareStack& _hws;
 
     double _lowest_reading = 0;
     double _highest_reading = 0;
     State _state = State::IDLE;
 
     PID _pid;
-    AnalogueOutput _heating_element;
-    TemperatureSensor _temperature;
+
+    AnalogueActuator _heating_element;
+    AnalogueSensor _temperature;
 
     IntervalTimer _update_interval;
 };

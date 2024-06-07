@@ -2,7 +2,7 @@
 
 #include "kaskas/io/peripheral.hpp"
 #include "kaskas/io/provider.hpp"
-#include "kaskas/io/providers/analogue_value.hpp"
+#include "kaskas/io/providers/analogue.hpp"
 
 #include <DS18B20.h>
 #include <spine/core/debugging.hpp>
@@ -45,10 +45,10 @@ public:
 
     double temperature() const { return _filter.value(); }
 
-    /// DEPRECATED
-    double read() const { return _filter.value(); }
+    // DEPRECATED
+    // double read() const { return _filter.value(); }
 
-    AnalogueValue temperature_provider() const {
+    AnalogueSensor temperature_provider() const {
         return {[this]() { return this->temperature(); }};
     }
 

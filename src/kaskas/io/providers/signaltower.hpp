@@ -12,7 +12,7 @@ public:
         DigitalOutput pin_green;
     };
 
-    Signaltower(Config& cfg) : _cfg(cfg) {}
+    Signaltower(const Config& cfg) : _cfg(cfg) {}
 
     void initialize() {
         _cfg.pin_red.initialize();

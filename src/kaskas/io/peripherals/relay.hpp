@@ -6,7 +6,7 @@
 
 // #include <spine/core/exception.hpp>
 // #include <spine/core/timers.hpp>
-#include "kaskas/io/providers/digital_value.hpp"
+#include "kaskas/io/providers/digital.hpp"
 
 #include <spine/platform/hal.hpp>
 
@@ -44,8 +44,11 @@ public:
 
     LogicalState state() const { return static_cast<LogicalState>(_pin.state()); }
 
-    DigitalValue state_provider() const {
-        return {[this]() { return state(); }};
+    DigitalActuator state_provider() {
+        return {DigitalActuator::FunctionMap{
+            .state_f = [this]() { return state(); },
+            .set_state_f = [this](LogicalState value) { this->set_state(value); },
+        }};
     }
 
 private:

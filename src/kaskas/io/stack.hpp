@@ -2,8 +2,9 @@
 
 #include "kaskas/io/peripheral.hpp"
 #include "kaskas/io/provider.hpp"
-#include "kaskas/io/providers/analogue_value.hpp"
+#include "kaskas/io/providers/analogue.hpp"
 #include "kaskas/io/providers/clock.hpp"
+#include "kaskas/io/providers/digital.hpp"
 #include "peripherals/fan.hpp"
 
 #include <spine/core/standard.hpp>
@@ -43,6 +44,7 @@ public:
         }
     }
 
+    /// Update all peripherals that need an update, respecting the peripheral's `sampling_time`
     void update_all() {
         for (auto& p : _peripherals) {
             if (p && p->needs_update()) {
@@ -51,34 +53,51 @@ public:
         }
     }
 
-public:
-    const AnalogueValue& temperature(Idx sensor_idx) {
-        assert(_providers[sensor_idx]);
-        return *reinterpret_cast<AnalogueValue*>(_providers[sensor_idx].get());
-    }
-    const AnalogueValue& humidity(Idx sensor_idx) {
-        assert(_providers[sensor_idx]);
-        return *reinterpret_cast<AnalogueValue*>(_providers[sensor_idx].get());
+    /// Safely shutdown all peripherals
+    void safe_shutdown(bool critical = false) {
+        for (auto& p : _peripherals) {
+            if (p)
+                p->safe_shutdown(critical);
+        }
     }
 
-    const AnalogueValue& moisture(Idx sensor_idx) {
+    /// Returns the time until the needed update of a peripheral
+    time_ms time_until_next_update() {
+        time_ms interval = time_ms(INT32_MAX);
+        for (auto& p : _peripherals) {
+            if (p && p->is_updateable() && p->update_interval() < interval) {
+                interval = p->update_interval();
+                assert(interval > time_ms(0));
+            }
+        }
+        assert(interval != time_ms(INT32_MAX));
+        return interval;
+    }
+
+public:
+    const AnalogueSensor& analog_sensor(Idx sensor_idx) {
         assert(_providers[sensor_idx]);
-        return *reinterpret_cast<AnalogueValue*>(_providers[sensor_idx].get());
+        return *reinterpret_cast<AnalogueSensor*>(_providers[sensor_idx].get());
+    }
+
+    const DigitalSensor& digital_sensor(Idx sensor_idx) {
+        assert(_providers[sensor_idx]);
+        return *reinterpret_cast<DigitalSensor*>(_providers[sensor_idx].get());
+    }
+
+    AnalogueActuator& analogue_actuator(Idx output_idx) {
+        assert(_providers[output_idx]);
+        return *reinterpret_cast<AnalogueActuator*>(_providers[output_idx].get());
+    }
+
+    DigitalActuator& digital_actuator(Idx output_idx) {
+        assert(_providers[output_idx]);
+        return *reinterpret_cast<DigitalActuator*>(_providers[output_idx].get());
     }
 
     const Clock& clock(Idx clock_idx) {
         assert(_providers[clock_idx]);
         return *reinterpret_cast<Clock*>(_providers[clock_idx].get());
-    }
-
-    AnalogueOutput& analogue_output(Idx output_idx) {
-        assert(_providers[output_idx]);
-        return *reinterpret_cast<AnalogueOutput*>(_providers[output_idx].get());
-    }
-
-    DigitalOutput& digital_output(Idx output_idx) {
-        assert(_providers[output_idx]);
-        return *reinterpret_cast<DigitalOutput*>(_providers[output_idx].get());
     }
 
 private:

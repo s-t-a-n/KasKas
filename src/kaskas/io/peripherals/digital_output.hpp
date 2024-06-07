@@ -10,13 +10,13 @@
 #include <spine/platform/hal.hpp>
 
 namespace kaskas::io {
-using BandPass = spn::filter::BandPass<double>;
 
-class DigitalOutputPeripheral : public DigitalOutput, public Peripheral {
+class DigitalOutputPeripheral : public HAL::DigitalOutput, public Peripheral {
 public:
     explicit DigitalOutputPeripheral(const Config&& cfg) : HAL::DigitalOutput(std::move(cfg)) {}
     ~DigitalOutputPeripheral() override = default;
 
+    void initialize() override { HAL::DigitalOutput::initialize(); }
     void safe_shutdown(bool critical) override { this->set_state(LogicalState::OFF); }
 };
 

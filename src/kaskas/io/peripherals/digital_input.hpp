@@ -3,7 +3,7 @@
 #include "kaskas/io/peripheral.hpp"
 #include "kaskas/io/provider.hpp"
 #include "kaskas/io/providers/analogue_value.hpp"
-#include "kaskas/io/providers/digital_value.hpp"
+#include "kaskas/io/providers/digital.hpp"
 
 #include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>
@@ -35,7 +35,7 @@ public:
 
     LogicalState value() const { return _value(); }
 
-    DigitalValue digital_value_provider() const {
+    DigitalSensor digital_value_provider() const {
         return {[this]() { return this->value(); }};
     }
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "kaskas/io/peripheral.hpp"
-#include "kaskas/io/providers/analogue_value.hpp"
+#include "kaskas/io/providers/analogue.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/providers/non_volatile_memory.hpp"
 
@@ -52,7 +52,7 @@ public:
     time_t epoch() { return _now.getUnixTime(); }
     bool is_ready() { return _ds3231.oscillatorCheck(); }
 
-    AnalogueValue temperature_provider() {
+    AnalogueSensor temperature_provider() {
         return {[this]() { return this->_ds3231.getTemperature(); }};
     }
 

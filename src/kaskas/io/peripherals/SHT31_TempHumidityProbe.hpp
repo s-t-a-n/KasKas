@@ -1,7 +1,7 @@
 #pragma once
 
 #include "kaskas/io/peripheral.hpp"
-#include "kaskas/io/providers/analogue_value.hpp"
+#include "kaskas/io/providers/analogue.hpp"
 
 #include <SHT31.h>
 #include <spine/core/debugging.hpp>
@@ -89,10 +89,10 @@ public:
     double temperature() { return _sht31.getTemperature(); }
     double humidity() { return _sht31.getHumidity(); }
 
-    AnalogueValue temperature_provider() {
+    AnalogueSensor temperature_provider() {
         return {[this]() { return this->temperature(); }};
     }
-    AnalogueValue humidity_provider() {
+    AnalogueSensor humidity_provider() {
         return {[this]() { return this->humidity(); }};
     }
 

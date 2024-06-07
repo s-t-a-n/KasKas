@@ -13,7 +13,7 @@ using spn::core::time::IntervalTimer;
 /// Encapsalates a single hardware peripheral
 class Peripheral {
 public:
-    explicit Peripheral(const std::optional<time_ms>& sampling_interval = time_ms(0))
+    explicit Peripheral(const std::optional<time_ms>& sampling_interval = std::nullopt)
         : _timer(sampling_interval ? std::make_optional(IntervalTimer(sampling_interval.value())) : std::nullopt) {}
 
     virtual ~Peripheral() = default;
@@ -21,7 +21,9 @@ public:
     virtual void update() { assert(!"Virtual base function called"); };
     virtual void safe_shutdown(bool critical) { assert(!"Virtual base function called"); };
 
-    bool needs_update() { return _timer && _timer->expired(); }
+    bool needs_update() { return is_updateable() && _timer->expired(); }
+    bool is_updateable() const { return _timer != std::nullopt; }
+    time_ms update_interval() const { return _timer->sampling_interval(); }
 
 private:
     std::optional<IntervalTimer> _timer;

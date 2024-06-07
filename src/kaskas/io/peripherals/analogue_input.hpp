@@ -1,7 +1,7 @@
 #pragma once
 #include "kaskas/io/peripheral.hpp"
 #include "kaskas/io/provider.hpp"
-#include "kaskas/io/providers/analogue_value.hpp"
+#include "kaskas/io/providers/analogue.hpp"
 
 #include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>
@@ -38,7 +38,7 @@ public:
 
     double value() const { return _filter.value(); }
 
-    AnalogueValue analogue_value_provider() const {
+    AnalogueSensor analogue_value_provider() const {
         return {[this]() { return this->value(); }};
     }
 

@@ -34,7 +34,7 @@ using EventSystem = spn::core::EventSystem;
 using spn::core::time::AlarmTimer;
 
 using kaskas::io::DS18B20TempProbe;
-using Heater = kaskas::io::Heater<DS18B20TempProbe>;
+using Heater = kaskas::io::Heater;
 using kaskas::io::SHT31TempHumidityProbe;
 using spn::controller::SRLatch;
 using spn::core::time::IntervalTimer;
@@ -53,9 +53,11 @@ class ClimateControl final : public kaskas::Component {
 public:
     struct Config {
         io::HardwareStack::Idx hws_power_idx;
+        io::HardwareStack::Idx clock_idx;
 
         struct Ventilation {
             io::HardwareStack::Idx hws_climate_fan_idx;
+            io::HardwareStack::Idx climate_humidity_idx;
 
             time_s single_shot_length; // duration that ventilation will be on at minimum
             double low_humidity;
@@ -64,7 +66,10 @@ public:
             time_s maximal_interval; // maximal length of time that no ventilation takes place
         } ventilation;
         struct Heating {
-            io::HardwareStack::Idx hws_heating_element_fan_idx;
+            io::HardwareStack::Idx heating_element_fan_idx;
+            io::HardwareStack::Idx heating_element_temp_sensor_idx;
+            io::HardwareStack::Idx climate_temp_sensor_idx;
+            io::HardwareStack::Idx outside_temp_idx;
 
             Heater::Config heater_cfg;
             Schedule::Config schedule_cfg;
@@ -76,11 +81,14 @@ public:
 public:
     ClimateControl(io::HardwareStack& hws, const Config& cfg) : ClimateControl(hws, nullptr, cfg) {}
     ClimateControl(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
-        : Component(evsys, hws), _cfg(std::move(cfg)),
-          _climate_fan(_hws.analogue_output(_cfg.ventilation.hws_climate_fan_idx)),
-          _heating_element_fan(_hws.analogue_output(_cfg.heating.hws_heating_element_fan_idx)),
-          _heater(std::move(cfg.heating.heater_cfg)), _heating_schedule(std::move(_cfg.heating.schedule_cfg)),
-          _temperature_humidity_probe(SHT31TempHumidityProbe::Config{}),
+        : Component(evsys, hws), _cfg(std::move(cfg)), _clock(_hws.clock(_cfg.clock_idx)),
+          _outside_temp_sensor(_hws.analog_sensor(_cfg.heating.outside_temp_idx)),
+          _climate_fan(_hws.analogue_actuator(_cfg.ventilation.hws_climate_fan_idx)),
+          _climate_humidity(_hws.analog_sensor(_cfg.ventilation.climate_humidity_idx)),
+          _climate_temperature(_hws.analog_sensor(_cfg.heating.climate_temp_sensor_idx)),
+          _heating_element_fan(_hws.analogue_actuator(_cfg.heating.heating_element_fan_idx)),
+          _heating_element_sensor(_hws.analog_sensor(_cfg.heating.heating_element_temp_sensor_idx)),
+          _heater(std::move(cfg.heating.heater_cfg), _hws), _heating_schedule(std::move(_cfg.heating.schedule_cfg)),
           _climate_control(std::move(_cfg.heating.climate_control)),
           _ventilation_control(SRLatch::Config{.high = _cfg.ventilation.high_humidity,
                                                .low = _cfg.ventilation.low_humidity,
@@ -88,17 +96,13 @@ public:
                                                .maximal_on_time = _cfg.ventilation.single_shot_length,
                                                .minimal_off_time = _cfg.ventilation.minimal_interval,
                                                .maximal_off_time = _cfg.ventilation.maximal_interval}),
-          _power(_hws.digital_output(_cfg.hws_power_idx)){};
+          _power(_hws.digital_actuator(_cfg.hws_power_idx)){};
 
     void initialize() override {
         //
-        _climate_fan.initialize();
-        _heating_element_fan.initialize();
         _heater.initialize();
-        _power.initialize();
         _climate_control.initialize();
         _ventilation_control.initialize();
-        _temperature_humidity_probe.initialize();
 
         evsys()->attach(Events::VentilationFollowUp, this);
         evsys()->attach(Events::VentilationStart, this);
@@ -136,10 +140,9 @@ public:
 
     void handle_event(const Event& event) override {
         const auto now_s = [&]() {
-            // assert(Clock::is_ready());
-            // const auto now_dt = Clock::now();
-            // return time_s(time_h(now_dt.getHour())) + time_m(now_dt.getMinute());
-            return time_s(1);
+            assert(_clock.is_ready());
+            const auto now_dt = _clock.now();
+            return time_s(time_h(now_dt.getHour())) + time_m(now_dt.getMinute());
         };
         // const auto scheduled_next_block = [&]() { return; };
         // const auto scheduled_value = [&]() { return _heating_schedule.value_at(now_s()); };
@@ -183,8 +186,7 @@ public:
 
             // remove residual heat first
             _climate_fan.set_value(LogicalState::ON);
-            for (auto t = _temperature_humidity_probe.read_temperature(); t > autotune_startpoint;
-                 t = _temperature_humidity_probe.read_temperature()) {
+            for (auto t = _climate_temperature.value(); t > autotune_startpoint; t = _climate_temperature.value()) {
                 DBGF("Ventilating for temperature %.2f C is lower than startpoint %.2f C before autotune "
                      "start",
                      t, autotune_startpoint);
@@ -200,7 +202,7 @@ public:
                      _heater.temperature());
                 _heater.set_setpoint(new_setpoint);
             };
-            const auto process_getter = [&]() { return _temperature_humidity_probe.read_temperature(); };
+            const auto process_getter = [&]() { return _climate_temperature.value(); };
             const auto process_loop = [&]() {
                 guard_temperature_limits();
                 adjust_heater_fan_state();
@@ -274,7 +276,7 @@ private:
 
     ///
     void update_climate_controller() {
-        const auto climate_temperature = _temperature_humidity_probe.read_temperature();
+        const auto climate_temperature = _climate_temperature.value();
         _climate_control.new_reading(climate_temperature);
         // auto new_offset = _climate_control.response();
         // auto new_setpoint = _heater.temperature() + new_offset - (new_offset == 0);
@@ -282,10 +284,10 @@ private:
         const auto new_setpoint = calculate_heater_setpoint(response);
 
         if (_print_interval.expired()) {
-            // DBGF("Heating: outside T %.2f C,  climate T %.2f C, climate sp T %.2f C, surface T %.2f C, sp %.2f C, "
-            // "response: %.2f C, new heater sp %.2f",
-            // Clock::reference_temperature(), climate_temperature, _climate_control.setpoint(),
-            // _heater.temperature(), _heater.setpoint(), response, new_setpoint);
+            DBGF("Heating: outside T %.2f C,  climate T %.2f C, climate sp T %.2f C, surface T %.2f C, sp %.2f C, "
+                 "response: %.2f C, new heater sp %.2f",
+                 _outside_temp_sensor.value(), climate_temperature, _climate_control.setpoint(), _heater.temperature(),
+                 _heater.setpoint(), response, new_setpoint);
         }
         _heater.set_setpoint(new_setpoint);
     }
@@ -305,12 +307,12 @@ private:
 
         HAL::print(_heater.temperature());
         HAL::print("|");
-        HAL::println(_temperature_humidity_probe.temperature());
+        HAL::println(_climate_temperature.value());
     }
 
     /// continuous checking of ventilation status
     void ventilation_loop() {
-        const auto climate_humidity = _temperature_humidity_probe.read_humidity();
+        const auto climate_humidity = _climate_humidity.value();
         _ventilation_control.new_reading(climate_humidity);
         const auto next_state = _ventilation_control.response();
         const auto last_state = _climate_fan.value() != 0.0;
@@ -344,33 +346,37 @@ private:
         if (_heater.temperature() < MIN_SURFACE_TEMPERATURE || _heater.temperature() > MAX_SURFACE_TEMPERATURE) {
             dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Heater temperature out of limits"));
         }
-        if (_temperature_humidity_probe.temperature() < MIN_INSIDE_TEMPERATURE
-            || _temperature_humidity_probe.temperature() > MAX_INSIDE_TEMPERATURE) {
+        if (_climate_temperature.value() < MIN_INSIDE_TEMPERATURE
+            || _climate_temperature.value() > MAX_INSIDE_TEMPERATURE) {
             dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Climate temperature out of limits"));
         }
-        // const auto outside_temperature = Clock::reference_temperature();
-        // if (outside_temperature < MIN_OUTSIDE_TEMPERATURE || outside_temperature > MAX_OUTSIDE_TEMPERATURE) {
-        // dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Outside temperature out of limits"));
-        // }
+        if (_outside_temp_sensor.value() < MIN_OUTSIDE_TEMPERATURE
+            || _outside_temp_sensor.value() > MAX_OUTSIDE_TEMPERATURE) {
+            dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Outside temperature out of limits"));
+        }
     }
 
 private:
     const Config _cfg;
 
-    AnalogueOutput& _climate_fan;
+    const io::Clock& _clock;
+
+    const io::AnalogueSensor& _outside_temp_sensor;
+
+    io::AnalogueActuator& _climate_fan;
+    const io::AnalogueSensor& _climate_humidity;
+    const io::AnalogueSensor& _climate_temperature;
 
     Heater _heater;
-    AnalogueOutput& _heating_element_fan;
+    io::AnalogueActuator& _heating_element_fan;
+    const io::AnalogueSensor& _heating_element_sensor;
 
     Schedule _heating_schedule;
-
-    // todo: abstract away sensor interface from implementation
-    SHT31TempHumidityProbe _temperature_humidity_probe;
 
     PID _climate_control;
     SRLatch _ventilation_control;
 
-    DigitalOutput _power;
+    io::DigitalActuator& _power;
 
     IntervalTimer _print_interval = IntervalTimer(time_s(10));
 };

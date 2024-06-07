@@ -9,6 +9,7 @@
 #include "kaskas/subsystems/climatecontrol.hpp"
 #include "kaskas/subsystems/fluidsystem.hpp"
 #include "kaskas/subsystems/growlights.hpp"
+#include "kaskas/subsystems/hardware.hpp"
 #include "kaskas/subsystems/ui.hpp"
 
 #include <spine/core/exception.hpp>
@@ -34,7 +35,7 @@ public:
     };
 
 public:
-    explicit KasKas(Config& cfg, std::shared_ptr<io::HardwareStack> hws)
+    explicit KasKas(std::shared_ptr<io::HardwareStack> hws, Config& cfg)
         : _cfg(cfg), _evsys({cfg.esc_cfg}), _hws(std::move(hws)),
           _components(std::vector<std::unique_ptr<Component>>()) {}
     KasKas(const KasKas& other) = delete;
@@ -66,6 +67,7 @@ public:
     EventSystem& evsys() { return _evsys; };
 
     int loop() {
+        _hws->update_all();
         _evsys.loop();
         return 0;
     }

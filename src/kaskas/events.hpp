@@ -9,6 +9,7 @@ enum class Events {
     WakeUp, //
     UIButtonCheck,
     UIWatchDog,
+    SensorFollowUp,
     OutOfWater,
     VentilationFollowUp,
     VentilationStart,

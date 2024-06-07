@@ -2,7 +2,8 @@
 
 #include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
-#include "kaskas/io/providers/digital_value.hpp"
+#include "kaskas/io/providers/digital.hpp"
+#include "kaskas/io/stack.hpp"
 
 #include <kaskas/component.hpp>
 #include <spine/core/exception.hpp>
@@ -24,27 +25,23 @@ using kaskas::Component;
 class Growlights final : public Component {
 public:
     struct Config {
-        Relay::Config violet_spectrum_cfg;
-        Relay::Config broad_spectrum_cfg;
+        io::HardwareStack::Idx violet_spectrum_actuator_idx;
+        io::HardwareStack::Idx broad_spectrum_actuator_idx;
+        io::HardwareStack::Idx clock_idx;
 
         time_h starting_hour;
         time_h duration_hours;
     };
 
 public:
-    explicit Growlights(Config& cfg) : Growlights(nullptr, cfg) {}
-    Growlights(EventSystem* evsys, Config& cfg)
-        : Component(evsys), _cfg(cfg), _violet_spectrum(std::move(_cfg.violet_spectrum_cfg)),
-          _broad_spectrum(std::move(_cfg.broad_spectrum_cfg)) {
+    Growlights(io::HardwareStack& hws, const Config& cfg) : Growlights(hws, nullptr, cfg) {}
+    Growlights(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
+        : Component(evsys, hws), _cfg(cfg), _violet_spectrum(_hws.digital_actuator(_cfg.violet_spectrum_actuator_idx)),
+          _broad_spectrum(_hws.digital_actuator(_cfg.broad_spectrum_actuator_idx)), _clock(_hws.clock(_cfg.clock_idx)) {
         assert(cfg.duration_hours <= time_h(24));
     };
 
     void initialize() override {
-        _broad_spectrum.initialize();
-        _violet_spectrum.initialize();
-
-        // Clock::initialize();
-
         assert(evsys());
         evsys()->attach(Events::VioletSpectrumTurnOn, this);
         evsys()->attach(Events::VioletSpectrumTurnOff, this);
@@ -121,10 +118,9 @@ private:
             return DateTime{today_epoch + 24 * 60 * 60};
         };
 
-        // assert(Clock::is_ready());
-
-        // const auto now_dt = Clock::now();
-        const auto now_dt = DateTime();
+        assert(_clock.is_ready());
+        const auto now_dt = _clock.now();
+        // const auto now_dt = DateTime();
 
         const auto duration = _cfg.duration_hours;
         const auto nowtime_s = time_s(now_dt.getUnixTime());
@@ -172,8 +168,9 @@ private:
 private:
     const Config _cfg;
 
-    Relay _violet_spectrum;
-    Relay _broad_spectrum;
+    io::DigitalActuator _violet_spectrum;
+    io::DigitalActuator _broad_spectrum;
+    io::Clock _clock;
 };
 
 } // namespace kaskas::component
