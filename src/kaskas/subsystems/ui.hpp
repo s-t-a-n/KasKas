@@ -72,7 +72,7 @@ public:
         }
         case Events::UIButtonCheck: {
             if (_userbutton.state() == LogicalState::ON) {
-                dbg::throw_exception(spn::core::runtime_error("User pressed button. Shutting down gracefully"));
+                dbg::throw_exception(spn::core::runtime_error("Monkey pressed button. Shut down gracefully."));
             }
             evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1), Event::Data()));
             break;

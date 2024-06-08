@@ -20,6 +20,15 @@ using spn::filter::EWMA;
 
 // todo: put this in a configuration file
 
+constexpr double MIN_OUTSIDE_TEMPERATURE = 5.0;
+constexpr double MAX_OUTSIDE_TEMPERATURE = 45.0;
+
+constexpr double MIN_INSIDE_TEMPERATURE = 8.0;
+constexpr double MAX_INSIDE_TEMPERATURE = 40.0;
+
+constexpr double MIN_SURFACE_TEMPERATURE = 8.0;
+constexpr double MAX_SURFACE_TEMPERATURE = 65.0;
+
 // maximal error from setpoint in degrees that is allowed to happen for timewindow TRP_STABLE_TIMEWINDOW until thermal
 // runaway is considered
 constexpr double TRP_STABLE_HYSTERESIS_C = 4.0;
@@ -36,15 +45,16 @@ public:
 
 class Heater {
 public:
-    enum class State { IDLE, COOLING_DOWN, HEATING_UP, STEADY_STATE, THERMAL_RUN_AWAY };
-
+    enum class State { IDLE, COOLING_DOWN, HEATING_UP, STEADY_STATE, OVERHEATED, THERMAL_RUN_AWAY };
+    enum class TemperatureSource { SURFACE, CLIMATE };
     using Value = double;
 
     struct Config {
         PID::Config pid_cfg;
         double max_heater_setpoint = 60.0;
 
-        HardwareStack::Idx temperature_sensor_idx;
+        HardwareStack::Idx climate_temperature_idx;
+        HardwareStack::Idx heating_surface_temperature_idx;
         HardwareStack::Idx heating_element_idx;
     };
 
@@ -52,17 +62,17 @@ public:
     Heater(const Config&& cfg, io::HardwareStack& hws)
         : _cfg(cfg), _hws(hws), _pid(std::move(_cfg.pid_cfg)),
           _heating_element(_hws.analogue_actuator(_cfg.heating_element_idx)),
-          _temperature(_hws.analog_sensor(_cfg.temperature_sensor_idx)),
-          _update_interval(IntervalTimer(_cfg.pid_cfg.sample_interval)) {}
+          _surface_temperature(_hws.analog_sensor(_cfg.heating_surface_temperature_idx)),
+          _climate_temperature(_hws.analog_sensor(_cfg.climate_temperature_idx)),
+          _temperature_source(&_surface_temperature), _update_interval(IntervalTimer(_cfg.pid_cfg.sample_interval)) {}
 
     void initialize() {
         _pid.initialize();
 
-        const auto current_temp = _temperature.value();
+        const auto current_temp = temperature();
         _pid.new_reading(current_temp);
 
-        _lowest_reading = current_temp;
-        _highest_reading = current_temp;
+        reset_reading_window_to(current_temp);
 
         DBGF("Heater initialized: Current surface temperature: %.2f C, initial response : %f", current_temp,
              _pid.response());
@@ -70,73 +80,123 @@ public:
 
     void update() {
         if (_update_interval.expired()) {
-            const auto current_temp = _temperature.value();
+            guard_temperature_limits();
+
+            const auto current_temp = temperature();
             _pid.new_reading(current_temp);
             const auto response = _pid.response();
             const auto normalized_response = _pid.setpoint() > 0 ? response / _cfg.pid_cfg.output_upper_limit : 0;
             // DBGF("Heater update: current temp: %f, response %f, normalized response %f for sp %f", current_temp,
             // response, normalized_response, _pid.setpoint());
             assert(normalized_response >= 0.0 && normalized_response <= 1.0);
-            _heating_element.fade_to(normalized_response);
+            _heating_element.fade_to(guarded_setpoint(normalized_response));
             update_state();
         }
     }
 
-    ///
-    // void block_until_setpoint(const double setpoint, time_ms timeout = time_ms(0), bool saturated = false) {
-    //     auto timer = AlarmTimer(timeout);
-    //     while (_temperature.read() < setpoint && (!timer.expired() || timeout == time_ms(0))) {
-    //         _heating_element.set_value(1.0);
-    //         DBGF("Waiting until temperature of %f C reaches %f C, saturating thermal capacitance",
-    //         _temperature.value(),
-    //              setpoint);
-    //         HAL::delay(time_ms(1000));
-    //     }
-    //     _heating_element.fade_to(0.0);
-    //     if (saturated)
-    //         return;
-    //     while (_temperature.read() > setpoint && (!timer.expired() || timeout == time_ms(0))) {
-    //         DBGF("Waiting until temperature of %f C reaches %f C, unloading thermal capacitance",
-    //         _temperature.value(),
-    //              setpoint);
-    //         HAL::delay(time_ms(1000));
-    //     }
-    // }
+    void safe_shutdown(bool critical = false) {
+        if (critical) {
+        }
+        _heating_element.fade_to(LogicalState::OFF);
+    }
 
-    void autotune(PID::TuneConfig&& cfg) {
-        // block_until_setpoint(startpoint);
-        // set_setpoint(setpoint);
+    void set_temperature_source(const TemperatureSource source) {
+        switch (source) {
+        case TemperatureSource::SURFACE: _temperature_source = &_surface_temperature; break;
+        case TemperatureSource::CLIMATE: _temperature_source = &_climate_temperature; break;
+        default: assert(!"Unhandled TemperatureSource");
+        }
+        reset_reading_window_to(temperature());
+    }
+
+    ///
+    void block_until_setpoint(const double setpoint, time_ms timeout = time_ms(0), bool saturated = true) {
+        auto timer = AlarmTimer(timeout);
+        while (temperature() < setpoint && (!timer.expired() || timeout == time_ms(0))) {
+            _heating_element.fade_to(guarded_setpoint(LogicalState::ON));
+            DBGF("Waiting until temperature of %.2fC reaches %.2fC, saturating thermal capacitance (surfaceT %.2f)",
+                 temperature(), setpoint, _surface_temperature.value());
+            _hws.update_all(); // make sure to update sensors
+            HAL::delay(time_ms(1000));
+        }
+        _heating_element.fade_to(LogicalState::OFF);
+        if (saturated)
+            return;
+        while (temperature() > setpoint && (!timer.expired() || timeout == time_ms(0))) {
+            DBGF("Waiting until temperature of %f C reaches %f C, unloading thermal capacitance (surfaceT %.2f)",
+                 temperature(), setpoint, _surface_temperature.value());
+            _hws.update_all(); // make sure to update sensors
+            HAL::delay(time_ms(1000));
+        }
+    }
+
+    void autotune(PID::TuneConfig&& cfg, std::function<void()> process_loop = {}) {
+        block_until_setpoint(cfg.startpoint);
+        set_setpoint(cfg.setpoint);
         const auto process_setter = [&](double pwm_value) {
-            //
             const auto normalized_response = (pwm_value - _cfg.pid_cfg.output_lower_limit)
                                              / (_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit);
-            DBGF("Setting heating element to output: %f", normalized_response);
-            _heating_element.fade_to(normalized_response);
+            const auto guarded_normalized_response = guarded_setpoint(normalized_response);
+            DBGF("Autotune: Setting heating element to output: %.3f (surface: %.3fC, climate %.3fC)",
+                 guarded_normalized_response, _surface_temperature.value(), _climate_temperature.value());
+            _heating_element.fade_to(guarded_normalized_response);
         };
         const auto process_getter = [&]() {
-            update();
+            _hws.update_all(); // make sure to update sensors
             return temperature();
         };
-        _pid.autotune(cfg, process_setter, process_getter);
+        _pid.autotune(cfg, process_setter, process_getter, process_loop);
+        update_state();
     }
 
     void set_setpoint(const Value setpoint) { _pid.set_target_setpoint(std::min(_cfg.max_heater_setpoint, setpoint)); }
     Value setpoint() const { return _pid.setpoint(); }
 
-    Value temperature() const { return _temperature.value(); }
+    Value temperature() const {
+        assert(_temperature_source != nullptr);
+        return _temperature_source->value();
+    }
     Value error() const { return std::fabs(temperature() - setpoint()); }
 
     State state() const { return _state; }
 
-    void safe_shutdown(bool critical = false) {
-        if (critical) {
-        }
-        _heating_element.fade_to(0);
-    }
-
     // Config& cfg() const { return _cfg; }
 
 private:
+    /// makes sure that when the surface temperature is exceeding the limit, that the power is decreased
+    double guarded_setpoint(double setpoint) {
+        const auto surface_temperature = _surface_temperature.value();
+        auto excess = surface_temperature - _cfg.max_heater_setpoint;
+        auto feedback = excess / 10.0;
+
+        const auto adjusted_setpoint = std::clamp(excess > 0.0 ? setpoint - feedback : setpoint, 0.0, 1.0);
+
+        if (adjusted_setpoint != setpoint) {
+            DBGF("Heater: T %.2f C is above limit of T %.2f C, clamping response from %.2f to %.2f",
+                 surface_temperature, _cfg.max_heater_setpoint, setpoint, adjusted_setpoint);
+        }
+        return adjusted_setpoint;
+    }
+
+    /// When any temperature readings are out of limits, shutdown the system
+    void guard_temperature_limits() {
+        //
+        if (_surface_temperature.value() < MIN_SURFACE_TEMPERATURE
+            || _surface_temperature.value() > MAX_SURFACE_TEMPERATURE) {
+            dbg::throw_exception(
+                spn::core::assertion_error("ClimateCountrol: Heater element temperature out of limits"));
+        }
+        if (_climate_temperature.value() < MIN_INSIDE_TEMPERATURE
+            || _climate_temperature.value() > MAX_INSIDE_TEMPERATURE) {
+            dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Climate temperature out of limits"));
+        }
+    }
+
+    void reset_reading_window_to(const double value = 0.0) {
+        _lowest_reading = value;
+        _highest_reading = value;
+    }
+
     void update_state() {
         const auto current_temp = temperature();
         if (current_temp < _lowest_reading)
@@ -153,6 +213,8 @@ private:
             _state = State::COOLING_DOWN;
         } else if (setpoint() > 0 && error() < TRP_STABLE_HYSTERESIS_C) {
             _state = State::STEADY_STATE;
+        } else if (_surface_temperature.value() > _cfg.max_heater_setpoint) {
+            _state = State::OVERHEATED;
         } else {
             _state = State::HEATING_UP;
         }
@@ -180,7 +242,11 @@ private:
     PID _pid;
 
     AnalogueActuator _heating_element;
-    AnalogueSensor _temperature;
+
+    const AnalogueSensor& _surface_temperature;
+    const AnalogueSensor& _climate_temperature;
+
+    const AnalogueSensor* _temperature_source;
 
     IntervalTimer _update_interval;
 };

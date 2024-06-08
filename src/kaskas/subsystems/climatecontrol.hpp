@@ -39,16 +39,6 @@ using kaskas::io::SHT31TempHumidityProbe;
 using spn::controller::SRLatch;
 using spn::core::time::IntervalTimer;
 
-// todo: put this in a configuration file
-constexpr double MIN_OUTSIDE_TEMPERATURE = 5.0;
-constexpr double MAX_OUTSIDE_TEMPERATURE = 45.0;
-
-constexpr double MIN_INSIDE_TEMPERATURE = 8.0;
-constexpr double MAX_INSIDE_TEMPERATURE = 40.0;
-
-constexpr double MIN_SURFACE_TEMPERATURE = 8.0;
-constexpr double MAX_SURFACE_TEMPERATURE = 65.0;
-
 class ClimateControl final : public kaskas::Component {
 public:
     struct Config {
@@ -59,7 +49,8 @@ public:
             io::HardwareStack::Idx hws_climate_fan_idx;
             io::HardwareStack::Idx climate_humidity_idx;
 
-            time_s single_shot_length; // duration that ventilation will be on at minimum
+            time_s minimal_on_duration; // duration that ventilation will be on at minimum in a single go
+            time_s maximal_on_duration; // duration that ventilation will be on at maximum in a single go
             double low_humidity;
             double high_humidity;
             time_s minimal_interval; // minimal interval between consecutive shots
@@ -73,7 +64,6 @@ public:
 
             Heater::Config heater_cfg;
             Schedule::Config schedule_cfg;
-            PID::Config climate_control;
             time_s check_interval;
         } heating;
     };
@@ -89,33 +79,31 @@ public:
           _heating_element_fan(_hws.analogue_actuator(_cfg.heating.heating_element_fan_idx)),
           _heating_element_sensor(_hws.analog_sensor(_cfg.heating.heating_element_temp_sensor_idx)),
           _heater(std::move(cfg.heating.heater_cfg), _hws), _heating_schedule(std::move(_cfg.heating.schedule_cfg)),
-          _climate_control(std::move(_cfg.heating.climate_control)),
           _ventilation_control(SRLatch::Config{.high = _cfg.ventilation.high_humidity,
                                                .low = _cfg.ventilation.low_humidity,
-                                               .minimal_on_time = _cfg.ventilation.single_shot_length,
-                                               .maximal_on_time = _cfg.ventilation.single_shot_length,
+                                               .minimal_on_time = _cfg.ventilation.minimal_on_duration,
+                                               .maximal_on_time = _cfg.ventilation.maximal_on_duration,
                                                .minimal_off_time = _cfg.ventilation.minimal_interval,
                                                .maximal_off_time = _cfg.ventilation.maximal_interval}),
           _power(_hws.digital_actuator(_cfg.hws_power_idx)){};
 
     void initialize() override {
         //
+        _heater.set_temperature_source(Heater::TemperatureSource::CLIMATE);
         _heater.initialize();
-        _climate_control.initialize();
         _ventilation_control.initialize();
 
         evsys()->attach(Events::VentilationFollowUp, this);
         evsys()->attach(Events::VentilationStart, this);
         evsys()->attach(Events::VentilationStop, this);
-        evsys()->attach(Events::HeatingAutoTuneHeater, this);
-        evsys()->attach(Events::HeatingAutoTuneClimateControl, this);
+        evsys()->attach(Events::HeatingAutoTune, this);
         evsys()->attach(Events::HeatingFollowUp, this);
         evsys()->attach(Events::HeatingCycleCheck, this);
         evsys()->attach(Events::HeatingCycleStart, this);
         evsys()->attach(Events::HeatingCycleStop, this);
 
         // starts autotuning now!
-        // evsys()->schedule(evsys()->event(Events::HeatingAutoTuneClimateControl, time_s(1), Event::Data()));
+        // evsys()->schedule(evsys()->event(Events::HeatingAutoTune, time_s(1), Event::Data()));
 
         auto time_from_now = time_s(20);
         DBGF("ClimateControl: Scheduling VentilationCheck in %u seconds.", time_from_now.printable());
@@ -149,10 +137,14 @@ public:
 
         switch (static_cast<Events>(event.id())) {
         case Events::VentilationFollowUp: {
-            DBG("Ventilation: FollowUp.");
+            // DBG("Ventilation: FollowUp.");
             ventilation_loop();
-            evsys()->schedule(
-                evsys()->event(Events::VentilationFollowUp, _cfg.ventilation.single_shot_length, Event::Data()));
+
+            const auto intervals = std::initializer_list<time_s>{
+                _cfg.ventilation.minimal_on_duration, _cfg.ventilation.maximal_on_duration,
+                _cfg.ventilation.minimal_interval, _cfg.ventilation.maximal_interval};
+            const auto shortest_interval = std::min_element(intervals.begin(), intervals.end());
+            evsys()->schedule(evsys()->event(Events::VentilationFollowUp, *shortest_interval, Event::Data()));
             break;
         }
         case Events::VentilationStart: {
@@ -160,7 +152,7 @@ public:
             _power.set_state(LogicalState::ON);
             _climate_fan.fade_to(LogicalState::ON);
 
-            const auto time_from_now = _cfg.ventilation.single_shot_length;
+            const auto time_from_now = _cfg.ventilation.minimal_on_duration;
             DBGF("Ventilation: Scheduling VentilationStop in %u minutes.", time_m(time_from_now).raw<unsigned>());
             evsys()->schedule(evsys()->event(Events::VentilationStop, time_from_now, Event::Data()));
             DBG("Ventilation: Started. DONE");
@@ -172,54 +164,41 @@ public:
             adjust_power_state();
             break;
         }
-        case Events::HeatingAutoTuneHeater: {
-            DBG("HeatingAutoTuneHeater: start.");
-            break;
-        }
-        case Events::HeatingAutoTuneClimateControl: {
-            DBG("HeatingAutoTuneClimateControl: start.");
+        case Events::HeatingAutoTune: {
+            DBG("HeatingAutoTune: start.");
 
-            const auto autotune_setpoint = 27.0;
+            const auto autotune_setpoint = 25.0;
             const auto autotune_startpoint = autotune_setpoint - 0.5;
 
             _power.set_state(LogicalState::ON);
 
             // remove residual heat first
-            _climate_fan.set_value(LogicalState::ON);
+            _climate_fan.fade_to(LogicalState::ON);
             for (auto t = _climate_temperature.value(); t > autotune_startpoint; t = _climate_temperature.value()) {
                 DBGF("Ventilating for temperature %.2f C is lower than startpoint %.2f C before autotune "
                      "start",
                      t, autotune_startpoint);
+                _hws.update_all();
                 HAL::delay(time_s(1));
             }
-            _climate_fan.set_value(LogicalState::OFF);
+            _climate_fan.fade_to(LogicalState::OFF);
 
-            _climate_control.set_target_setpoint(autotune_setpoint);
+            const auto process_loop = [&]() { _hws.update_all(); };
 
-            const auto process_setter = [&](double sp) {
-                const auto new_setpoint = calculate_heater_setpoint(sp);
-                DBGF("Autotune: Setting heater setpoint to: %.3f (response: %.3f, heater temp: %.2f)", new_setpoint, sp,
-                     _heater.temperature());
-                _heater.set_setpoint(new_setpoint);
-            };
-            const auto process_getter = [&]() { return _climate_temperature.value(); };
-            const auto process_loop = [&]() {
-                guard_temperature_limits();
-                adjust_heater_fan_state();
-                _heater.update();
-            };
-            _climate_control.autotune(PID::TuneConfig{.setpoint = autotune_setpoint,
-                                                      .startpoint = autotune_startpoint,
-                                                      .satured_at_start = true,
-                                                      .cycles = 10},
-                                      process_setter, process_getter, process_loop);
+            _heating_element_fan.fade_to(LogicalState::ON);
+            _heater.autotune(PID::TuneConfig{.setpoint = autotune_setpoint,
+                                             .startpoint = autotune_startpoint,
+                                             .hysteresis = 0.03,
+                                             .satured_at_start = true,
+                                             .cycles = 10},
+                             process_loop);
             adjust_power_state();
+            adjust_heater_fan_state();
             break;
         }
         case Events::HeatingFollowUp: {
             // DBG("Heating: FollowUp.");
             heating_control_loop();
-            _heater.update();
             evsys()->schedule(evsys()->event(Events::HeatingFollowUp, _cfg.heating.check_interval, Event::Data()));
             break;
         }
@@ -227,13 +206,13 @@ public:
             const auto now = now_s();
             const auto next_setpoint = _heating_schedule.value_at(now);
 
-            if (next_setpoint > 0 && _climate_control.setpoint() > 0) {
+            if (next_setpoint > 0 && _heater.setpoint() > 0) {
                 DBGF("Heater: Check: heater is currently on, update value to setpoint: %.2f", next_setpoint);
-                _climate_control.set_target_setpoint(next_setpoint);
-            } else if (next_setpoint > 0 && _climate_control.setpoint() == 0) {
+                _heater.set_setpoint(next_setpoint);
+            } else if (next_setpoint > 0 && _heater.setpoint() == 0) {
                 DBGF("Heater: Check: heater is currently off, turn on and set setpoint to: %.2f", next_setpoint);
                 evsys()->trigger(evsys()->event(Events::HeatingCycleStart, time_s(1), Event::Data()));
-            } else if (next_setpoint == 0 && _climate_control.setpoint() > 0) {
+            } else if (next_setpoint == 0 && _heater.setpoint() > 0) {
                 DBGF("Heater: Check: heater is currently on, turn off");
                 evsys()->trigger(evsys()->event(Events::HeatingCycleStop, time_s(1), Event::Data()));
             }
@@ -253,13 +232,13 @@ public:
             const auto next_setpoint = _heating_schedule.value_at(now_s());
 
             DBGF("Heating: Setting climate control setpoint to %.2f", next_setpoint);
-            _climate_control.set_target_setpoint(next_setpoint);
+            _heater.set_setpoint(next_setpoint);
             break;
         }
         case Events::HeatingCycleStop: {
             //
             DBG("Heating: Stop.");
-            _climate_control.set_target_setpoint(0);
+            _heater.set_setpoint(LogicalState::OFF);
             _heater.safe_shutdown();
             adjust_power_state();
             break;
@@ -269,43 +248,22 @@ public:
     }
 
 private:
-    double calculate_heater_setpoint(const double pid_response) {
-        return _heater.temperature() + pid_response
-               - _cfg.heating.climate_control.output_upper_limit * (pid_response == 0);
-    }
-
-    ///
-    void update_climate_controller() {
-        const auto climate_temperature = _climate_temperature.value();
-        _climate_control.new_reading(climate_temperature);
-        // auto new_offset = _climate_control.response();
-        // auto new_setpoint = _heater.temperature() + new_offset - (new_offset == 0);
-        const auto response = _climate_control.response();
-        const auto new_setpoint = calculate_heater_setpoint(response);
-
-        if (_print_interval.expired()) {
-            DBGF("Heating: outside T %.2f C,  climate T %.2f C, climate sp T %.2f C, surface T %.2f C, sp %.2f C, "
-                 "response: %.2f C, new heater sp %.2f",
-                 _outside_temp_sensor.value(), climate_temperature, _climate_control.setpoint(), _heater.temperature(),
-                 _heater.setpoint(), response, new_setpoint);
-        }
-        _heater.set_setpoint(new_setpoint);
-    }
-
     /// continuous checking of heating status
     void heating_control_loop() {
-        guard_temperature_limits();
         adjust_heater_fan_state();
 
-        if (_climate_control.setpoint() == 0.0) {
-            // turn off the heater completely
-            _heater.set_setpoint(0);
+        if (_heater.setpoint() == 0.0) {
             return;
         }
 
-        update_climate_controller();
+        if (_print_interval.expired()) {
+            DBGF("Heating: outsideT %.2fC, surfaceT %.2f, climateT %.2fC, sp T %.2f C", _outside_temp_sensor.value(),
+                 _heating_element_sensor.value(), _climate_temperature.value(), _heater.setpoint());
+        }
 
-        HAL::print(_heater.temperature());
+        _heater.update();
+
+        HAL::print(_heating_element_sensor.value());
         HAL::print("|");
         HAL::println(_climate_temperature.value());
     }
@@ -316,10 +274,13 @@ private:
         _ventilation_control.new_reading(climate_humidity);
         const auto next_state = _ventilation_control.response();
         const auto last_state = _climate_fan.value() != 0.0;
-        DBGF("Ventilation: current humidity %.2f %%, fan state: %i, next fan state: %i", climate_humidity, last_state,
-             next_state);
+
+        DBGF("Ventilation: Humidity %.2f%%", _climate_humidity.value());
+
         // the SRLatch maintains pacing, so we can safely call ventilation start here without timing checks
         if (next_state != last_state) {
+            DBGF("Ventilation: current humidity %.2f %%, fan state: %i, next fan state: %i", climate_humidity,
+                 last_state, next_state);
             evsys()->trigger(evsys()->event(next_state == true ? Events::VentilationStart : Events::VentilationStop,
                                             _cfg.heating.check_interval, Event::Data()));
         }
@@ -327,32 +288,16 @@ private:
 
     /// If no power is needed, turn off the power
     void adjust_power_state() {
-        if (_climate_control.setpoint() == 0 && _heater.setpoint() == 0 && _climate_fan.value() == 0)
+        if (_heater.setpoint() == 0 && _climate_fan.value() == 0)
             _power.set_state(LogicalState::OFF);
     }
 
     /// Activate heater fan when heating or when cooling down
     void adjust_heater_fan_state() {
         if (_heater.state() != Heater::State::IDLE) {
-            _heating_element_fan.set_value(LogicalState::ON);
+            _heating_element_fan.fade_to(LogicalState::ON);
         } else {
-            _heating_element_fan.set_value(LogicalState::OFF);
-        }
-    }
-
-    /// When any temperature readings are out of limits, shutdown the system
-    void guard_temperature_limits() {
-        //
-        if (_heater.temperature() < MIN_SURFACE_TEMPERATURE || _heater.temperature() > MAX_SURFACE_TEMPERATURE) {
-            dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Heater temperature out of limits"));
-        }
-        if (_climate_temperature.value() < MIN_INSIDE_TEMPERATURE
-            || _climate_temperature.value() > MAX_INSIDE_TEMPERATURE) {
-            dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Climate temperature out of limits"));
-        }
-        if (_outside_temp_sensor.value() < MIN_OUTSIDE_TEMPERATURE
-            || _outside_temp_sensor.value() > MAX_OUTSIDE_TEMPERATURE) {
-            dbg::throw_exception(spn::core::assertion_error("ClimateCountrol: Outside temperature out of limits"));
+            _heating_element_fan.fade_to(LogicalState::OFF);
         }
     }
 
@@ -373,7 +318,6 @@ private:
 
     Schedule _heating_schedule;
 
-    PID _climate_control;
     SRLatch _ventilation_control;
 
     io::DigitalActuator& _power;

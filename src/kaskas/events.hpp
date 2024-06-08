@@ -14,8 +14,7 @@ enum class Events {
     VentilationFollowUp,
     VentilationStart,
     VentilationStop,
-    HeatingAutoTuneHeater, // heating element temperature with respect to surface probe
-    HeatingAutoTuneClimateControl, // heating element temperature setpoint with respect to climate temperature
+    HeatingAutoTune,
     HeatingFollowUp,
     HeatingCycleCheck,
     HeatingCycleStart,
