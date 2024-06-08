@@ -161,9 +161,6 @@ void setup() {
 
         hws = sf.stack();
         hws->initialize();
-
-        // hws->digital_output(Providers::HEATING_POWER).set_state(LogicalState::ON);
-        // hws->analogue_output(Providers::CLIMATE_FAN).fade_to(1.0);
     }
 
     {

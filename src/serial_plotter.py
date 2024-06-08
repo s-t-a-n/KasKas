@@ -44,7 +44,25 @@ def new_datapoint(value: float, idx: int ):
 
     collector[idx].append(value)
     
-ser = serial.Serial('/dev/ttyACM1', 115200, timeout=1)
+import glob
+import serial
+
+def available_serial_ports():
+    ports = glob.glob('/dev/ttyACM[0-9]*')
+
+    res = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            res.append(port)
+        except:
+            pass
+    return res
+
+ports = available_serial_ports()
+assert len(ports) > 0, "No serial ports available"
+ser = serial.Serial(ports[0], 115200, timeout=1)
 
 
 def animate(i) -> None:
