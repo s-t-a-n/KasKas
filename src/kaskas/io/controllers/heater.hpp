@@ -4,6 +4,7 @@
 
 #include <spine/controller/pid.hpp>
 #include <spine/core/debugging.hpp>
+#include <spine/core/timers.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
 #include <spine/filter/implementations/ewma.hpp>
 #include <spine/io/sensor.hpp>
@@ -16,6 +17,7 @@ namespace kaskas::io {
 using spn::controller::PID;
 using spn::core::time::AlarmTimer;
 using spn::core::time::IntervalTimer;
+using spn::core::time::Timer;
 using spn::filter::EWMA;
 
 // todo: put this in a configuration file
@@ -52,6 +54,7 @@ public:
     struct Config {
         PID::Config pid_cfg;
         double max_heater_setpoint = 60.0;
+        time_s cooldown_min_length = time_s(180);
 
         HardwareStack::Idx climate_temperature_idx;
         HardwareStack::Idx heating_surface_temperature_idx;
@@ -198,7 +201,7 @@ private:
     }
 
     void update_state() {
-        const auto current_temp = temperature();
+        const auto current_temp = _surface_temperature.value();
         if (current_temp < _lowest_reading)
             _lowest_reading = current_temp;
         if (current_temp > _highest_reading)
@@ -206,29 +209,40 @@ private:
 
         const auto distance_to_lowest = std::fabs(_lowest_reading - current_temp);
         const auto distance_to_highest = std::fabs(_highest_reading - current_temp);
+        // DBGF("distances to lowest: %f, distance to highest: %f", distance_to_lowest, distance_to_highest);
 
-        if (setpoint() == 0 && distance_to_lowest < distance_to_highest) {
+        if (current_temp > _cfg.max_heater_setpoint) {
+            _state = State::OVERHEATED;
+        } else if (setpoint() > 0 && temperature() < setpoint()) {
+            _state = State::HEATING_UP;
+        } else if (setpoint() > 0 && error() < TRP_STABLE_HYSTERESIS_C) {
+            _state = State::STEADY_STATE;
+        } else if (_cooled_down_for.timeSinceLast(false) > _cfg.cooldown_min_length) {
             _state = State::IDLE;
         } else if (setpoint() == 0 && distance_to_highest < distance_to_lowest) {
             _state = State::COOLING_DOWN;
-        } else if (setpoint() > 0 && error() < TRP_STABLE_HYSTERESIS_C) {
-            _state = State::STEADY_STATE;
-        } else if (_surface_temperature.value() > _cfg.max_heater_setpoint) {
-            _state = State::OVERHEATED;
+        } else if (setpoint() > 0 && temperature() > setpoint()) {
+            _state = State::COOLING_DOWN;
         } else {
-            _state = State::HEATING_UP;
+            assert(!"Unhandled case");
         }
-        // DBGF("current: %f, distance_to_lowest : %f, distance_to_highest: %f, setpoint: %f, error: %f ", current_temp,
-        // distance_to_lowest, distance_to_highest, setpoint(), error());
+        // DBGF("current: %f, distance_to_lowest : %f, distance_to_highest: %f, setpoint: %f, error: %f ",
+        // current_temp, distance_to_lowest, distance_to_highest, setpoint(), error());
+
+        // keep track of cooldown time
+        if (_state != State::COOLING_DOWN && _state != State::IDLE)
+            _cooled_down_for.reset();
 
         // if (state() == State::IDLE)
-        //     DBG("IDLE");
+        // DBG("IDLE");
         // if (state() == State::COOLING_DOWN)
-        //     DBG("COOLING_DOWN");
-        // if (state() == State::STEADY_STATE)
-        //     DBG("STEADY_STATE");
-        // if (state() == State::HEATING_UP)
-        //     DBG("HEATING_UP");
+        // DBG("COOLING_DOWN");
+        if (state() == State::STEADY_STATE)
+            DBG("STEADY_STATE");
+        if (state() == State::HEATING_UP)
+            DBG("HEATING_UP");
+        if (state() == State::OVERHEATED)
+            DBG("OVERHEATED");
     }
 
 private:
@@ -247,6 +261,8 @@ private:
     const AnalogueSensor& _climate_temperature;
 
     const AnalogueSensor* _temperature_source;
+
+    Timer _cooled_down_for = Timer{};
 
     IntervalTimer _update_interval;
 };

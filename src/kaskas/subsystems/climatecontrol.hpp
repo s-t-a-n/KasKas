@@ -152,10 +152,9 @@ public:
             _power.set_state(LogicalState::ON);
             _climate_fan.fade_to(LogicalState::ON);
 
-            const auto time_from_now = _cfg.ventilation.minimal_on_duration;
-            DBGF("Ventilation: Scheduling VentilationStop in %u minutes.", time_m(time_from_now).raw<unsigned>());
-            evsys()->schedule(evsys()->event(Events::VentilationStop, time_from_now, Event::Data()));
-            DBG("Ventilation: Started. DONE");
+            // const auto time_from_now = _cfg.ventilation.minimal_on_duration;
+            // DBGF("Ventilation: Scheduling VentilationStop in %u minutes.", time_m(time_from_now).raw<unsigned>());
+            // evsys()->schedule(evsys()->event(Events::VentilationStop, time_from_now, Event::Data()));
             break;
         }
         case Events::VentilationStop: {
@@ -263,6 +262,10 @@ private:
 
         _heater.update();
 
+        if (_heater.state() != Heater::State::IDLE) {
+            _power.set_state(LogicalState::ON);
+        }
+
         HAL::print(_heating_element_sensor.value());
         HAL::print("|");
         HAL::println(_climate_temperature.value());
@@ -272,12 +275,18 @@ private:
     void ventilation_loop() {
         const auto climate_humidity = _climate_humidity.value();
         _ventilation_control.new_reading(climate_humidity);
-        const auto next_state = _ventilation_control.response();
+        auto next_state = _ventilation_control.response();
         const auto last_state = _climate_fan.value() != 0.0;
 
         DBGF("Ventilation: Humidity %.2f%%", _climate_humidity.value());
 
-        // the SRLatch maintains pacing, so we can safely call ventilation start here without timing checks
+        // When the current climate temperature is above the setpoint temperature and the heater is still cooling down
+        // -> Remove residual heat to hasten the fall of temperature
+        if (_climate_temperature.value() > _heater.setpoint() && _heater.state() == Heater::State::COOLING_DOWN) {
+            next_state = true;
+        }
+
+        // the SRLatch maintains pacing, so we can safely call ventilation start/stop here without timing checks
         if (next_state != last_state) {
             DBGF("Ventilation: current humidity %.2f %%, fan state: %i, next fan state: %i", climate_humidity,
                  last_state, next_state);
@@ -288,7 +297,7 @@ private:
 
     /// If no power is needed, turn off the power
     void adjust_power_state() {
-        if (_heater.setpoint() == 0 && _climate_fan.value() == 0)
+        if ((_heater.setpoint() == 0 || _heater.state() == Heater::State::IDLE) && _climate_fan.value() == 0)
             _power.set_state(LogicalState::OFF);
     }
 
