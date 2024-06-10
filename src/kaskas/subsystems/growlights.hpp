@@ -102,6 +102,8 @@ public:
         }
     }
 
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return nullptr; }
+
 private:
     void deploy_lightcycle() {
         // DateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour = 0, uint8_t min = 0, uint8_t sec = 0);

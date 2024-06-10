@@ -246,6 +246,8 @@ public:
         };
     }
 
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return nullptr; }
+
 private:
     /// continuous checking of heating status
     void heating_control_loop() {
@@ -256,8 +258,10 @@ private:
         }
 
         if (_print_interval.expired()) {
-            DBGF("Heating: outsideT %.2fC, surfaceT %.2f, climateT %.2fC, sp T %.2f C", _outside_temp_sensor.value(),
-                 _heating_element_sensor.value(), _climate_temperature.value(), _heater.setpoint());
+            const auto state_str = std::string(Heater::as_stringview(_heater.state())).c_str();
+            DBGF("Heating: outsideT %.2fC, surfaceT %.2f, climateT %.2fC, sp T %.2f C, throttle: %i/255 state: %s",
+                 _outside_temp_sensor.value(), _heating_element_sensor.value(), _climate_temperature.value(),
+                 _heater.setpoint(), int(_heater.throttle() * 255), state_str);
         }
 
         _heater.update();
@@ -282,7 +286,7 @@ private:
 
         // When the current climate temperature is above the setpoint temperature and the heater is still cooling down
         // -> Remove residual heat to hasten the fall of temperature
-        if (_climate_temperature.value() > _heater.setpoint() && _heater.state() == Heater::State::COOLING_DOWN) {
+        if (_climate_temperature.value() > _heater.setpoint() && _heater.state() == Heater::State::COOLING) {
             next_state = true;
         }
 

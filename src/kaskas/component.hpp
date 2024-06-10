@@ -1,6 +1,7 @@
 #pragma once
 
 #include "kaskas/io/stack.hpp"
+#include "kaskas/prompt/prompt.hpp"
 
 #include <spine/eventsystem/eventsystem.hpp>
 
@@ -8,6 +9,7 @@
 
 namespace kaskas {
 
+using prompt::Prompt;
 using spn::core::EventHandler;
 using spn::core::EventSystem;
 
@@ -24,7 +26,7 @@ public:
     virtual void initialize() { assert(!"Virtual base function called"); }
     virtual void safe_shutdown(State state = State::SAFE) { assert(!"Virtual base function called"); }
 
-    // void attach_hardware_stack(std::shared_ptr<io::HardwareStack>& hws) : _hws(hws) {}
+    virtual std::unique_ptr<prompt::RPCRecipe> rpc_recipe() { assert(!"Virtual base function called"); }
 
 protected:
     io::HardwareStack& _hws;

@@ -43,6 +43,8 @@ public:
         };
     }
 
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return nullptr; }
+
 private:
     const Config _cfg;
 };

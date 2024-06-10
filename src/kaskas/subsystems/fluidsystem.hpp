@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../io/peripherals/relay.hpp"
 #include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
+#include "kaskas/io/peripherals/relay.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/providers/pump.hpp"
 
@@ -149,6 +149,8 @@ public:
         default: assert(!"event not handled"); break;
         }
     }
+
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return nullptr; }
 
 private:
     const Config _cfg;
