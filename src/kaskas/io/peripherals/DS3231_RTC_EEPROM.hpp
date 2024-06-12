@@ -37,7 +37,7 @@ public:
             DBGF("DS3231Clock initialized. The reported time is %u:%u @ %u:%u:%u", n.getHour(), n.getMinute(),
                  n.getDay(), n.getMonth(), n.getYear());
         } else {
-            dbg::throw_exception(spn::core::assertion_error("DS3231Clock failed to initialize. Maybe set the time?"));
+            spn::throw_exception(spn::assertion_error("DS3231Clock failed to initialize. Maybe set the time?"));
         }
     }
 
@@ -64,7 +64,7 @@ public:
         return {std::move(map)};
     }
 
-    NonVolatileMemory non_volatile_memory_provider() {}
+    NonVolatileMemory non_volatile_memory_provider() { return NonVolatileMemory{}; }
 
 private:
     const Config _cfg;

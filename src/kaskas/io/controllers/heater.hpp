@@ -188,18 +188,18 @@ private:
         //
         if (_surface_temperature.value() < MIN_SURFACE_TEMPERATURE
             || _surface_temperature.value() > MAX_SURFACE_TEMPERATURE) {
-            dbg::throw_exception(spn::core::assertion_error("Heater: Heater element temperature out of limits"));
+            spn::throw_exception(spn::assertion_error("Heater: Heater element temperature out of limits"));
         }
         if (_climate_temperature.value() < MIN_INSIDE_TEMPERATURE
             || _climate_temperature.value() > MAX_INSIDE_TEMPERATURE) {
-            dbg::throw_exception(spn::core::assertion_error("Heater: Climate temperature out of limits"));
+            spn::throw_exception(spn::assertion_error("Heater: Climate temperature out of limits"));
         }
 
         if (_runaway_tracker.is_runaway()) {
             DBGF("Runaway detected: surfaceT %.2f, climateT %.2f, throttle: %i/255, state: %s",
                  _surface_temperature.value(), _climate_temperature.value(), int(throttle() * 255),
-                 std::string(as_stringview(state())).c_str())
-            dbg::throw_exception(spn::core::assertion_error("Heater: Run away detected"));
+                 std::string(as_stringview(state())).c_str());
+            spn::throw_exception(spn::assertion_error("Heater: Run away detected"));
         }
     }
 

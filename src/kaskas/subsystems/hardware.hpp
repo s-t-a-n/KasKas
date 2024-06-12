@@ -8,8 +8,8 @@
 
 namespace kaskas::component {
 
+using spn::core::Event;
 using spn::eventsystem::EventHandler;
-
 // Responsible for maintaining hardware
 class Hardware : public Component {
 public:
@@ -43,7 +43,7 @@ public:
         };
     }
 
-    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return nullptr; }
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
 
 private:
     const Config _cfg;

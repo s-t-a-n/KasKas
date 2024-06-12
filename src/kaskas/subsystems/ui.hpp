@@ -72,7 +72,7 @@ public:
         }
         case Events::UIButtonCheck: {
             if (_userbutton.state() == LogicalState::ON) {
-                dbg::throw_exception(spn::core::runtime_error("Monkey pressed button. Shut down gracefully."));
+                spn::throw_exception(spn::runtime_error("Monkey pressed button. Shut down gracefully."));
             }
             evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1), Event::Data()));
             break;
@@ -97,7 +97,7 @@ public:
         };
     }
 
-    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return nullptr; }
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
 
 private:
     const Config _cfg;

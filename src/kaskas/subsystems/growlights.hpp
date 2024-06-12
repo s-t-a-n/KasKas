@@ -102,7 +102,7 @@ public:
         }
     }
 
-    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return nullptr; }
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
 
 private:
     void deploy_lightcycle() {

@@ -23,8 +23,13 @@ public:
 
         time_ms sampling_interval = time_s(1);
 
-        BandPass::Config filter_cfg = // example medium band pass to reject significant outliers
-            BandPass::Config{.mode = BandPass::Mode::RELATIVE, .mantissa = 1, .decades = 0.01, .offset = 0};
+        BandPass::Config filter_cfg = // medium band pass to reject significant outliers
+            BandPass::Config{.mode = BandPass::Mode::RELATIVE,
+                             .mantissa = 1,
+                             .decades = 0.01,
+                             .offset = 0,
+                             .rejection_limit = 10,
+                             .throw_on_rejection_limit = true};
     };
 
 public:
@@ -43,7 +48,7 @@ public:
         update();
 
         if (!is_ready()) {
-            dbg::throw_exception(spn::core::assertion_error("SHT31TempHumidityProbe could not be initialized"));
+            spn::throw_exception(spn::assertion_error("SHT31TempHumidityProbe could not be initialized"));
         }
         DBGF("SHT31TempHumidityProbe initialized. Humidity: %f %%, temperature: %f °C", read_humidity(),
              read_temperature());

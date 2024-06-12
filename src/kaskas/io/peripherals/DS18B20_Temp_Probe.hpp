@@ -20,8 +20,13 @@ public:
         uint8_t pin;
         time_ms sampling_interval = time_s(1);
 
-        BandPass::Config filter_cfg = // example medium band pass to reject significant outliers
-            BandPass::Config{.mode = BandPass::Mode::RELATIVE, .mantissa = 1, .decades = 0.01, .offset = 0};
+        BandPass::Config filter_cfg = // medium band pass to reject significant outliers
+            BandPass::Config{.mode = BandPass::Mode::RELATIVE,
+                             .mantissa = 1,
+                             .decades = 0.01,
+                             .offset = 0,
+                             .rejection_limit = 10,
+                             .throw_on_rejection_limit = true};
     };
 
 public:
@@ -32,7 +37,7 @@ public:
     void initialize() override {
         _ds18b20_probe_selector = _ds18b20.selectNext();
         if (_ds18b20_probe_selector == 0) {
-            dbg::throw_exception(spn::core::assertion_error("DS18B20TempProbe could not be initialized"));
+            spn::throw_exception(spn::assertion_error("DS18B20TempProbe could not be initialized"));
         }
 
         update();

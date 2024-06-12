@@ -43,8 +43,8 @@ public:
         buffer->raw[buffer->capacity - 1] = '\0';
         const auto operant_idx = strcspn(buffer->raw, Dialect::OPERANTS);
 
-        DBGF("buffer: %s, length: %i, operant @ %i", static_cast<const char*>(buffer->raw), buffer->length,
-             operant_idx);
+        // DBGF("buffer: %s, length: %i, operant @ %i", static_cast<const char*>(buffer->raw), buffer->length,
+        // operant_idx);
         if (operant_idx == buffer->length - 1) {
             // no operant found
             return std::nullopt;
@@ -54,12 +54,42 @@ public:
             return std::nullopt;
         }
 
-        Message m;
-        m._cmd = std::string_view(buffer->raw, operant_idx);
-        m._operant = std::string_view(buffer->raw + operant_idx, 1);
-        assert(buffer->length >= operant_idx + 1);
         bool newline_at_end = buffer->raw[buffer->length - 1] == '\n';
-        m._value = std::string_view(buffer->raw + operant_idx + 1, buffer->length - operant_idx - 1 - newline_at_end);
+
+        Message m;
+        auto head = buffer->raw;
+        m._cmd = std::string_view(head, operant_idx);
+
+        head += operant_idx;
+        m._operant = std::string_view(head, 1);
+
+        head += 1;
+        const auto kv_idx = strcspn(head, Dialect::KV_SEPARATOR);
+        if (kv_idx < buffer->length - (head - buffer->raw)) {
+            // key/value separator found
+            m._key = std::string_view(head, kv_idx);
+            head += kv_idx + 1; // skip separator
+            m._value = std::string_view(head, buffer->length - (head - buffer->raw) - newline_at_end);
+        } else {
+            // const auto length = buffer->length - (head - buffer->raw) - newline_at_end;
+            // DBGF("length: %i", length);
+            // assert(length == 10);
+            m._key = std::string_view(head, buffer->length - (head - buffer->raw) - newline_at_end);
+            const auto s = std::string(*m._key);
+
+            m._value = std::nullopt;
+        }
+
+        // DBGF("total length: %i", buffer->length);
+        // const auto s1 = std::string(m.cmd());
+        // const auto s2 = std::string(m.operant());
+        // const auto s3 = std::string(*m.key());
+        // DBGF("from buffer: %s:%s:%s", s1.c_str(), s2.c_str(), s3.c_str());
+        // assert(m.key()->length() == 10);
+
+        // assert(buffer->length >= operant_idx + 1);
+        // m._value = std::string_view(buffer->raw + operant_idx + 1, buffer->length - operant_idx - 1 -
+        // newline_at_end);
         m._buffer = std::move(buffer);
         return m;
     }
@@ -80,15 +110,18 @@ public:
         // add command
         auto head = m._buffer->raw;
         strncpy(head, cmd.data(), cmd.length());
+        m._cmd = std::string_view(head, cmd.length());
 
         // add '<'
         head += cmd.length();
         strncpy(head, Dialect::OPERANT_REPLY, 1);
+        m._operant = std::string_view(head, 1);
 
         // add integer status
         const auto status_str = result.status ? std::to_string(*result.status) : std::string("0");
-        head += 1;
-        strncpy(head, status_str.c_str(), 1);
+        head += status_str.length();
+        strncpy(head, status_str.c_str(), status_str.length());
+        m._key = std::string_view(head, status_str.length());
 
         if (result.return_value) {
             // add separator
@@ -98,14 +131,32 @@ public:
             // add return value
             head += 1;
             strncpy(head, result.return_value->c_str(), result.return_value->length());
+            m._value = std::string_view(head, result.return_value->length());
+            head += result.return_value->length();
         }
         // add nullbyte
-        head += 1;
-        *head = '\0';
+        head[1] = '\0';
 
         m._buffer->length = head - m._buffer->raw;
 
+        DBGF("return value: '%s'", result.return_value->c_str());
+        DBGF("resulting reply: %s", m.as_string().c_str());
+
         return std::move(m);
+    }
+
+    [[nodiscard]] std::string as_string() const {
+        std::string s;
+        s += cmd();
+        s += operant();
+        if (key()) {
+            s += *key();
+            if (value()) {
+                s += Dialect::KV_SEPARATOR;
+                s += *value();
+            }
+        }
+        return s;
     }
 
     // protected:

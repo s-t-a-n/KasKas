@@ -32,7 +32,7 @@ public:
         // hard protect against flipping relay back on within backoff threshold
         if (_backoff_timer && _cfg.backoff_time > time_ms(0) && _backoff_timer->timeSinceLast() < _cfg.backoff_time
             && state == ON && _pin.state() == OFF) {
-            dbg::throw_exception(Exception("Tried to flip relay within backoff threshold"));
+            spn::throw_exception(spn::runtime_error("Tried to flip relay within backoff threshold"));
         }
 
         if (!_backoff_timer && _cfg.backoff_time > time_s(0))

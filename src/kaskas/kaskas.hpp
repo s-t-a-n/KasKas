@@ -1,9 +1,13 @@
 #pragma once
 
-#include "io/peripherals/relay.hpp"
+// clang-format off
+#include <spine/core/debugging.hpp>
+// clang-format on
+
 #include "kaskas/component.hpp"
 #include "kaskas/data_providers.hpp"
 #include "kaskas/events.hpp"
+#include "kaskas/io/peripherals/relay.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/stack.hpp"
 #include "kaskas/prompt/prompt.hpp"
@@ -21,8 +25,8 @@
 #include <spine/structure/pointer.hpp>
 #include <spine/structure/vector.hpp>
 
+#include <AH/STL/utility>
 #include <AH/STL/vector>
-#include <utility>
 namespace kaskas {
 
 using kaskas::prompt::Prompt;
@@ -42,7 +46,22 @@ public:
 public:
     explicit KasKas(std::shared_ptr<io::HardwareStack> hws, Config& cfg)
         : _cfg(cfg), _evsys({cfg.esc_cfg}), _hws(std::move(hws)),
-          _components(std::vector<std::unique_ptr<Component>>()) {}
+          _components(std::vector<std::unique_ptr<Component>>()) {
+        if (_cfg.prompt_cfg) {
+            using prompt::SerialDatalink;
+            auto dl = std::make_shared<SerialDatalink>(
+                SerialDatalink::Config{.message_length = _cfg.prompt_cfg->message_length,
+                                       .pool_size = _cfg.prompt_cfg->pool_size},
+                HAL::UART(HAL::UART::Config{&Serial}));
+            // using prompt::MockDatalink;
+            //         auto prompt_cfg = Prompt::Config{.message_length = 64, .pool_size = 20};
+            // auto dl = std::make_shared<MockDatalink>(
+            //     MockDatalink::Config{.message_length = prompt_cfg.message_length, .pool_size =
+            //     prompt_cfg.pool_size});
+            _prompt = std::make_unique<Prompt>(std::move(*_cfg.prompt_cfg));
+            _prompt.value()->hotload_datalink(std::move(dl));
+        }
+    }
     KasKas(const KasKas& other) = delete;
     KasKas(KasKas&& other) = delete;
     KasKas& operator=(const KasKas&) = delete;
@@ -52,7 +71,7 @@ public:
 
     int initialize() {
         // set the global exception handler;
-        set_machine_exception_handler(new KasKasExceptionHandler{*this});
+        set_machine_exception_handler(std::make_unique<KasKasExceptionHandler>(*this));
 
         // initialize all components
         for (const auto& component : _components) {
@@ -60,14 +79,8 @@ public:
         }
 
         if (_cfg.prompt_cfg) {
-            using prompt::SerialDatalink;
-            auto dl = std::make_unique<SerialDatalink>(
-                SerialDatalink::Config{.message_length = _cfg.prompt_cfg->message_length,
-                                       .pool_size = _cfg.prompt_cfg->pool_size},
-                HAL::UART(HAL::UART::Config{&Serial}));
-            _prompt = std::make_unique<Prompt>(std::move(*_cfg.prompt_cfg));
-            _prompt->get()->hotload_datalink(std::move(dl));
-            _prompt->get()->initialize();
+            _prompt.value()->initialize();
+            DBGF("Initialized prompt");
         }
 
         _evsys.trigger(_evsys.event(Events::WakeUp, time_s(0), Event::Data()));
@@ -78,8 +91,11 @@ public:
         component->attach_event_system(&_evsys);
 
         if (_cfg.prompt_cfg) {
-            if (auto model = component->rpc_recipe())
-                _prompt->get()->hotload_rpc_recipe(std::move(model));
+            if (auto model = component->rpc_recipe()) {
+                assert(model != nullptr);
+                DBGF("Hotloading component rpc recipes!");
+                _prompt.value()->hotload_rpc_recipe(std::move(model));
+            }
         }
         _components.emplace_back(std::move(component));
     }
@@ -89,6 +105,11 @@ public:
     int loop() {
         _hws->update_all();
         _evsys.loop();
+        if (_cfg.prompt_cfg) {
+            assert(_prompt);
+            assert(_prompt.value());
+            _prompt.value()->update();
+        }
         return 0;
     }
 

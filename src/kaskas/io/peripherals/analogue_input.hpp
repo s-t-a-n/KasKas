@@ -17,8 +17,13 @@ public:
         AnalogueInput::Config input_cfg;
         time_ms sampling_interval = time_s(1);
 
-        BandPass::Config filter_cfg = // example medium band pass to reject significant outliers
-            BandPass::Config{.mode = BandPass::Mode::RELATIVE, .mantissa = 1, .decades = 0.01, .offset = 0};
+        BandPass::Config filter_cfg = // medium band pass to reject significant outliers
+            BandPass::Config{.mode = BandPass::Mode::RELATIVE,
+                             .mantissa = 1,
+                             .decades = 0.01,
+                             .offset = 0,
+                             .rejection_limit = 10,
+                             .throw_on_rejection_limit = true};
     };
 
 public:

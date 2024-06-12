@@ -150,7 +150,7 @@ public:
         }
     }
 
-    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return nullptr; }
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
 
 private:
     const Config _cfg;

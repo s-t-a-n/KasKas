@@ -13,32 +13,40 @@ public:
     Metrics(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
         : Component(evsys, hws), _cfg(std::move(cfg)) {}
 
+    void initialize() override {}
+
+    void safe_shutdown(State state) override {}
+
+    void handle_event(const Event& event) override {}
+
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override {
         using namespace prompt;
-        using kaskas::prompt::OptStringView;
+        auto model = std::make_unique<RPCRecipe>(
+            RPCRecipe("MOC", //
+                      {
+                          RPCModel("roVariable",
+                                   [this](const OptStringView&) {
+                                       DBGF("roVariable accessed");
+                                       return RPCResult(std::to_string(roVariable));
+                                   }),
+                          RPCModel("rwVariable",
+                                   [this](const OptStringView& s) {
+                                       const auto s_str = s ? std::string{*s} : std::string();
+                                       DBGF("rwVariable accessed with arg: {%s}", s_str.c_str());
+                                       rwVariable = s ? std::stod(std::string(*s)) : rwVariable;
+                                       return RPCResult(std::to_string(rwVariable));
+                                   }), //
+                          RPCModel("foo",
+                                   [this](const OptStringView& s) {
+                                       if (!s || s->length() == 0) {
+                                           return RPCResult(RPCResult::State::BAD_INPUT);
+                                       }
+                                       const auto s_str = s ? std::string{*s} : std::string();
+                                       DBGF("foo called with arg: '%s'", s_str.c_str());
 
-        using spn::structure::Array;
-
-        // RPCModel{._command = "", ._rpcs = {ROVariable("ROVariable", [this](const OptString&) {
-        //                              return RPCResult(std::to_string(roVariable));
-        //                          })}};
-
-        // because of the use of lambda's, this must be allocated dynamically, a pity
-        auto model = std::make_unique<RPCRecipe>(RPCRecipe(
-            "MTC", //
-            {
-                ROVariable("roVariable", [this](const OptString&) { return RPCResult(std::to_string(roVariable)); }),
-                RWVariable("rwVariable",
-                           [this](const OptString& s) {
-                               return RPCResult(std::to_string(rwVariable = s ? std::stod(*s) : rwVariable));
-                           }), //
-                FunctionCall("foo",
-                             [this](const OptString& s) {
-                                 if (!s)
-                                     return RPCResult(RPCResult::State::BAD_INPUT);
-                                 return RPCResult(std::to_string(foo(std::stod(*s))));
-                             }),
-            }));
+                                       return RPCResult(std::to_string(foo(std::stod(s_str))));
+                                   }),
+                      }));
         return std::move(model);
     }
 

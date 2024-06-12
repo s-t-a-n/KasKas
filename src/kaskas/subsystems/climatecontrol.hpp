@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../io/peripherals/relay.hpp"
 #include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
 #include "kaskas/io/controllers//heater.hpp"
@@ -8,6 +7,7 @@
 #include "kaskas/io/peripherals/DS3231_RTC_EEPROM.hpp"
 #include "kaskas/io/peripherals/SHT31_TempHumidityProbe.hpp"
 #include "kaskas/io/peripherals/fan.hpp"
+#include "kaskas/io/peripherals/relay.hpp"
 #include "kaskas/io/providers/clock.hpp"
 
 #include <spine/controller/pid.hpp>
@@ -246,7 +246,19 @@ public:
         };
     }
 
-    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return nullptr; }
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override {
+        using namespace prompt;
+        auto model = std::make_unique<RPCRecipe>(
+            RPCRecipe("CC", //
+                      {
+                          RPCModel("surface_temp",
+                                   [this](const OptStringView&) {
+                                       DBGF("surface_temp accessed");
+                                       return RPCResult(std::to_string(_heating_element_sensor.value()));
+                                   }),
+                      }));
+        return std::move(model);
+    }
 
 private:
     /// continuous checking of heating status

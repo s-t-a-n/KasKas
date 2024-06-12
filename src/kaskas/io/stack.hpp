@@ -1,11 +1,11 @@
 #pragma once
 
 #include "kaskas/io/peripheral.hpp"
+#include "kaskas/io/peripherals/fan.hpp"
 #include "kaskas/io/provider.hpp"
 #include "kaskas/io/providers/analogue.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/providers/digital.hpp"
-#include "peripherals/fan.hpp"
 
 #include <spine/core/standard.hpp>
 #include <spine/structure/array.hpp>
