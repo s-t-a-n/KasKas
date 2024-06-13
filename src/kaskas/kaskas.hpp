@@ -1,9 +1,5 @@
 #pragma once
 
-// clang-format off
-#include <spine/core/debugging.hpp>
-// clang-format on
-
 #include "kaskas/component.hpp"
 #include "kaskas/data_providers.hpp"
 #include "kaskas/events.hpp"
@@ -18,6 +14,7 @@
 #include "kaskas/subsystems/metrics.hpp"
 #include "kaskas/subsystems/ui.hpp"
 
+#include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>
 #include <spine/core/time.hpp>
 #include <spine/eventsystem/eventsystem.hpp>

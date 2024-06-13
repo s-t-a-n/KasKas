@@ -99,7 +99,7 @@ using namespace kaskas;
 //     double foo(double variable) { return roVariable + rwVariable + variable; }
 // };
 
-unsigned long last_free_memory = 0;
+// unsigned long last_free_memory = 0;
 
 void setup() {
     HAL::initialize(HAL::Config{.baudrate = 115200});
@@ -303,7 +303,7 @@ void setup() {
 
     {
         auto esc_cfg = EventSystem::Config{.events_count = static_cast<size_t>(Events::Size),
-                                           .events_cap = 10,
+                                           .events_cap = 5,
                                            .handler_cap = 2,
                                            .delay_between_ticks = true,
                                            .min_delay_between_ticks = time_ms{1},
@@ -452,7 +452,7 @@ void setup() {
     //     kk->hotload_component(std::move(ctrl));
     // }
 
-    DBGF("Memory available: %i", HAL::free_memory());
+    // DBGF("Memory available: %i", HAL::free_memory());
 
     kk->initialize();
 }
