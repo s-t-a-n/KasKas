@@ -11,7 +11,8 @@
 namespace kaskas::prompt {
 
 using OptString = std::optional<std::string>;
-using OptStringView = std::optional<std::string_view>;
+using OptStringView = std::optional<std::string>;
+// using OptStringView = std::optional<std::string_view>;
 using OptInt = std::optional<int>;
 
 struct RPCResult {

@@ -33,6 +33,10 @@ public:
     UnixTime epoch() const { return _map.epoch_f(); }
     bool is_ready() const { return _map.isready_f(); }
 
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name, const std::string_view& root) {
+        return {};
+    }
+
 private:
     const FunctionMap _map;
 };

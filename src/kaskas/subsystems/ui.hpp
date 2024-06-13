@@ -17,6 +17,7 @@ public:
         Signaltower::Config signaltower_cfg;
         DigitalInput::Config userbutton_cfg;
         time_ms watchdog_interval = time_s(1);
+        time_ms prompt_interval = time_ms(50);
     };
 
 public:
@@ -41,10 +42,12 @@ public:
         evsys()->attach(Events::WakeUp, this);
         evsys()->attach(Events::UIButtonCheck, this);
         evsys()->attach(Events::UIWatchDog, this);
+        evsys()->attach(Events::UIPromptFollowUp, this);
         evsys()->attach(Events::OutOfWater, this);
 
         evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1), Event::Data()));
         evsys()->schedule(evsys()->event(Events::UIWatchDog, _cfg.watchdog_interval, Event::Data()));
+        evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, time_s(1), Event::Data()));
     }
 
     void safe_shutdown(State state) override {
@@ -87,6 +90,12 @@ public:
             evsys()->schedule(evsys()->event(Events::UIWatchDog, _cfg.watchdog_interval, Event::Data()));
             break;
         }
+        case Events::UIPromptFollowUp: {
+            assert(_prompt);
+            _prompt->update();
+            evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, _cfg.prompt_interval, Event::Data()));
+            break;
+        }
         case Events::OutOfWater: {
             //
             DBG("UI: OutOfWater");
@@ -99,12 +108,17 @@ public:
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
 
+public:
+    void hotload_prompt(std::shared_ptr<Prompt> prompt) { _prompt = std::move(prompt); }
+
 private:
     const Config _cfg;
 
     Signaltower _signaltower;
 
     DigitalInput _userbutton;
+
+    std::shared_ptr<Prompt> _prompt;
 
 #if defined(STM32F429xx)
     DigitalOutput _builtin_led_blue = DigitalOutput::Config{.pin = PB7, .active_on_low = false};

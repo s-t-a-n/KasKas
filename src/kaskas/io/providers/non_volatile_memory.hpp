@@ -6,6 +6,10 @@ namespace kaskas::io {
 
 class NonVolatileMemory : public Provider {
 public:
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name, const std::string_view& root) {
+        return {};
+    }
+
 private:
 };
 

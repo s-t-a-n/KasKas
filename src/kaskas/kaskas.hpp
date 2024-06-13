@@ -6,6 +6,7 @@
 #include "kaskas/io/peripherals/relay.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/stack.hpp"
+#include "kaskas/prompt/cookbook.hpp"
 #include "kaskas/prompt/prompt.hpp"
 #include "kaskas/subsystems/climatecontrol.hpp"
 #include "kaskas/subsystems/fluidsystem.hpp"
@@ -55,8 +56,8 @@ public:
             // auto dl = std::make_shared<MockDatalink>(
             //     MockDatalink::Config{.message_length = prompt_cfg.message_length, .pool_size =
             //     prompt_cfg.pool_size});
-            _prompt = std::make_unique<Prompt>(std::move(*_cfg.prompt_cfg));
-            _prompt.value()->hotload_datalink(std::move(dl));
+            _prompt = std::make_shared<Prompt>(std::move(*_cfg.prompt_cfg));
+            _prompt->hotload_datalink(std::move(dl));
         }
     }
     KasKas(const KasKas& other) = delete;
@@ -76,7 +77,7 @@ public:
         }
 
         if (_cfg.prompt_cfg) {
-            _prompt.value()->initialize();
+            _prompt->initialize();
             DBGF("Initialized prompt");
         }
 
@@ -88,24 +89,28 @@ public:
         component->attach_event_system(&_evsys);
 
         if (_cfg.prompt_cfg) {
-            if (auto model = component->rpc_recipe()) {
-                assert(model != nullptr);
+            if (auto recipe = component->rpc_recipe()) {
+                assert(recipe != nullptr);
                 DBGF("Hotloading component rpc recipes!");
-                _prompt.value()->hotload_rpc_recipe(std::move(model));
+                hotload_rpc_recipe(std::move(recipe));
             }
         }
         _components.emplace_back(std::move(component));
     }
 
+    void hotload_rpc_recipe(std::unique_ptr<prompt::RPCRecipe> recipe) {
+        _prompt->hotload_rpc_recipe(std::move(recipe));
+    }
+
     EventSystem& evsys() { return _evsys; };
+    std::shared_ptr<Prompt> prompt() { return _prompt; }
 
     int loop() {
-        _hws->update_all();
+        // _hws->update_all();
         _evsys.loop();
         if (_cfg.prompt_cfg) {
             assert(_prompt);
-            assert(_prompt.value());
-            _prompt.value()->update();
+            // _prompt->update();
         }
         return 0;
     }
@@ -132,6 +137,6 @@ private:
     EventSystem _evsys;
     std::shared_ptr<io::HardwareStack> _hws;
     std::vector<std::unique_ptr<Component>> _components;
-    std::optional<std::unique_ptr<Prompt>> _prompt = nullptr;
+    std::shared_ptr<Prompt> _prompt;
 };
 } // namespace kaskas

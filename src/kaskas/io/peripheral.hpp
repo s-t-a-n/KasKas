@@ -23,7 +23,10 @@ public:
 
     bool needs_update() { return is_updateable() && _timer->expired(); }
     bool is_updateable() const { return _timer != std::nullopt; }
-    time_ms update_interval() const { return _timer->sampling_interval(); }
+    time_ms update_interval() const {
+        assert(is_updateable());
+        return is_updateable() ? _timer->sampling_interval() : time_ms(0);
+    }
 
 private:
     std::optional<IntervalTimer> _timer;

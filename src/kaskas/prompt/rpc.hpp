@@ -21,18 +21,18 @@ namespace kaskas::prompt {
 
 class RPCModel {
 public:
-    explicit RPCModel(const std::string_view& name) : _name(name) {}
-    RPCModel(const std::string_view& name, const std::function<RPCResult(const OptStringView&)>& call)
+    RPCModel(const std::string& name) : _name(name) {}
+    RPCModel(const std::string& name, const std::function<RPCResult(const OptStringView&)>& call)
         : _name(name), _call(call) {
         const auto s = std::string(name);
         DBGF("initializing RPCModel with name %s", s.c_str());
     }
 
     std::string_view name() const { return _name; }
-    std::function<RPCResult(const OptStringView&)> call() const { return _call; }
+    RPCResult call(const OptStringView& value) const { return std::move(_call(value)); }
 
 private:
-    const std::string_view _name;
+    const std::string _name;
     const std::function<RPCResult(const OptStringView&)> _call;
 };
 
@@ -56,11 +56,16 @@ using FunctionCall = RPCModel;
 //     using RPCModel::RPCModel;
 // };
 
+class RPCRecipeFactory;
+
 struct RPCRecipe {
     // using RPCVariant = std::variant<RWVariable, ROVariable, FunctionCall>;
 
-    RPCRecipe(const char* command, const std::initializer_list<RPCModel>& rpcs)
-        : _command(command), _rpcs(std::move(rpcs)){};
+    // RPCRecipe(const std::string& command, const std::initializer_list<RPCModel>& rpcs)
+    // : RPCRecipe(command.c_str(), rpcs) {}
+
+    RPCRecipe(const std::string& command, const std::initializer_list<RPCModel>& rpcs)
+        : _command(command), _models(std::move(rpcs)){};
 
     // std::optional<const RPCModel> rpc_from_arguments(const std::string_view& arguments) const {
     //     // for (const auto& rpc_v : _rpcs) {
@@ -68,28 +73,65 @@ struct RPCRecipe {
     //     // }
     // }
 
-    const char* command() const {
-        assert(_command);
-        return _command;
-    }
-    const std::vector<RPCModel> rpcs() const { return _rpcs; }
+    const std::string_view command() const { return _command; }
+
+    const std::vector<RPCModel>& models() const { return _models; }
+    std::vector<RPCModel> extract_models() { return std::move(_models); }
 
     std::optional<const RPCModel*> find_model_for_key(const std::string_view& key) const {
+        // assert(key == std::string_view("CLIMATE_HUMIDITY"));
+        // assert(key.length() == 16);
+
         const RPCModel* found_model = nullptr;
-        for (const auto& m : _rpcs) {
+        for (const auto& m : _models) {
+            // DBGF("looking through model {%s} for key {%s}", std::string(m.name()).c_str(), std::string(key).c_str());
             if (m.name() == key) {
                 found_model = &m;
-                DBGF("found model!");
+                // DBGF("found model!");
                 break;
             }
         }
         return found_model;
     }
 
+    std::optional<std::string> help_string() const {
+        if (_models.empty()) {
+            return {};
+        }
+
+        size_t total_length = 0;
+        for (auto& m : _models) {
+            total_length += m.name().length();
+        }
+
+        std::string help;
+        help.reserve(total_length + _models.size()); // account for newline
+
+        for (auto& m : _models) {
+            help += m.name();
+            help += "\n";
+        }
+        return help;
+    }
+
     // protected:
 private:
-    const char* _command;
-    const std::vector<RPCModel> _rpcs;
+    std::string _command;
+    std::vector<RPCModel> _models;
+
+    friend RPCRecipeFactory;
+};
+
+class RPCRecipeFactory {
+public:
+    explicit RPCRecipeFactory(const std::string& command)
+        : _recipe(std::make_unique<RPCRecipe>(RPCRecipe(command, {}))) {}
+
+    void add_model(RPCModel&& model) { _recipe->_models.emplace_back(std::move(model)); }
+    std::unique_ptr<RPCRecipe> extract_recipe() { return std::move(_recipe); }
+
+private:
+    std::unique_ptr<RPCRecipe> _recipe;
 };
 
 class RPCFactory;
@@ -108,12 +150,12 @@ public:
     const Dialect::OP op;
     const RPCModel& model;
 
-    const OptStringView value;
+    const OptString value;
 
     RPCResult invoke() const {
         const auto key = std::string(model.name());
         const auto value_str = value ? std::string(*value) : std::string();
-        DBGF("Invoking RPC{%s} with value:{%s}!", key.c_str(), value_str.c_str());
+        // DBGF("Invoking RPC{%s} with value:{%s}!", key.c_str(), value_str.c_str());
 
         // const auto& m = model_for_op(model, op);
         // assert(model);
@@ -122,22 +164,32 @@ public:
         // DBGF("hello");
         // while (true) {
         // };
+        // HAL::println("before invoke");
+        // HAL::delay(time_ms(200));
+        // if (value) {
+        //     HAL::println("value");
+        //     HAL::delay(time_ms(200));
+        // } else {
+        //     HAL::println("no value");
+        //     HAL::delay(time_ms(200));
+        // }
 
-        const auto res = model.call()(value);
-
+        const auto res = model.call(value);
+        // HAL::println("after invoke");
+        // HAL::delay(time_ms(200));
         // DBGF("hello");
         // while (true) {
         // };
 
         assert(res.return_value);
         assert(res.status);
-        DBGF("has res with status: %i, rstring: %s", *res.status, res.return_value->c_str());
+        // DBGF("has res with status: %i, rstring: %s", *res.status, res.return_value->c_str());
         return res;
     }
 
 public:
 protected:
-    RPC(Dialect::OP op, const RPCModel& model, OptStringView value) : op(op), model(model), value(value) {}
+    RPC(Dialect::OP op, const RPCModel& model, OptString value) : op(op), model(model), value(value) {}
 
     friend RPCFactory;
 };
@@ -150,23 +202,31 @@ public:
     RPCFactory(const Config&& cfg) : _cfg(cfg) { _rpcs.reserve(_cfg.directory_size); }
 
     std::optional<RPC> from_message(const Message& msg) {
+        // DBGF("from message : {%s}", msg.as_string().c_str());
+
         assert(msg.operant().length() == 1);
         const auto recipe = recipe_for_command(msg.cmd());
-        if (!recipe)
+        if (!recipe) {
+            DBGF("no recipe found for message: {%s}", msg.as_string().c_str());
             return {};
+        }
         assert(*recipe != nullptr);
 
-        const auto s = std::string(msg.operant());
-        DBGF("operant :%s", s.c_str());
-        DBGF("operant :%c", s.c_str()[0]);
+        // const auto s = std::string(msg.operant());
+        // DBGF("operant :%s", s.c_str());
+        // DBGF("operant :%c", s.c_str()[0]);
         const auto optype = Dialect::optype_for_operant(msg.operant()[0]);
         assert(optype != Dialect::OP::NOP);
 
+        if (!msg.key()) {
+            // the monkey wants to know what to write
+        }
+
         switch (optype) {
-        case Dialect::OP::ACCESS: return build_ro_variable(**recipe, optype, msg.key(), msg.value());
-        case Dialect::OP::ASSIGNMENT: return build_rw_variable(**recipe, optype, msg.key(), msg.value());
-        case Dialect::OP::FUNCTION_CALL: return build_function_call(**recipe, optype, msg.key(), msg.value());
-        default: return {};
+        case Dialect::OP::ACCESS: return build_rpc(**recipe, optype, msg);
+        case Dialect::OP::ASSIGNMENT: return build_rpc(**recipe, optype, msg);
+        case Dialect::OP::FUNCTION_CALL: return build_rpc(**recipe, optype, msg);
+        default: DBGF("no optype found for message: {%s}", msg.as_string().c_str()); return {};
         }
     }
 
@@ -176,95 +236,33 @@ public:
     }
 
 protected:
-    std::optional<RPC> build_function_call(const RPCRecipe& recipe, Dialect::OP optype,
-                                           const std::optional<std::string_view>& key,
-                                           const std::optional<std::string_view>& value) {
-        if (!key || !value) {
+    std::optional<RPC> build_rpc(const RPCRecipe& recipe, Dialect::OP optype, const Message& msg) {
+        DBGF("build_rpc: start : {%s}", msg.as_string().c_str());
+
+        if (!msg.key()) {
             return {};
         }
-        auto found_model = recipe.find_model_for_key(*key);
+
+        auto found_model = recipe.find_model_for_key(*msg.key());
         if (found_model == nullptr) {
             // no model found
-            DBG("no model found");
-            return {};
-        }
-        return RPC(optype, *found_model.value(), value);
-    }
-    std::optional<RPC> build_ro_variable(const RPCRecipe& recipe, Dialect::OP optype,
-                                         const std::optional<std::string_view>& key,
-                                         const std::optional<std::string_view>& value) {
-        DBGF("building ro variable");
-
-        if (!key || value) {
-            // ro should not be called with a value, only with key
+            DBGF("build_rpc: No model found for msg {%s}", msg.as_string().c_str());
             return {};
         }
 
-        const auto key_view = *key;
-
-        assert(recipe.rpcs().size() > 0);
-        const auto k = std::string(*key);
-        DBGF("key : '%s', len: %i", k.c_str(), key->length());
-
-        auto found_model = recipe.find_model_for_key(*key);
-        if (found_model == nullptr) {
-            // no model found
-            DBG("no model found");
-            return {};
-        }
-
-        // assert(found_model);
-        const auto s = std::string(found_model.value()->name());
-        DBGF("found key %s for %s", s.c_str(), k.c_str());
-
-        // const auto model = std::find_if(std::begin(recipe.rpcs()), std::end(recipe.rpcs()),
-        //                                 [key_view](const RPCModel& m) { return key_view == m.name(); });
-        //
-        // if (model == std::end(recipe.rpcs())) {
-        //     // no model found
-        //     DBG("no model found");
-        //     return {};
-        // }
-
-        // const auto s = std::string(model->name());
-        // DBGF("s:%s", s.c_str());
-
-        return RPC(optype, *found_model.value(), value);
-    }
-    std::optional<RPC> build_rw_variable(const RPCRecipe& recipe, Dialect::OP optype,
-                                         const std::optional<std::string_view>& key,
-                                         const std::optional<std::string_view>& value) {
-        if (!key || !value) {
-            return {};
-        }
-
-        auto found_model = recipe.find_model_for_key(*key);
-        if (found_model == nullptr) {
-            // no model found
-            DBG("no model found");
-            return {};
-        }
-
-        // const auto model = std::find_if(std::begin(recipe.rpcs()), std::end(recipe.rpcs()), [key](const RPCModel& m)
-        // {
-        //     // const auto name = std::visit([](auto&& v) { return v.name(); }, m);
-        //     return *key == m.name();
-        // });
-        // if (model == std::end(recipe.rpcs())) {
-        //     // no model found
-        //     return {};
-        // }
-        return RPC(optype, *found_model.value(), value);
+        const auto opt_value = msg.value() ? std::make_optional(std::string(*msg.value())) : std::nullopt;
+        return RPC(optype, *found_model.value(), opt_value);
     }
 
     std::optional<const RPCRecipe*> recipe_for_command(const std::string_view& cmd) {
-        assert(_rpcs.size() == 1);
+        // assert(_rpcs.size() == 1);
 
         for (const auto& recipe : _rpcs) {
-            assert(recipe->command());
+            assert(recipe->command() != std::string_view{});
             if (std::string_view(recipe->command()) == cmd) {
                 const auto cmd_str = std::string(cmd);
-                DBGF("RPCHandler: found recipe: %s for %s", recipe->command(), cmd_str.c_str());
+                const auto recipe_cmd_str = std::string(cmd);
+                // DBGF("RPCHandler: found recipe: %s for %s", recipe_cmd_str.c_str(), cmd_str.c_str());
                 return recipe.get();
             }
         }

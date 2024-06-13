@@ -196,7 +196,8 @@ void setup() {
     {
         using namespace kaskas::io;
 
-        auto stack_cfg = HardwareStack::Config{.max_providers = Providers::SIZE, .max_peripherals = Peripherals::SIZE};
+        auto stack_cfg = HardwareStack::Config{
+            .alias = "IO", .max_providers = Providers::SIZE, .max_peripherals = Peripherals::SIZE};
 
         auto sf = HardwareStackFactory(std::move(stack_cfg));
 
@@ -303,121 +304,119 @@ void setup() {
 
     {
         auto esc_cfg = EventSystem::Config{.events_count = static_cast<size_t>(Events::Size),
-                                           .events_cap = 5,
+                                           .events_cap = 128,
                                            .handler_cap = 2,
                                            .delay_between_ticks = true,
                                            .min_delay_between_ticks = time_ms{1},
                                            .max_delay_between_ticks = time_ms{1000}};
-        constexpr bool enable_prompt = false;
+        constexpr bool enable_prompt = true;
         auto prompt_cfg = enable_prompt
-                              ? std::make_optional(kaskas::Prompt::Config{.message_length = 64, .pool_size = 10})
+                              ? std::make_optional(kaskas::Prompt::Config{.message_length = 64, .pool_size = 3})
                               : std::nullopt;
         auto kk_cfg = KasKas::Config{.esc_cfg = esc_cfg, .component_cap = 16, .prompt_cfg = prompt_cfg};
         kk = std::make_unique<KasKas>(hws, kk_cfg);
     }
 
-    // {
-    //     using kaskas::component::ClimateControl;
-    //
-    //     const auto sample_interval = time_ms(1000);
-    //     const auto max_heater_setpoint = 40.0; // maximum allowed heater setpoint
-    //
-    //     auto cc_cfg = ClimateControl::Config{
-    //         .hws_power_idx = Providers::HEATING_POWER,
-    //         .clock_idx = Providers::CLOCK,
-    //
-    //         .ventilation = ClimateControl::Config::Ventilation{.hws_climate_fan_idx = Providers::CLIMATE_FAN,
-    //                                                            .climate_humidity_idx = Providers::CLIMATE_HUMIDITY,
-    //                                                            .minimal_on_duration = time_m(1),
-    //                                                            .maximal_on_duration = time_m(15),
-    //                                                            .low_humidity = 70.0,
-    //                                                            .high_humidity = 80.0,
-    //                                                            .minimal_interval = time_m(15),
-    //                                                            .maximal_interval = time_m(60)},
-    //         .heating = ClimateControl::Config::Heating{
-    //             .heating_element_fan_idx = Providers::HEATING_SURFACE_FAN,
-    //             .heating_element_temp_sensor_idx = Providers::HEATER_SURFACE_TEMP,
-    //             .climate_temp_sensor_idx = Providers::CLIMATE_TEMP,
-    //             .outside_temp_idx = Providers::OUTSIDE_TEMP,
-    //             .heater_cfg =
-    //                 Heater::Config{.pid_cfg =
-    //                                    PID::Config{//
-    //                                                // .tunings = PID::Tunings{.Kp = 60.841, .Ki = 0.376, .Kd =
-    //                                                // 0.1}, // SURFACE_TEMP
-    //                                                // .tunings =
-    //                                                // PID::Tunings{.Kp = 3617, .Ki = 1210, .Kd = 0}, // CLIMATE
-    //                                                .tunings = PID::Tunings{.Kp = 62.590051,
-    //                                                                        .Ki = 0.152824,
-    //                                                                        .Kd = 0}, // ROUGH COPY
-    //                                                .output_lower_limit = 0,
-    //                                                .output_upper_limit = 255,
-    //                                                .sample_interval = sample_interval},
-    //                                .max_heater_setpoint = max_heater_setpoint,
-    //                                .heating_surface_temperature_idx = Providers::HEATER_SURFACE_TEMP,
-    //                                .heating_element_idx = Providers::HEATING_ELEMENT},
-    //             .schedule_cfg =
-    //                 Schedule::Config{
-    //                     .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0}, // 16.0
-    //                                Schedule::Block{.start = time_h(7), .duration = time_h(2), .value = 18.0},
-    //                                Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
-    //                                Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
-    //                                Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
-    //                                Schedule::Block{.start = time_h(12), .duration = time_h(8), .value = 27.0},
-    //                                Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0},
-    //                                // 24.0 Schedule::Block{.start = time_h(22), .duration = time_h(2), .value
-    //                                = 16.0}}}, // 16.0
-    //             .check_interval = time_s(1)}};
-    //
-    //     auto ventilation = std::make_unique<ClimateControl>(*hws, cc_cfg);
-    //     kk->hotload_component(std::move(ventilation));
-    // }
-    //
-    // {
-    //     using kaskas::component::Growlights;
-    //     auto growlights_cfg = Growlights::Config{.violet_spectrum_actuator_idx = Providers::VIOLET_SPECTRUM,
-    //                                              .broad_spectrum_actuator_idx = Providers::BROAD_SPECTRUM,
-    //                                              .clock_idx = Providers::CLOCK,
-    //                                              .starting_hour = time_h{6},
-    //                                              .duration_hours = time_h{16}};
-    //
-    //     auto growlights = std::make_unique<Growlights>(*hws, growlights_cfg);
-    //     kk->hotload_component(std::move(growlights));
-    // }
-    //
-    // {
-    //     auto pump_cfg = Pump::Config{
-    //         //
-    //         .pump_cfg = AnalogueOutput::Config{.pin = 8, .active_on_low = true}, // NOP PORT
-    //         .interrupt_cfg =
-    //             Interrupt::Config{
-    //                 .pin = 2, //
-    //                 .mode = Interrupt::TriggerType::FALLING_EDGE, //
-    //                 .pull_up = false, //
-    //             },
-    //         .ml_pulse_calibration = 25.8, //
-    //         .reading_interval = time_ms(250), //
-    //         .pump_timeout = time_s(10),
-    //     };
-    //
-    //     using kaskas::component::Fluidsystem;
-    //
-    //     using GroundMoistureSensorFilter = Fluidsystem::GroundMoistureSensorFilter;
-    //     using GroundMoistureSensorConfig = Fluidsystem::GroundMoistureSensor::Config;
-    //     auto fluidsystem_cfg = Fluidsystem::Config{
-    //         .pump_cfg = pump_cfg, //
-    //         .ground_moisture_sensor_cfg =
-    //             GroundMoistureSensorConfig{.sensor_cfg =
-    //                                            AnalogueInput::Config{.pin = A1, .pull_up = false, .resolution = 10},
-    //                                        .filter_cfg = GroundMoistureSensorFilter::Config{.K = 100, .invert =
-    //                                        false}},
-    //         .ground_moisture_threshold = 0.65, // 0.65
-    //
-    //         .inject_dosis_ml = 250,
-    //         .inject_check_interval = time_h(16), // time_h(16)
-    //     };
-    //     auto fluidsystem = std::make_unique<Fluidsystem>(*hws, fluidsystem_cfg);
-    //     kk->hotload_component(std::move(fluidsystem));
-    // }
+    {
+        using kaskas::component::ClimateControl;
+
+        const auto sample_interval = time_ms(1000);
+        const auto max_heater_setpoint = 40.0; // maximum allowed heater setpoint
+
+        auto cc_cfg = ClimateControl::Config{
+            .hws_power_idx = Providers::HEATING_POWER,
+            .clock_idx = Providers::CLOCK,
+
+            .ventilation = ClimateControl::Config::Ventilation{.hws_climate_fan_idx = Providers::CLIMATE_FAN,
+                                                               .climate_humidity_idx = Providers::CLIMATE_HUMIDITY,
+                                                               .minimal_on_duration = time_m(1),
+                                                               .maximal_on_duration = time_m(15),
+                                                               .low_humidity = 70.0,
+                                                               .high_humidity = 80.0,
+                                                               .minimal_interval = time_m(15),
+                                                               .maximal_interval = time_m(60)},
+            .heating = ClimateControl::Config::Heating{
+                .heating_element_fan_idx = Providers::HEATING_SURFACE_FAN,
+                .heating_element_temp_sensor_idx = Providers::HEATER_SURFACE_TEMP,
+                .climate_temp_sensor_idx = Providers::CLIMATE_TEMP,
+                .outside_temp_idx = Providers::OUTSIDE_TEMP,
+                .heater_cfg =
+                    Heater::Config{.pid_cfg =
+                                       PID::Config{//
+                                                   // .tunings = PID::Tunings{.Kp = 60.841, .Ki = 0.376, .Kd =
+                                                   // 0.1}, // SURFACE_TEMP
+                                                   // .tunings =
+                                                   // PID::Tunings{.Kp = 3617, .Ki = 1210, .Kd = 0}, // CLIMATE
+                                                   .tunings = PID::Tunings{.Kp = 62.590051,
+                                                                           .Ki = 0.152824,
+                                                                           .Kd = 0}, // ROUGH COPY
+                                                   .output_lower_limit = 0,
+                                                   .output_upper_limit = 255,
+                                                   .sample_interval = sample_interval},
+                                   .max_heater_setpoint = max_heater_setpoint,
+                                   .heating_surface_temperature_idx = Providers::HEATER_SURFACE_TEMP,
+                                   .heating_element_idx = Providers::HEATING_ELEMENT},
+                .schedule_cfg =
+                    Schedule::Config{
+                        .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0}, // 16.0
+                                   Schedule::Block{.start = time_h(7), .duration = time_h(2), .value = 18.0},
+                                   Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
+                                   Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
+                                   Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
+                                   Schedule::Block{.start = time_h(12), .duration = time_h(8), .value = 27.0},
+                                   Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0}, // 24.0
+                                   Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}}, // 16.0
+                .check_interval = time_s(1)}};
+
+        auto ventilation = std::make_unique<ClimateControl>(*hws, cc_cfg);
+        kk->hotload_component(std::move(ventilation));
+    }
+
+    {
+        using kaskas::component::Growlights;
+        auto growlights_cfg = Growlights::Config{.violet_spectrum_actuator_idx = Providers::VIOLET_SPECTRUM,
+                                                 .broad_spectrum_actuator_idx = Providers::BROAD_SPECTRUM,
+                                                 .clock_idx = Providers::CLOCK,
+                                                 .starting_hour = time_h{6},
+                                                 .duration_hours = time_h{16}};
+
+        auto growlights = std::make_unique<Growlights>(*hws, growlights_cfg);
+        kk->hotload_component(std::move(growlights));
+    }
+
+    {
+        auto pump_cfg = Pump::Config{
+            //
+            .pump_cfg = AnalogueOutput::Config{.pin = 8, .active_on_low = true}, // NOP PORT
+            .interrupt_cfg =
+                Interrupt::Config{
+                    .pin = 2, //
+                    .mode = Interrupt::TriggerType::FALLING_EDGE, //
+                    .pull_up = false, //
+                },
+            .ml_pulse_calibration = 25.8, //
+            .reading_interval = time_ms(250), //
+            .pump_timeout = time_s(10),
+        };
+
+        using kaskas::component::Fluidsystem;
+
+        using GroundMoistureSensorFilter = Fluidsystem::GroundMoistureSensorFilter;
+        using GroundMoistureSensorConfig = Fluidsystem::GroundMoistureSensor::Config;
+        auto fluidsystem_cfg = Fluidsystem::Config{
+            .pump_cfg = pump_cfg, //
+            .ground_moisture_sensor_cfg =
+                GroundMoistureSensorConfig{.sensor_cfg =
+                                               AnalogueInput::Config{.pin = A1, .pull_up = false, .resolution = 10},
+                                           .filter_cfg = GroundMoistureSensorFilter::Config{.K = 100, .invert = false}},
+            .ground_moisture_threshold = 0.65, // 0.65
+
+            .inject_dosis_ml = 250,
+            .inject_check_interval = time_h(16), // time_h(16)
+        };
+        auto fluidsystem = std::make_unique<Fluidsystem>(*hws, fluidsystem_cfg);
+        kk->hotload_component(std::move(fluidsystem));
+    }
 
     {
         using kaskas::component::UI;
@@ -433,26 +432,40 @@ void setup() {
                            },
                        .userbutton_cfg = DigitalInput::Config{.pin = PC13, .pull_up = false}};
         auto ui = std::make_unique<UI>(*hws, ui_cfg);
+        ui->hotload_prompt(kk->prompt());
         kk->hotload_component(std::move(ui));
     }
 
-    // {
-    //     using kaskas::component::Hardware;
-    //     auto hardware_cfg = Hardware::Config{};
-    //
-    //     auto hardware = std::make_unique<Hardware>(*hws, hardware_cfg);
-    //     kk->hotload_component(std::move(hardware));
-    // }
+    {
+        using kaskas::component::Hardware;
+        auto hardware_cfg = Hardware::Config{};
 
-    // {
-    //     using kaskas::component::Metrics;
-    //     auto cfg = Metrics::Config{};
-    //
-    //     auto ctrl = std::make_unique<Metrics>(*hws, cfg);
-    //     kk->hotload_component(std::move(ctrl));
-    // }
+        auto hardware = std::make_unique<Hardware>(*hws, hardware_cfg);
+        kk->hotload_component(std::move(hardware));
+    }
+
+    {
+        using kaskas::component::Metrics;
+        auto cfg = Metrics::Config{};
+
+        auto ctrl = std::make_unique<Metrics>(*hws, cfg);
+        kk->hotload_component(std::move(ctrl));
+    }
 
     // DBGF("Memory available: %i", HAL::free_memory());
+
+    {
+        auto recipes = hws->cookbook().extract_recipes();
+        for (auto& r : recipes) {
+            const auto cmdstr = std::string(r->command());
+            DBGF("Recipe has command: %s", cmdstr.c_str());
+            for (const auto& m : r->models()) {
+                const auto recipe_name = std::string(m.name());
+                DBGF("-> has: %s", recipe_name.c_str());
+            }
+            kk->hotload_rpc_recipe(std::move(r));
+        }
+    }
 
     kk->initialize();
 }

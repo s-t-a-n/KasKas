@@ -50,29 +50,25 @@ public:
         assert(_dl);
 
         if (const auto message = _dl->receive_message()) {
-            DBGF("received message");
-            // return;
-
-            const auto k = std::string(*message->key());
-            DBGF("LENN %i", message->key()->length());
+            DBGF("update: {%s}", message->as_string().c_str());
+            // DBGF("received message");
+            // HAL::println("message");
+            // HAL::delay(time_ms(200));
 
             if (const auto rpc = _rpc_factory.from_message(*message)) {
-                DBGF("built rpc from message: %s", message->as_string().c_str());
+                // DBGF("built rpc from message: %s", message->as_string().c_str());
+                // HAL::println("rpc");
+                // HAL::delay(time_ms(200));
 
                 const auto res = rpc->invoke();
-                DBGF("hello");
                 auto cb = _bufferpool->acquire();
                 assert(cb);
                 assert(cb->raw);
+
                 const auto reply = Message::from_result(std::move(cb), res, message->cmd());
-                DBGF("hello2");
+
                 if (reply)
                     _dl->send_message(*reply);
-
-                // const auto c = std::string(reply->cmd());
-                // const auto o = std::string(reply->operant());
-                // const auto a = std::string(reply->value());
-                // DBGF("replying: %s:%s:%s", c.c_str(), o.c_str(), a.c_str());
             } else {
                 DBGF("Couldnt build rpc from message");
             }
@@ -90,7 +86,8 @@ public:
         _dl->hotload_bufferpool(_bufferpool);
     }
     void hotload_rpc_recipe(std::unique_ptr<RPCRecipe> recipe) {
-        DBGF("Prompt: Loading recipe: %s", recipe->command());
+        const auto cmd_str = std::string(recipe->command());
+        DBGF("Prompt: Loading recipe: %s", cmd_str.c_str());
         _rpc_factory.hotload_rpc_recipe(std::move(recipe));
     }
 

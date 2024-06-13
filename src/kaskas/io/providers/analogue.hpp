@@ -2,6 +2,7 @@
 
 #include "kaskas/io/provider.hpp"
 
+#include <magic_enum/magic_enum.hpp>
 #include <spine/core/assert.hpp>
 
 #include <functional>
@@ -14,6 +15,18 @@ public:
     AnalogueSensor(const std::function<double()>& value_f) : _value_f(value_f){};
 
     double value() const { return _value_f(); }
+
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name,
+                                                  const std::string_view& root) override {
+        using namespace prompt;
+        auto model = std::make_unique<RPCRecipe>(
+            RPCRecipe(std::string(recipe_name), //
+                      {
+                          RPCModel(std::string(root),
+                                   [this](const OptStringView&) { return RPCResult(std::to_string(value())); }),
+                      }));
+        return std::move(model);
+    }
 
 private:
     const std::function<double()> _value_f;
@@ -33,6 +46,10 @@ public:
     void set_value(double value) { _map.set_value_f(value); }
     void fade_to(double setpoint, double increment = 0.1, time_ms increment_interval = time_ms(250)) {
         _map.fade_to_f(setpoint, increment, increment_interval);
+    }
+
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name, const std::string_view& root) {
+        return {};
     }
 
 private:

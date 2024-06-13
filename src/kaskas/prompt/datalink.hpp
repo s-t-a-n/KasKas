@@ -49,16 +49,18 @@ public:
 
         if (!_unfinished) {
             _unfinished = std::move(_bufferpool->acquire());
+            assert(_unfinished);
             _unfinished->reset();
         }
         const auto s1 = _unfinished->length;
 
+        DBGF("unfinished length : %i", _unfinished->length);
+
         _unfinished->length += read(_unfinished->raw, _unfinished->capacity - _unfinished->length);
 
         const auto sv = std::string((char*)_unfinished->raw, _unfinished->length);
-        DBGF("from read: '%s'", sv.c_str());
-
-        const auto s = _unfinished->length;
+        DBGF("from read: {%s}", sv.c_str());
+        // const auto s = _unfinished->length;
 
         if (_unfinished->length == 0)
             return {};
@@ -66,8 +68,18 @@ public:
         assert(_unfinished->capacity > 0);
         if (_unfinished->raw[_unfinished->length - 1] == '\n') {
             // what a stroke of luck, an entire line!
-            DBGF("l : %i", _unfinished->length);
-            return Message::from_buffer(std::move(_unfinished));
+
+            const auto sv = std::string((char*)_unfinished->raw, _unfinished->length);
+            DBGF("from read 22: {%s}", sv.c_str());
+
+            const auto s = std::string(_unfinished->raw, _unfinished->length);
+            DBGF("extracted entire line : {%s} with length %i", s.c_str(), _unfinished->length);
+            DBGF("MEM START: %p: {%s}", _unfinished->raw, std::string(_unfinished->raw, _unfinished->length).c_str());
+
+            assert(s.length() == _unfinished->length);
+            assert(strlen((const char*)_unfinished->raw) == _unfinished->length);
+            // DBGF("l : %i", _unfinished->length);
+            return std::move(Message::from_buffer(std::move(_unfinished)));
         }
 
         // check if there is a partial line
@@ -82,10 +94,12 @@ public:
         newbuffer->reset();
 
         // copy in the line
+        DBGF("prompt: copying");
         strlcpy(newbuffer->raw, _unfinished->raw, nl);
         newbuffer->length = nl;
 
         // move forward the remaining of the unfinished line
+        DBGF("prompt: memmoving");
         memmove(_unfinished->raw, _unfinished->raw + nl, _unfinished->length - nl);
         _unfinished->length = _unfinished->length - nl;
         _unfinished->raw[_unfinished->length] = '\0';
@@ -146,9 +160,9 @@ public:
     }
     std::optional<Message> extract_reply() {
         swap_streams();
-        const auto m = receive_message();
+        auto m = receive_message();
         swap_streams();
-        return m;
+        return std::move(m);
     }
     std::shared_ptr<Pool<CharBuffer>>& bufferpool() { return _bufferpool; }
 

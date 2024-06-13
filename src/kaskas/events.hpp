@@ -9,6 +9,7 @@ enum class Events {
     WakeUp, //
     UIButtonCheck,
     UIWatchDog,
+    UIPromptFollowUp,
     SensorFollowUp,
     OutOfWater,
     VentilationFollowUp,
@@ -30,6 +31,9 @@ enum class Events {
     VioletSpectrumTurnOff,
     BroadSpectrumTurnOn,
     BroadSpectrumTurnOff,
+    MetricsStartDatadump,
+    MetricsFollowUp,
+    MetricsStopDatadump,
     Size
 };
 }; // namespace kaskas

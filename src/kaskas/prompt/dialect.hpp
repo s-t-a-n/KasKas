@@ -31,14 +31,14 @@ constexpr auto cat(const char (&... strings)[Len]) {
 }
 
 struct Dialect {
-    enum class OP { FUNCTION_CALL, ASSIGNMENT, ACCESS, RETURN_VALUE, NOP, SIZE };
+    enum class OP { FUNCTION_CALL, ASSIGNMENT, ACCESS, RETURN_VALUE, PRINT_USAGE, NOP, SIZE };
     static OP optype_for_operant(const char operant) {
         auto found_op = OP::NOP;
         // todo : use find
         magic_enum::enum_for_each<OP>([operant, &found_op](OP optype) {
             const auto op_idx = *magic_enum::enum_index(optype);
             if (op_idx < std::strlen(OPERANTS) && operant == OPERANTS[op_idx]) {
-                DBGF("found op");
+                // DBGF("found op");
                 found_op = optype;
             }
         });

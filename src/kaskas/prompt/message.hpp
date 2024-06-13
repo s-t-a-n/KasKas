@@ -1,4 +1,5 @@
 #pragma once
+#include "kaskas/prompt/charbuffer.hpp"
 #include "kaskas/prompt/dialect.hpp"
 #include "kaskas/prompt/rpc_result.hpp"
 
@@ -13,6 +14,29 @@
 namespace kaskas::prompt {
 class Message {
 public:
+    Message() = default;
+    Message(Message&& other) noexcept
+        : _cmd(std::move(other._cmd)), _operant(std::move(other._operant)), _key(std::move(other._key)),
+          _value(std::move(other._value)), _buffer(std::move(other._buffer)) {}
+    Message& operator=(Message& other) = delete;
+    Message& operator=(Message&& other) noexcept {
+        if (this == &other)
+            return *this;
+        _cmd = std::move(other._cmd);
+        _operant = std::move(other._operant);
+        _key = std::move(other._key);
+        _value = std::move(other._value);
+        _buffer = std::move(other._buffer);
+        return *this;
+    }
+
+    // ~Message() {
+    //     if (_buffer) {
+    //         DBGF("destroying message with {%s}", as_string().c_str());
+    //         memset(_buffer->raw, '\0', _buffer->length);
+    //     }
+    // }
+
     /*
      * The following patterns are legal messages:
      * CMD=             : list all variables than can be set for CMD
@@ -23,6 +47,11 @@ public:
      * CMD!function     : function call
      * CMD<arguments    : reply to request
      */
+
+    const std::shared_ptr<CharBuffer> buffer() const {
+        assert(_buffer);
+        return _buffer;
+    }
 
     const std::string_view& cmd() const {
         assert(_cmd != std::string_view{});
@@ -36,7 +65,8 @@ public:
     const std::optional<std::string_view>& key() const { return _key; }
     const std::optional<std::string_view>& value() const { return _value; }
 
-    static std::optional<Message> from_buffer(std::shared_ptr<CharBuffer>&& buffer) {
+    static std::optional<Message> from_buffer(std::shared_ptr<CharBuffer> buffer) {
+        assert(buffer);
         assert(buffer->capacity > 0);
 
         // ensure null termination
@@ -91,7 +121,8 @@ public:
         // m._value = std::string_view(buffer->raw + operant_idx + 1, buffer->length - operant_idx - 1 -
         // newline_at_end);
         m._buffer = std::move(buffer);
-        return m;
+        DBGF("from buffer: {%s}", m.as_string().c_str());
+        return std::move(m);
     }
 
     static std::optional<Message> from_result(std::shared_ptr<CharBuffer>&& buffer, const RPCResult& result,
@@ -139,8 +170,8 @@ public:
 
         m._buffer->length = head - m._buffer->raw;
 
-        DBGF("return value: '%s'", result.return_value->c_str());
-        DBGF("resulting reply: %s", m.as_string().c_str());
+        // DBGF("return value: '%s'", result.return_value->c_str());
+        // DBGF("resulting reply: %s", m.as_string().c_str());
 
         return std::move(m);
     }

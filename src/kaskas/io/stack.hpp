@@ -6,6 +6,7 @@
 #include "kaskas/io/providers/analogue.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/providers/digital.hpp"
+#include "kaskas/prompt/cookbook.hpp"
 
 #include <spine/core/standard.hpp>
 #include <spine/structure/array.hpp>
@@ -28,6 +29,7 @@ public:
     using Idx = uint16_t;
 
     struct Config {
+        std::string_view alias;
         Idx max_providers = 16;
         Idx max_peripherals = 8;
     };
@@ -66,13 +68,16 @@ public:
         time_ms interval = time_ms(INT32_MAX);
         for (auto& p : _peripherals) {
             if (p && p->is_updateable() && p->update_interval() < interval) {
-                interval = p->update_interval();
+                interval = std::max(p->update_interval(), time_ms(1));
                 assert(interval > time_ms(0));
             }
         }
         assert(interval != time_ms(INT32_MAX));
         return interval;
     }
+
+    const std::string_view& alias() const { return _cfg.alias; }
+    prompt::RPCCookbook& cookbook() { return _rpc_cookbook; }
 
 public:
     const AnalogueSensor& analog_sensor(Idx sensor_idx) {
@@ -106,6 +111,8 @@ private:
     Array<std::unique_ptr<Peripheral>> _peripherals;
     Array<std::shared_ptr<Provider>> _providers;
 
+    prompt::RPCCookbook _rpc_cookbook;
+
     friend HardwareStackFactory;
 };
 
@@ -113,9 +120,11 @@ class HardwareStackFactory {
 public:
     HardwareStackFactory(const HardwareStack::Config&& cfg) : _stack(std::make_shared<HardwareStack>(std::move(cfg))) {}
 
-    void hotload_provider(uint8_t provider_id, std::shared_ptr<Provider> provider) {
+    void hotload_provider(Providers::ProvidersEnum provider_id, std::shared_ptr<Provider> provider) {
         assert(provider_id < _stack->_cfg.max_providers);
         assert(_stack->_providers[provider_id] == nullptr);
+        stack()->cookbook().add_recipe(
+            std::move(provider->rpc_recipe(stack()->alias(), magic_enum::enum_name(provider_id))));
         _stack->_providers[provider_id] = std::move(provider);
     }
     void hotload_peripheral(uint8_t peripheral_id, std::unique_ptr<Peripheral> peripheral) {
