@@ -6,7 +6,7 @@ import plotly.express as px # interactive charts
 
 
 # read csv from a github repo
-df = pd.read_csv("/home/stan/projects/KasKas/src/python/kaskas_data.cv")
+df = pd.read_csv("/home/stan/projects/KasKas/src/python/kaskas_data.csv")
 
 
 st.set_page_config(
@@ -57,7 +57,7 @@ while True:
         fig_col1, fig_col2 = st.columns(2)
         with fig_col1:
             st.markdown("### Element surface temperature")
-            fig1 = px.line(data_frame = df, y = 'HEATER_SURFACE_TEMP', x = 'TIMESTAMP')
+            fig1 = px.scatter(data_frame = df, y = 'HEATER_SURFACE_TEMP', x = 'TIMESTAMP')
             st.write(fig1)
         with fig_col2:
             st.markdown("### Climate temperature")
