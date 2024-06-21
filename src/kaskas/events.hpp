@@ -20,7 +20,6 @@ enum class Events {
     HeatingCycleCheck,
     HeatingCycleStart,
     HeatingCycleStop,
-    WaterLevelCheck,
     WaterInjectCheck,
     WaterInjectStart,
     WaterInjectFollowUp,

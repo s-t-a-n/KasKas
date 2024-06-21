@@ -13,7 +13,8 @@ class DigitalSensor : public Provider {
 public:
     DigitalSensor(const std::function<LogicalState()>& value_f) : _value_f(value_f){};
 
-    LogicalState value() const { return _value_f(); }
+    LogicalState state() const { return _value_f(); }
+    double value() const { return _value_f(); }
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name,
                                                   const std::string_view& root) override {
@@ -41,8 +42,9 @@ public:
 
     DigitalActuator(const FunctionMap& map) : _map(map){};
 
-    double state() const { return _map.state_f(); }
+    LogicalState state() const { return _map.state_f(); }
     void set_state(LogicalState state) { _map.set_state_f(state); }
+    double value() const { return state(); }
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name, const std::string_view& root) {
         return {};

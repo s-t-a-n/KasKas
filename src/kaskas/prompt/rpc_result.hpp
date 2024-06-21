@@ -34,15 +34,12 @@ struct RPCResult {
     }
     enum class State { OK, BAD_INPUT, BAD_RESULT };
 
-    RPCResult(OptStringView&& return_value)
-        : return_value(std::move(return_value)), status(magic_enum::enum_index(State::OK)) {}
-    RPCResult(OptStringView&& return_value, uint8_t status) : return_value(std::move(return_value)), status(status) {}
-    RPCResult(uint8_t status) : return_value(std::nullopt), status(status) {}
-    RPCResult(State state)
-        : return_value(std::string(magic_enum::enum_name(state))), status(magic_enum::enum_index(state)) {}
+    RPCResult(OptStringView&& return_value) : return_value(std::move(return_value)), status(State::OK) {}
+    RPCResult(OptStringView&& return_value, State status) : return_value(std::move(return_value)), status(status) {}
+    RPCResult(State status) : return_value(std::string(magic_enum::enum_name(status))), status(status) {}
 
     OptString return_value;
-    OptInt status;
+    State status;
 };
 
 } // namespace kaskas::prompt

@@ -1,96 +1,265 @@
-
-import serial
+from serial import Serial
+from serial import SerialTimeoutException
 import time
 from datetime import datetime
 import numpy as np
-import os 
+import os
+import glob
+import csv
+from typing import Optional
+from pathlib import Path
+from enum import Enum
+import pandas as pd  # read csv, df manipulation
 
 
 def is_float(string: str) -> bool:
     return string.replace(".", "").isnumeric()
 
+
 def epoch(dt64) -> int:
-    return dt64.astype('datetime64[s]').astype('int')
+    return dt64.astype("datetime64[s]").astype("int")
 
 
-# timestamps: list[np.datetime64] = []
-# collector: list[list[float]] = []
+epoch_start = epoch(np.datetime64("now"))
 
-epoch_start = epoch(np.datetime64('now'))
-
-# def new_datapoint(value: float, idx: int ):
-#     global timestamps
-#     global collector
-#     global epoch_start
-    
-#     while len(collector) < idx + 1:
-#         collector.append([])
-    
-#     if(idx == 0):
-#         timestamp = epoch(np.datetime64('now')) - epoch_start
-#         timestamps.append(timestamp)
-
-#     collector[idx].append(value)
-    
-import glob
-import serial
 
 """ Find available serial ports"""
-def find_serial_ports():
-    ports = glob.glob('/dev/ttyACM[0-9]*')
 
+
+def find_serial_ports():
+    ports = glob.glob("/dev/ttyACM[0-9]*")
     res = []
     for port in ports:
         try:
-            s = serial.Serial(port)
+            s = Serial(port)
             s.close()
             res.append(port)
         except:
             pass
     return res
 
+
+sampling_interval = 10
+
+# serial
 ports = find_serial_ports()
 assert len(ports) > 0, "No serial ports available"
-ser = serial.Serial(ports[0], 115200, timeout=3)
+ser = Serial(ports[0], 115200, timeout=1.5)
 assert ser.is_open, "Serial connection could not be made"
 
-def collect_to(csv_writer) -> None:
-    line = ser.readline().decode("ascii").replace('\r', '').replace('\n', '')   # read a '\n' terminated line
-    values = line.split('|')[:-1]
-    if (len(values) > 0 and is_float(values[0])):
-        csv_writer.writerow([datetime.now()] + values);
-        print(f"{datetime.now()}: {line}")
-        
+
+class KasKasAPI:
+    """_summary_"""
+
+    _serial: Serial
+
+    def __init__(self, ser: Serial) -> None:
+        self._serial = ser
+
+    class OP(Enum):
+        FUNCTION_CALL = "!"
+        ASSIGNMENT = "="
+        ACCESS = "?"
+        RESPONSE = "<"
+
+    class Response:
+        class Status(Enum):
+            OK = 0
+            BAD_INPUT = 1
+            BAD_RESULT = 2
+            TIMEOUT = 3
+            BAD_RESPONSE = 4
+            UNKNOWN_ERROR = 5
+
+        status: Status
+        arguments: Optional[list[str]]
+
+        def __init__(
+            self, status: Status, arguments: Optional[list[str]] = None
+        ) -> None:
+            self.status = status
+            self.arguments = arguments
+
+        def __bool__(self) -> bool:
+            return self.status == self.Status.OK
+
+    def request(
+        self, module: str, function: str, arguments: Optional[list[str]] = None
+    ) -> Response:
+        self._flush()
+        # print("hello rrr")
+
+        argument_substring = ":" + "|".join(arguments) if arguments else ""
+        request_line = f"{module}!{function}{argument_substring}\r"
+        # print(f"writing request line {request_line}")
+        ser.write(bytearray(request_line, "ascii"))
+        ser.flush()
+        return self._read_response_for(module)
+
+    def _read_response_for(self, module: str, max_skipable_lines: int = 32) -> Response:
+        while max_skipable_lines > 0:
+            try:
+                raw_line = (
+                    self._serial.readline()
+                    .decode("utf-8")
+                    .replace("\r", "")
+                    .replace("\n", "")
+                )
+                # print(f"_read_response_for: {raw_line}")
+            except SerialTimeoutException:
+                return self.Response(self.Response.Status.TIMEOUT)
+
+            correct_reply_header = module + str(self.OP.RESPONSE.value)
+            if raw_line.startswith(correct_reply_header):
+                line_reply_header_stripped = raw_line[len(correct_reply_header) :]
+                remainder = line_reply_header_stripped.split(":")
+
+                if len(remainder) < 2:
+                    print(f"couldnt find return value for reply: {raw_line}")
+                    continue
+
+                return_status = int(remainder[0])
+                values_line = "".join(remainder[1:])
+
+                values = values_line.split("|")[:-1]
+                # print(f"Response: {raw_line} for values_line {values_line}")
+                # print(f"found values {values}")
+                return self.Response(
+                    status=self.Response.Status(return_status), arguments=values
+                )
+            else:
+                self._print_debug_line(raw_line)
+                max_skipable_lines -= 1
+
+        print(
+            f"Request for {module} failed, couldnt find a respons in {max_skipable_lines} times"
+        )
+        return self.Response(self.Response.Status.BAD_RESPONSE)
+
+    def _flush(self) -> None:
+        # print("flush")
+        while self._serial.in_waiting > 0:
+            try:
+                # print(f"stuck reading got bytes: {self._serial.in_waiting}")
+                line = (
+                    self._serial.readline()
+                    .decode("utf-8")
+                    .replace("\r", "")
+                    .replace("\n", "")
+                )
+                # print("unstuck reading")
+            except SerialTimeoutException:
+                line = self._serial.read_all()
+            self._print_debug_line(line + "\n")
+
+    def _print_debug_line(self, line: str) -> None:
+        line = line.strip().replace("\r", "").replace("\n", "")
+        if len(line) > 0:
+            print(f"DBG: {line}")
+
+
+class MetricCollector:
+    """_summary_"""
+
+    def __init__(self) -> None:
+        pass
+
+
+# def api_read() -> Optional[str]:
+#     try:
+#         return ser.readline().decode("utf-8").replace('\r', '').replace('\n', '')
+#     except SerialTimeoutException:
+#         return None
+
+# def api_request(op: str) -> Optional[str]:
+#     ser.read_all() # skip everything in buffer
+#     ser.write(bytearray(op,'ascii'))
+#     ser.flush()
+#     respons = api_read()
+#     print(respons)
+#     return respons
+
+
+# def api_read_fields() -> Optional[list[str]]:
+#     response = api_request(f"MTC!getFields\r")
+
+#     fields = response.split('|')[:-1] if response else None
+#     return fields
+
+# def api_read_metrics() -> Optional[list[str]]:
+#     line = api_read()
+#     metrics = line.split('|')[:-1] if line else None
+#     if metrics and len(metrics) == 1:
+#         # no '|' was found, for now assume this is debug output
+#         print(f"DBG: {line}")
+#         return None
+#     return metrics
+
+
+def collect_to(metrics: list[str], csv_writer) -> None:
+    if len(metrics) > 0 and all([is_float(s) for s in metrics]):
+        csv_writer.writerow([datetime.now()] + metrics)
+        print(f"{datetime.now()}: {metrics}")
     else:
-        if( len(line) > 1):
-            print(line)
-    
-
-import csv
-
-fname = 'kaskas_data.csv'
-
-with open(fname, 'a+', newline='') as file:
-    writer = csv.writer(file)
-    # ser.write(bytearray("MTC!stopDatadump\n",'ascii'))
-    ser.write(bytearray("MTC!startDatadump\n",'ascii'))
-    time.sleep(1)
-    line = ser.readline().decode("utf-8").replace('\r', '').replace('\n', '')
-    field_names = line.split('|')[:-1]
-    field_names = ["TIMESTAMP"] + field_names
-    print(field_names)
-    if os.stat(fname).st_size == 0: # only write headers when empty
-        writer.writerow(field_names)
-    
-    while True:
-        collect_to(writer)
-        file.flush()
+        print(f"Invalid row: {metrics}")
 
 
+def do_datacollection(api: KasKasAPI, output_fname: Path, sampling_interval: int):
+    with open(output_filename, "a+", newline="") as file:
+
+        print("loading csv file")
+        writer = csv.writer(file)
+
+        # serial_request("MTC!stopDatadump\r")
+
+        # if not api.request(module="MTC", function="setDatadumpIntervalS", arguments=[f"{sampling_interval}"]):
+        #     print("failed to set datadump interval")
+        #     return
+
+        # if not api.request(module="MTC", function="startDatadump"):
+        #     print("failed to start datadump")
+        #     return
+
+        print("setting up datacollection")
+        fields_response = api.request(module="MTC", function="getFields")
+        if not fields_response or not all(
+            [
+                str.isalpha(s) and str.isupper(s)
+                for s in [s.replace("_", "") for s in fields_response.arguments]
+            ]
+        ):
+            print("failed to read fields")
+            return
+
+        if os.stat(output_filename).st_size == 0:
+            # this is the first line in a new file; write headers
+            fields = ["TIMESTAMP"] + fields_response.arguments
+            print(f"writing fields to new file: {fields}")
+            writer.writerow(fields)
+        else:
+            # this file contains data
+            df = pd.read_csv(output_fname, low_memory=True)
+            existing_columns = set(df.columns)
+            incoming_columns = set(["TIMESTAMP"] + fields_response.arguments)
+            if incoming_columns != existing_columns:
+                print(f"{output_fname} has columns {existing_columns}")
+                print(f"api provides the following fields {incoming_columns}")
+                print("the existing and incoming columns do no match")
+                return
+
+        print("starting datacollection loop")
+        while metrics_response := api.request(module="MTC", function="getMetrics"):
+            # print("hello?")
+            collect_to(metrics_response.arguments, writer)
+            file.flush()
+            print(f"sleeping for  {sampling_interval}s")
+            time.sleep(sampling_interval)
+    print("datacollection came to a halt")
 
 
+api = KasKasAPI(ser)
+output_filename = Path("/mnt/USB/kaskas_data.csv")
 
-ser.close()
-
-    
-    
+while True:
+    do_datacollection(api, output_filename, sampling_interval)
+    time.sleep(5)

@@ -44,6 +44,9 @@ public:
     }
 
     std::optional<Message> receive_message() {
+        // constexpr auto return_carrier = '\r';
+        constexpr auto return_carrier_str = "\r\n";
+
         if (available() == 0)
             return {};
 
@@ -56,36 +59,47 @@ public:
 
         DBGF("unfinished length : %i", _unfinished->length);
 
-        _unfinished->length += read(_unfinished->raw, _unfinished->capacity - _unfinished->length);
+        assert(_unfinished->capacity > 0);
+        _unfinished->length +=
+            read(_unfinished->raw + _unfinished->length, _unfinished->capacity - _unfinished->length - 1);
+        assert(_unfinished->length < _unfinished->capacity);
+        _unfinished->raw[_unfinished->length] = '\0';
 
-        const auto sv = std::string((char*)_unfinished->raw, _unfinished->length);
-        DBGF("from read: {%s}", sv.c_str());
+        // const auto sv = std::string((char*)_unfinished->raw, _unfinished->length);
+        // Serial.print("unfinished{");
+        // Serial.print(sv.c_str());
+        // Serial.println("}");
+        // DBGF("from read: {%s}", sv.c_str());
         // const auto s = _unfinished->length;
 
         if (_unfinished->length == 0)
             return {};
         assert(_unfinished->raw != nullptr);
         assert(_unfinished->capacity > 0);
-        if (_unfinished->raw[_unfinished->length - 1] == '\n') {
-            // what a stroke of luck, an entire line!
-
-            const auto sv = std::string((char*)_unfinished->raw, _unfinished->length);
-            DBGF("from read 22: {%s}", sv.c_str());
-
-            const auto s = std::string(_unfinished->raw, _unfinished->length);
-            DBGF("extracted entire line : {%s} with length %i", s.c_str(), _unfinished->length);
-            DBGF("MEM START: %p: {%s}", _unfinished->raw, std::string(_unfinished->raw, _unfinished->length).c_str());
-
-            assert(s.length() == _unfinished->length);
-            assert(strlen((const char*)_unfinished->raw) == _unfinished->length);
-            // DBGF("l : %i", _unfinished->length);
-            return std::move(Message::from_buffer(std::move(_unfinished)));
-        }
+        // if (std::strchr(return_carrier_str, _unfinished->raw[_unfinished->length - 1])) {
+        //     // what a stroke of luck, an entire line!
+        //     _unfinished->length -= 1;
+        //     const auto s = std::string(_unfinished->raw, _unfinished->length);
+        //     DBGF("extracted entire line : {%s} with length %i", s.c_str(), _unfinished->length);
+        //     Serial.println("entire line");
+        //
+        //     assert(s.length() == _unfinished->length);
+        //     assert(strlen((const char*)_unfinished->raw) == _unfinished->length);
+        //     // DBGF("l : %i", _unfinished->length);
+        //     return std::move(Message::from_buffer(std::move(_unfinished)));
+        // }
 
         // check if there is a partial line
-        const auto nl = strcspn(_unfinished->raw, "\n");
-        if (nl == _unfinished->length)
+        const auto nl = strcspn(_unfinished->raw, return_carrier_str);
+        if (nl == _unfinished->length) {
+            if (_unfinished->length >= _unfinished->capacity - Dialect::MINIMAL_CMD_LENGTH) {
+                DBGF("No CRLF found entire buffer, discarding buffer.")
+                _unfinished->reset();
+            }
+            // Serial.println("no partial line");
             return {};
+        }
+        // Serial.println("partial line");
 
         // we have a partial line, recover it
         auto newbuffer = _bufferpool->acquire();
@@ -95,15 +109,28 @@ public:
 
         // copy in the line
         DBGF("prompt: copying");
-        strlcpy(newbuffer->raw, _unfinished->raw, nl);
-        newbuffer->length = nl;
+        newbuffer->length = nl + 1;
+        assert(_unfinished->length >= newbuffer->length);
+        strlcpy(newbuffer->raw, _unfinished->raw, newbuffer->length);
+        // Serial.print("strlcpy{");
+        // Serial.print(newbuffer->raw);
+        // Serial.println("}");
+        // delay(100);
 
         // move forward the remaining of the unfinished line
         DBGF("prompt: memmoving");
-        memmove(_unfinished->raw, _unfinished->raw + nl, _unfinished->length - nl);
-        _unfinished->length = _unfinished->length - nl;
+        // Serial.print("unfinished length before MEMMOVE: ");
+        // Serial.println(_unfinished->length);
+        // Serial.print("newbuffer length before MEMMOVE: ");
+        // Serial.println(newbuffer->length);
+        assert(_unfinished->length >= newbuffer->length);
+        _unfinished->length -= newbuffer->length;
+        memmove(_unfinished->raw, _unfinished->raw + newbuffer->length, _unfinished->length);
         _unfinished->raw[_unfinished->length] = '\0';
-
+        DBGF("Remaining in buffer: {%s} (removed: {%s})", _unfinished->raw, newbuffer->raw);
+        // Serial.println("memmoved line");
+        // Serial.print("unfinished length when leaving: ");
+        // Serial.println(_unfinished->length);
         return Message::from_buffer(std::move(newbuffer));
     }
 

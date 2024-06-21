@@ -107,6 +107,7 @@ public:
     }
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
+    void sideload_providers(io::VirtualStackFactory& ssf) override {}
 
 public:
     void hotload_prompt(std::shared_ptr<Prompt> prompt) { _prompt = std::move(prompt); }

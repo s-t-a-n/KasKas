@@ -59,6 +59,7 @@ struct Dialect {
     static constexpr auto OPERANTS = "!=?<";
 
     static constexpr auto KV_SEPARATOR = ":";
+    static constexpr auto VALUE_SEPARATOR = "|";
 
     static constexpr auto MINIMAL_CMD_LENGTH = 2;
     static constexpr auto MAXIMAL_CMD_LENGTH = 3;

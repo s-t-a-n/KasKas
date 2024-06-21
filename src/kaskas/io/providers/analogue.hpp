@@ -44,7 +44,7 @@ public:
 
     double value() const { return _map.value_f(); }
     void set_value(double value) { _map.set_value_f(value); }
-    void fade_to(double setpoint, double increment = 0.1, time_ms increment_interval = time_ms(250)) {
+    void fade_to(double setpoint, double increment = 0.1, time_ms increment_interval = time_ms(150)) {
         _map.fade_to_f(setpoint, increment, increment_interval);
     }
 

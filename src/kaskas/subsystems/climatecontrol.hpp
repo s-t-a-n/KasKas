@@ -60,7 +60,7 @@ public:
             io::HardwareStack::Idx heating_element_fan_idx;
             io::HardwareStack::Idx heating_element_temp_sensor_idx;
             io::HardwareStack::Idx climate_temp_sensor_idx;
-            io::HardwareStack::Idx outside_temp_idx;
+            io::HardwareStack::Idx ambient_temp_idx;
 
             Heater::Config heater_cfg;
             Schedule::Config schedule_cfg;
@@ -72,7 +72,7 @@ public:
     ClimateControl(io::HardwareStack& hws, const Config& cfg) : ClimateControl(hws, nullptr, cfg) {}
     ClimateControl(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
         : Component(evsys, hws), _cfg(std::move(cfg)), _clock(_hws.clock(_cfg.clock_idx)),
-          _outside_temp_sensor(_hws.analog_sensor(_cfg.heating.outside_temp_idx)),
+          _ambient_temp_sensor(_hws.analog_sensor(_cfg.heating.ambient_temp_idx)),
           _climate_fan(_hws.analogue_actuator(_cfg.ventilation.hws_climate_fan_idx)),
           _climate_humidity(_hws.analog_sensor(_cfg.ventilation.climate_humidity_idx)),
           _climate_temperature(_hws.analog_sensor(_cfg.heating.climate_temp_sensor_idx)),
@@ -248,16 +248,22 @@ public:
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override {
         using namespace prompt;
-        auto model = std::make_unique<RPCRecipe>(
-            RPCRecipe("CC", //
-                      {
-                          RPCModel("surface_temp",
-                                   [this](const OptStringView&) {
-                                       DBGF("surface_temp accessed");
-                                       return RPCResult(std::to_string(_heating_element_sensor.value()));
-                                   }),
-                      }));
+        auto model = std::make_unique<RPCRecipe>(RPCRecipe(
+            "CC", //
+            {
+                RPCModel("heaterStatus",
+                         [this](const OptStringView&) {
+                             return RPCResult(std::string(magic_enum::enum_name(_heater.state())));
+                         }),
+                RPCModel("heaterSetpoint",
+                         [this](const OptStringView&) { return RPCResult(std::to_string(_heater.setpoint())); }),
+            }));
         return std::move(model);
+    }
+
+    void sideload_providers(io::VirtualStackFactory& ssf) override {
+        ssf.hotload_provider(DataProviders::HEATING_SETPOINT,
+                             std::make_shared<io::ContinuousValue>([this]() { return this->_heater.setpoint(); }));
     }
 
 private:
@@ -271,8 +277,8 @@ private:
 
         if (_print_interval.expired()) {
             const auto state_str = std::string(Heater::as_stringview(_heater.state())).c_str();
-            DBGF("Heating: outsideT %.2fC, surfaceT %.2f, climateT %.2fC, sp T %.2f C, throttle: %i/255 state: %s",
-                 _outside_temp_sensor.value(), _heating_element_sensor.value(), _climate_temperature.value(),
+            DBGF("Heating: ambientT %.2fC, surfaceT %.2f, climateT %.2fC, sp T %.2f C, throttle: %i/255 state: %s",
+                 _ambient_temp_sensor.value(), _heating_element_sensor.value(), _climate_temperature.value(),
                  _heater.setpoint(), int(_heater.throttle() * 255), state_str);
         }
 
@@ -281,10 +287,6 @@ private:
         if (_heater.state() != Heater::State::IDLE) {
             _power.set_state(LogicalState::ON);
         }
-
-        HAL::print(_heating_element_sensor.value());
-        HAL::print("|");
-        HAL::println(_climate_temperature.value());
     }
 
     /// continuous checking of ventilation status
@@ -331,7 +333,7 @@ private:
 
     const io::Clock& _clock;
 
-    const io::AnalogueSensor& _outside_temp_sensor;
+    const io::AnalogueSensor& _ambient_temp_sensor;
 
     io::AnalogueActuator& _climate_fan;
     const io::AnalogueSensor& _climate_humidity;

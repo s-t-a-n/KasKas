@@ -149,7 +149,7 @@ public:
         m._operant = std::string_view(head, 1);
 
         // add integer status
-        const auto status_str = result.status ? std::to_string(*result.status) : std::string("0");
+        const auto status_str = std::to_string(magic_enum::enum_integer(result.status));
         head += status_str.length();
         strncpy(head, status_str.c_str(), status_str.length());
         m._key = std::string_view(head, status_str.length());

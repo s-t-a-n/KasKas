@@ -1,9 +1,9 @@
 #if !defined(UNITTEST)
 
+#    include "kaskas/io/hardware_stack.hpp"
 #    include "kaskas/io/peripherals/DS18B20_Temp_Probe.hpp"
 #    include "kaskas/io/peripherals/analogue_input.hpp"
 #    include "kaskas/io/peripherals/analogue_output.hpp"
-#    include "kaskas/io/stack.hpp"
 #    include "kaskas/kaskas.hpp"
 
 #    include <spine/controller/pid.hpp>
@@ -49,6 +49,7 @@ enum PeripheralsEnum {
     HEATING_POWER_RELAY,
     VIOLET_SPECTRUM_RELAY,
     BROAD_SPECTRUM_RELAY,
+    PUMP_RELAY,
     SIZE,
 };
 }
@@ -104,6 +105,29 @@ using namespace kaskas;
 void setup() {
     HAL::initialize(HAL::Config{.baudrate = 115200});
     HAL::println("Wake up");
+
+    // static volatile int ctr = 0;
+    // const auto cb = []() { ctr++; };
+    // Interrupt a(
+    //     Interrupt::Config{.pin = 2, .mode = Interrupt::TriggerType::FALLING_EDGE, .pull_up = false, .callback = cb});
+    // a.initialize();
+    // a.attach_interrupt();
+    //
+    // io::Relay b(io::Relay::Config{.pin_cfg = HAL::DigitalOutput::Config{.pin = 13, .active_on_low = true},
+    //                               .backoff_time = time_ms(1000)});
+    // b.initialize();
+    //
+    // HAL::delay(time_s(10));
+    // b.set_state(LogicalState::ON);
+    // HAL::delay(time_s(3));
+    // b.set_state(LogicalState::OFF);
+    //
+    // // for (int i = 0; i < 3; ++i) {
+    // //     HAL::delay(time_s(1));
+    // // }
+    // DBGF("ctr: %i", ctr);
+    // while (true) {
+    // };
 
     // {
     //     auto a = HAL::UART(HAL::UART::Config{&Serial});
@@ -197,7 +221,7 @@ void setup() {
         using namespace kaskas::io;
 
         auto stack_cfg = HardwareStack::Config{
-            .alias = "IO", .max_providers = Providers::SIZE, .max_peripherals = Peripherals::SIZE};
+            .alias = "IO", .max_providers = ENUM_IDX(DataProviders::SIZE), .max_peripherals = Peripherals::SIZE};
 
         auto sf = HardwareStackFactory(std::move(stack_cfg));
 
@@ -207,8 +231,8 @@ void setup() {
             auto temperature_provider = std::make_shared<AnalogueSensor>(peripheral->temperature_provider());
             auto humidity_provider = std::make_shared<AnalogueSensor>(peripheral->humidity_provider());
 
-            sf.hotload_provider(Providers::CLIMATE_TEMP, std::move(temperature_provider));
-            sf.hotload_provider(Providers::CLIMATE_HUMIDITY, std::move(humidity_provider));
+            sf.hotload_provider(DataProviders::CLIMATE_TEMP, std::move(temperature_provider));
+            sf.hotload_provider(DataProviders::CLIMATE_HUMIDITY, std::move(humidity_provider));
             sf.hotload_peripheral(Peripherals::SHT31, std::move(peripheral));
         }
 
@@ -218,17 +242,18 @@ void setup() {
             auto clock_provider = std::make_shared<Clock>(peripheral->clock_provider());
             auto temperature_provider = std::make_shared<AnalogueSensor>(peripheral->temperature_provider());
 
-            sf.hotload_provider(Providers::CLOCK, std::move(clock_provider));
-            sf.hotload_provider(Providers::OUTSIDE_TEMP, std::move(temperature_provider));
+            sf.hotload_provider(DataProviders::CLOCK, std::move(clock_provider));
+            sf.hotload_provider(DataProviders::AMBIENT_TEMP, std::move(temperature_provider));
             sf.hotload_peripheral(Peripherals::DS3231, std::move(peripheral));
         }
 
         {
-            const auto cfg = AnalogueInputPeripheral::Config{.sampling_interval = time_s(10)};
+            const auto cfg = AnalogueInputPeripheral::Config{
+                .input_cfg = HAL::AnalogueInput::Config{.pin = A1, .pull_up = false}, .sampling_interval = time_s(10)};
             auto peripheral = std::make_unique<AnalogueInputPeripheral>(std::move(cfg));
             auto moisture_provider = std::make_shared<AnalogueSensor>(peripheral->analogue_value_provider());
 
-            sf.hotload_provider(Providers::SOIL_MOISTURE, std::move(moisture_provider));
+            sf.hotload_provider(DataProviders::SOIL_MOISTURE, std::move(moisture_provider));
             sf.hotload_peripheral(Peripherals::SOIL_MOISTURE_SENSOR, std::move(peripheral));
         }
 
@@ -237,7 +262,7 @@ void setup() {
             auto peripheral = std::make_unique<AnalogueOutputPeripheral>(std::move(cfg));
             auto state_provider = std::make_shared<AnalogueActuator>(peripheral->analogue_output_provider());
 
-            sf.hotload_provider(Providers::CLIMATE_FAN, std::move(state_provider));
+            sf.hotload_provider(DataProviders::CLIMATE_FAN, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::CLIMATE_FAN, std::move(peripheral));
         }
 
@@ -246,7 +271,7 @@ void setup() {
             auto peripheral = std::make_unique<DS18B20TempProbe>(std::move(cfg));
             auto provider = std::make_shared<AnalogueSensor>(peripheral->temperature_provider());
 
-            sf.hotload_provider(Providers::HEATER_SURFACE_TEMP, std::move(provider));
+            sf.hotload_provider(DataProviders::HEATING_SURFACE_TEMP, std::move(provider));
             sf.hotload_peripheral(Peripherals::DS18B20, std::move(peripheral));
         }
 
@@ -255,7 +280,7 @@ void setup() {
             auto peripheral = std::make_unique<AnalogueOutputPeripheral>(std::move(cfg));
             auto state_provider = std::make_shared<AnalogueActuator>(peripheral->analogue_output_provider());
 
-            sf.hotload_provider(Providers::HEATING_SURFACE_FAN, std::move(state_provider));
+            sf.hotload_provider(DataProviders::HEATING_SURFACE_FAN, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::HEATING_SURFACE_FAN, std::move(peripheral));
         }
 
@@ -264,7 +289,7 @@ void setup() {
             auto peripheral = std::make_unique<AnalogueOutputPeripheral>(std::move(cfg));
             auto state_provider = std::make_shared<AnalogueActuator>(peripheral->analogue_output_provider());
 
-            sf.hotload_provider(Providers::HEATING_ELEMENT, std::move(state_provider));
+            sf.hotload_provider(DataProviders::HEATING_ELEMENT, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::HEATING_ELEMENT, std::move(peripheral));
         }
 
@@ -274,7 +299,7 @@ void setup() {
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
-            sf.hotload_provider(Providers::HEATING_POWER, std::move(state_provider));
+            sf.hotload_provider(DataProviders::HEATING_POWER, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::HEATING_POWER_RELAY, std::move(peripheral));
         }
 
@@ -284,7 +309,7 @@ void setup() {
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
-            sf.hotload_provider(Providers::VIOLET_SPECTRUM, std::move(state_provider));
+            sf.hotload_provider(DataProviders::VIOLET_SPECTRUM, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::VIOLET_SPECTRUM_RELAY, std::move(peripheral));
         }
 
@@ -294,11 +319,21 @@ void setup() {
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
-            sf.hotload_provider(Providers::BROAD_SPECTRUM, std::move(state_provider));
+            sf.hotload_provider(DataProviders::BROAD_SPECTRUM, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::BROAD_SPECTRUM_RELAY, std::move(peripheral));
         }
 
-        hws = sf.stack();
+        {
+            const auto cfg = Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = 13, .active_on_low = true},
+                                           .backoff_time = time_ms(1000)};
+            auto peripheral = std::make_unique<Relay>(std::move(cfg));
+            auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
+
+            sf.hotload_provider(DataProviders::PUMP, std::move(state_provider));
+            sf.hotload_peripheral(Peripherals::PUMP_RELAY, std::move(peripheral));
+        }
+
+        hws = sf.hardware_stack();
         hws->initialize();
     }
 
@@ -311,7 +346,7 @@ void setup() {
                                            .max_delay_between_ticks = time_ms{1000}};
         constexpr bool enable_prompt = true;
         auto prompt_cfg = enable_prompt
-                              ? std::make_optional(kaskas::Prompt::Config{.message_length = 64, .pool_size = 3})
+                              ? std::make_optional(kaskas::Prompt::Config{.message_length = 64, .pool_size = 10})
                               : std::nullopt;
         auto kk_cfg = KasKas::Config{.esc_cfg = esc_cfg, .component_cap = 16, .prompt_cfg = prompt_cfg};
         kk = std::make_unique<KasKas>(hws, kk_cfg);
@@ -324,22 +359,23 @@ void setup() {
         const auto max_heater_setpoint = 40.0; // maximum allowed heater setpoint
 
         auto cc_cfg = ClimateControl::Config{
-            .hws_power_idx = Providers::HEATING_POWER,
-            .clock_idx = Providers::CLOCK,
+            .hws_power_idx = ENUM_IDX(DataProviders::HEATING_POWER),
+            .clock_idx = ENUM_IDX(DataProviders::CLOCK),
 
-            .ventilation = ClimateControl::Config::Ventilation{.hws_climate_fan_idx = Providers::CLIMATE_FAN,
-                                                               .climate_humidity_idx = Providers::CLIMATE_HUMIDITY,
-                                                               .minimal_on_duration = time_m(1),
-                                                               .maximal_on_duration = time_m(15),
-                                                               .low_humidity = 70.0,
-                                                               .high_humidity = 80.0,
-                                                               .minimal_interval = time_m(15),
-                                                               .maximal_interval = time_m(60)},
+            .ventilation =
+                ClimateControl::Config::Ventilation{.hws_climate_fan_idx = ENUM_IDX(DataProviders::CLIMATE_FAN),
+                                                    .climate_humidity_idx = ENUM_IDX(DataProviders::CLIMATE_HUMIDITY),
+                                                    .minimal_on_duration = time_m(1),
+                                                    .maximal_on_duration = time_m(15),
+                                                    .low_humidity = 65.0,
+                                                    .high_humidity = 75.0,
+                                                    .minimal_interval = time_m(15),
+                                                    .maximal_interval = time_m(60)},
             .heating = ClimateControl::Config::Heating{
-                .heating_element_fan_idx = Providers::HEATING_SURFACE_FAN,
-                .heating_element_temp_sensor_idx = Providers::HEATER_SURFACE_TEMP,
-                .climate_temp_sensor_idx = Providers::CLIMATE_TEMP,
-                .outside_temp_idx = Providers::OUTSIDE_TEMP,
+                .heating_element_fan_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_FAN),
+                .heating_element_temp_sensor_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
+                .climate_temp_sensor_idx = ENUM_IDX(DataProviders::CLIMATE_TEMP),
+                .ambient_temp_idx = ENUM_IDX(DataProviders::AMBIENT_TEMP),
                 .heater_cfg =
                     Heater::Config{.pid_cfg =
                                        PID::Config{//
@@ -354,8 +390,12 @@ void setup() {
                                                    .output_upper_limit = 255,
                                                    .sample_interval = sample_interval},
                                    .max_heater_setpoint = max_heater_setpoint,
-                                   .heating_surface_temperature_idx = Providers::HEATER_SURFACE_TEMP,
-                                   .heating_element_idx = Providers::HEATING_ELEMENT},
+                                   .heating_surface_temperature_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
+                                   .heating_element_idx = ENUM_IDX(DataProviders::HEATING_ELEMENT),
+                                   .climate_trp_cfg = Heater::ThermalRunAway::Config{.stable_timewindow = time_m(20),
+                                                                                     .heating_minimal_rising_c = 0.1,
+                                                                                     .heating_minimal_dropping_c = 0.01,
+                                                                                     .heating_timewindow = time_m(45)}},
                 .schedule_cfg =
                     Schedule::Config{
                         .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0}, // 16.0
@@ -374,11 +414,12 @@ void setup() {
 
     {
         using kaskas::component::Growlights;
-        auto growlights_cfg = Growlights::Config{.violet_spectrum_actuator_idx = Providers::VIOLET_SPECTRUM,
-                                                 .broad_spectrum_actuator_idx = Providers::BROAD_SPECTRUM,
-                                                 .clock_idx = Providers::CLOCK,
-                                                 .starting_hour = time_h{6},
-                                                 .duration_hours = time_h{16}};
+        auto growlights_cfg =
+            Growlights::Config{.violet_spectrum_actuator_idx = ENUM_IDX(DataProviders::VIOLET_SPECTRUM),
+                               .broad_spectrum_actuator_idx = ENUM_IDX(DataProviders::BROAD_SPECTRUM),
+                               .clock_idx = ENUM_IDX(DataProviders::CLOCK),
+                               .starting_hour = time_h{6},
+                               .duration_hours = time_h{16}};
 
         auto growlights = std::make_unique<Growlights>(*hws, growlights_cfg);
         kk->hotload_component(std::move(growlights));
@@ -387,14 +428,14 @@ void setup() {
     {
         auto pump_cfg = Pump::Config{
             //
-            .pump_cfg = AnalogueOutput::Config{.pin = 8, .active_on_low = true}, // NOP PORT
+            .pump_actuator_idx = ENUM_IDX(DataProviders::PUMP),
             .interrupt_cfg =
                 Interrupt::Config{
-                    .pin = 2, //
-                    .mode = Interrupt::TriggerType::FALLING_EDGE, //
-                    .pull_up = false, //
+                    .pin = 2,
+                    .mode = Interrupt::TriggerType::FALLING_EDGE,
+                    .pull_up = false,
                 },
-            .ml_pulse_calibration = 25.8, //
+            .ml_pulse_calibration = 25.8, // 25.8
             .reading_interval = time_ms(250), //
             .pump_timeout = time_s(10),
         };
@@ -405,14 +446,10 @@ void setup() {
         using GroundMoistureSensorConfig = Fluidsystem::GroundMoistureSensor::Config;
         auto fluidsystem_cfg = Fluidsystem::Config{
             .pump_cfg = pump_cfg, //
-            .ground_moisture_sensor_cfg =
-                GroundMoistureSensorConfig{.sensor_cfg =
-                                               AnalogueInput::Config{.pin = A1, .pull_up = false, .resolution = 10},
-                                           .filter_cfg = GroundMoistureSensorFilter::Config{.K = 100, .invert = false}},
-            .ground_moisture_threshold = 0.65, // 0.65
-
-            .inject_dosis_ml = 250,
-            .inject_check_interval = time_h(16), // time_h(16)
+            .ground_moisture_sensor_idx = ENUM_IDX(DataProviders::SOIL_MOISTURE),
+            .ground_moisture_threshold = 0.4, // 0.65
+            .inject_dosis_ml = 100,
+            .inject_check_interval = time_h(12), // time_h(16)
         };
         auto fluidsystem = std::make_unique<Fluidsystem>(*hws, fluidsystem_cfg);
         kk->hotload_component(std::move(fluidsystem));
@@ -454,18 +491,18 @@ void setup() {
 
     // DBGF("Memory available: %i", HAL::free_memory());
 
-    {
-        auto recipes = hws->cookbook().extract_recipes();
-        for (auto& r : recipes) {
-            const auto cmdstr = std::string(r->command());
-            DBGF("Recipe has command: %s", cmdstr.c_str());
-            for (const auto& m : r->models()) {
-                const auto recipe_name = std::string(m.name());
-                DBGF("-> has: %s", recipe_name.c_str());
-            }
-            kk->hotload_rpc_recipe(std::move(r));
-        }
-    }
+    // {
+    //     auto recipes = hws->cookbook().extract_recipes();
+    //     for (auto& r : recipes) {
+    //         // const auto cmdstr = std::string(r->command());
+    //         // DBGF("Recipe has command: %s", cmdstr.c_str());
+    //         // for (const auto& m : r->models()) {
+    //         //     const auto recipe_name = std::string(m.name());
+    //         //     DBGF("-> has: %s", recipe_name.c_str());
+    //         // }
+    //         kk->hotload_rpc_recipe(std::move(r));
+    //     }
+    // }
 
     kk->initialize();
 }
@@ -476,24 +513,24 @@ void loop() {
         // DBGF("ub: %i", ub.state() == LogicalState::ON ? 1 : 0);
         HAL::delay(time_ms(1000));
 
-        // const auto t = S->temperature(Providers::HEATER_SURFACE_TEMP);
+        // const auto t = S->temperature(HEATER_SURFACE_TEMP);
         // DBGF("HEATER_SURFACE_TEMP : %f", t.value());
         //
-        // const auto tcc = S->temperature(Providers::CLIMATE_TEMP);
+        // const auto tcc = S->temperature(CLIMATE_TEMP);
         // DBGF("CLIMATE_TEMP : %f", tcc.value());
         //
-        // const auto hcc = S->humidity(Providers::CLIMATE_HUMIDITY);
+        // const auto hcc = S->humidity(CLIMATE_HUMIDITY);
         // DBGF("CLIMATE_HUMIDITY : %f", hcc.value());
         //
-        // const auto clock = S->clock(Providers::CLOCK);
+        // const auto clock = S->clock(CLOCK);
         // const auto dt = clock.now();
-        // const auto ot = S->temperature(Providers::OUTSIDE_TEMP);
+        // const auto at = S->temperature(AMBIENT_TEMP);
         //
         // DBGF("CLOCK: %.2i:%.2i", dt.getHour(), dt.getMinute());
         // DBGF("CLOCK epoch: %i", static_cast<unsigned long>(clock.epoch()));
-        // DBGF("OUTSIDE_TEMP : %f", ot.value());
+        // DBGF("AMBIENT_TEMP : %f", at.value());
         //
-        // const auto sm = S->moisture(Providers::SOIL_MOISTURE);
+        // const auto sm = S->moisture(SOIL_MOISTURE);
         // DBGF("SOIL_MOISTURE : %f", sm.value());
         // S->update_all();
 

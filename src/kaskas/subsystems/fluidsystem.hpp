@@ -35,7 +35,8 @@ public:
 
     struct Config {
         Pump::Config pump_cfg;
-        GroundMoistureSensor::Config ground_moisture_sensor_cfg;
+        io::HardwareStack::Idx ground_moisture_sensor_idx;
+
         float ground_moisture_threshold; // value between 0.0 and 1.0 with 1.0 being the moistest of states the
         // sensor can pick up
         uint16_t inject_dosis_ml; // dosis in ml to inject
@@ -47,27 +48,25 @@ public:
     Fluidsystem(io::HardwareStack& hws, EventSystem* evsys, Config& cfg)
         : Component(evsys, hws), //
           _cfg(cfg), //
-          _ground_moisture_sensor(std::move(cfg.ground_moisture_sensor_cfg)), //
-          _pump(std::move(cfg.pump_cfg)){};
+          _ground_moisture_sensor(_hws.analog_sensor(_cfg.ground_moisture_sensor_idx)), //
+          _pump(_hws, std::move(cfg.pump_cfg)){};
 
     void initialize() override {
         _pump.initialize();
 
         assert(evsys());
         evsys()->attach(Events::OutOfWater, this);
-        evsys()->attach(Events::WaterLevelCheck, this);
         evsys()->attach(Events::WaterInjectCheck, this);
         evsys()->attach(Events::WaterInjectStart, this);
         evsys()->attach(Events::WaterInjectFollowUp, this);
         evsys()->attach(Events::WaterInjectStop, this);
 
-        evsys()->schedule(evsys()->event(Events::WaterLevelCheck, time_s(10), Event::Data()));
-        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
-
         DBGF("Fluidsystem: scheduling WaterInjectCheck event in %u hours (%u minutes).",
              time_h(_cfg.inject_check_interval).printable(), time_m(_cfg.inject_check_interval).printable());
-        //        evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(30), Event::Data()));
-        //        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_s(30), Event::Data()));
+        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
+
+        // evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(5), Event::Data()));
+        // evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_s(30), Event::Data()));
     }
 
     void safe_shutdown(State state) override { _pump.stop_injection(); }
@@ -77,15 +76,6 @@ public:
         case Events::OutOfWater: {
             //
             DBG("Fluidsystem: OutOfWater");
-            break;
-        }
-        case Events::WaterLevelCheck: {
-            //            DBG("Fluidsystem: WaterLevelCheck");
-            _ground_moisture_sensor.update();
-            DBGF("Fluidsystem: Waterlevel: %.2f (threshold: %.2f)", _ground_moisture_sensor.value(),
-                 _cfg.ground_moisture_threshold);
-
-            evsys()->schedule(evsys()->event(Events::WaterLevelCheck, time_s(10), Event::Data()));
             break;
         }
         case Events::WaterInjectCheck: {
@@ -142,8 +132,8 @@ public:
         case Events::WaterInjectStop: {
             DBG("Fluidsystem: WaterInjectStop");
             _pump.stop_injection();
-            DBGF("Fluidsystem: Pumped %lu ml in %lli ms (pumped in total: %lu ml)", _pump.ml_since_injection_start(),
-                 _pump.time_since_injection_start().raw(), _pump.lifetime_pumped_ml());
+            DBGF("Fluidsystem: Pumped %i ml in %i ms (pumped in total: %u ml)", _pump.ml_since_injection_start(),
+                 _pump.time_since_injection_start().printable(), _pump.lifetime_pumped_ml());
             break;
         }
         default: assert(!"event not handled"); break;
@@ -151,11 +141,16 @@ public:
     }
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
+    void sideload_providers(io::VirtualStackFactory& ssf) override {
+        ssf.hotload_provider(DataProviders::SOIL_MOISTURE_SETPOINT, std::make_shared<io::ContinuousValue>([this]() {
+                                 return this->_cfg.ground_moisture_threshold;
+                             }));
+    }
 
 private:
     const Config _cfg;
 
-    GroundMoistureSensor _ground_moisture_sensor;
+    io::AnalogueSensor _ground_moisture_sensor;
     Pump _pump;
 };
 

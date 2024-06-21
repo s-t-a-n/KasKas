@@ -3,9 +3,9 @@
 #include "kaskas/component.hpp"
 #include "kaskas/data_providers.hpp"
 #include "kaskas/events.hpp"
+#include "kaskas/io/hardware_stack.hpp"
 #include "kaskas/io/peripherals/relay.hpp"
 #include "kaskas/io/providers/clock.hpp"
-#include "kaskas/io/stack.hpp"
 #include "kaskas/prompt/cookbook.hpp"
 #include "kaskas/prompt/prompt.hpp"
 #include "kaskas/subsystems/climatecontrol.hpp"
@@ -77,6 +77,19 @@ public:
         }
 
         if (_cfg.prompt_cfg) {
+            {
+                auto recipes = _hws->cookbook().extract_recipes();
+                for (auto& r : recipes) {
+                    // const auto cmdstr = std::string(r->command());
+                    // DBGF("Recipe has command: %s", cmdstr.c_str());
+                    // for (const auto& m : r->models()) {
+                    //     const auto recipe_name = std::string(m.name());
+                    //     DBGF("-> has: %s", recipe_name.c_str());
+                    // }
+                    hotload_rpc_recipe(std::move(r));
+                }
+            }
+
             _prompt->initialize();
             DBGF("Initialized prompt");
         }
@@ -87,6 +100,9 @@ public:
 
     void hotload_component(std::unique_ptr<Component> component) {
         component->attach_event_system(&_evsys);
+
+        auto ssf = io::VirtualStackFactory(_hws);
+        component->sideload_providers(ssf);
 
         if (_cfg.prompt_cfg) {
             if (auto recipe = component->rpc_recipe()) {

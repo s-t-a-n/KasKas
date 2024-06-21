@@ -1,6 +1,7 @@
 #pragma once
 
-#include "kaskas/io/stack.hpp"
+#include "io/software_stack.hpp"
+#include "kaskas/io/hardware_stack.hpp"
 #include "kaskas/prompt/prompt.hpp"
 
 #include <spine/eventsystem/eventsystem.hpp>
@@ -27,6 +28,7 @@ public:
     virtual void safe_shutdown(State state = State::SAFE) { assert(!"Virtual base function called"); }
 
     virtual std::unique_ptr<prompt::RPCRecipe> rpc_recipe() { assert(!"Virtual base function called"); }
+    virtual void sideload_providers(io::VirtualStackFactory& ssf) { assert(!"Virtual base function called"); }
 
 protected:
     io::HardwareStack& _hws;

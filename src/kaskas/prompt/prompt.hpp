@@ -51,6 +51,13 @@ public:
 
         if (const auto message = _dl->receive_message()) {
             DBGF("update: {%s}", message->as_string().c_str());
+            // Serial.println("------------------------");
+            // Serial.print("Received back: {");
+            // const auto s = message->as_string();
+            // Serial.print(s.c_str());
+            // Serial.println("}");
+            // Serial.println("------------------------");
+
             // DBGF("received message");
             // HAL::println("message");
             // HAL::delay(time_ms(200));
@@ -66,10 +73,10 @@ public:
                 assert(cb->raw);
 
                 const auto reply = Message::from_result(std::move(cb), res, message->cmd());
-
                 if (reply)
                     _dl->send_message(*reply);
             } else {
+                // Serial.print("Invalid message");
                 DBGF("Couldnt build rpc from message");
             }
         } else {
@@ -81,7 +88,6 @@ public:
         assert(_dl == nullptr);
         _dl.swap(dl);
         assert(dl == nullptr);
-
         assert(_bufferpool != nullptr);
         _dl->hotload_bufferpool(_bufferpool);
     }

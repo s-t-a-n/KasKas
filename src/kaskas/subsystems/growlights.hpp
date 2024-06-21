@@ -2,8 +2,8 @@
 
 #include "kaskas/component.hpp"
 #include "kaskas/events.hpp"
+#include "kaskas/io/hardware_stack.hpp"
 #include "kaskas/io/providers/digital.hpp"
-#include "kaskas/io/stack.hpp"
 
 #include <kaskas/component.hpp>
 #include <spine/core/exception.hpp>
@@ -103,6 +103,7 @@ public:
     }
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
+    void sideload_providers(io::VirtualStackFactory& ssf) override {}
 
 private:
     void deploy_lightcycle() {

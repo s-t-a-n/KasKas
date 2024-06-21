@@ -182,7 +182,7 @@ public:
         // };
 
         assert(res.return_value);
-        assert(res.status);
+        // assert(res.status);
         // DBGF("has res with status: %i, rstring: %s", *res.status, res.return_value->c_str());
         return res;
     }
@@ -208,6 +208,7 @@ public:
         const auto recipe = recipe_for_command(msg.cmd());
         if (!recipe) {
             DBGF("no recipe found for message: {%s}", msg.as_string().c_str());
+            Serial.println("no recipe found");
             return {};
         }
         assert(*recipe != nullptr);
@@ -226,7 +227,10 @@ public:
         case Dialect::OP::ACCESS: return build_rpc(**recipe, optype, msg);
         case Dialect::OP::ASSIGNMENT: return build_rpc(**recipe, optype, msg);
         case Dialect::OP::FUNCTION_CALL: return build_rpc(**recipe, optype, msg);
-        default: DBGF("no optype found for message: {%s}", msg.as_string().c_str()); return {};
+        default:
+            DBGF("no optype found for message: {%s}", msg.as_string().c_str());
+            Serial.println("no recipe found");
+            return {};
         }
     }
 
@@ -247,6 +251,7 @@ protected:
         if (found_model == nullptr) {
             // no model found
             DBGF("build_rpc: No model found for msg {%s}", msg.as_string().c_str());
+            Serial.println("no model found");
             return {};
         }
 

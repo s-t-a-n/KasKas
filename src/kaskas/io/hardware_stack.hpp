@@ -6,6 +6,7 @@
 #include "kaskas/io/providers/analogue.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/providers/digital.hpp"
+#include "kaskas/io/software_stack.hpp"
 #include "kaskas/prompt/cookbook.hpp"
 
 #include <spine/core/standard.hpp>
@@ -19,12 +20,12 @@ using spn::structure::Array;
 
 class HardwareStackFactory;
 
-/// Encapsulates all peripherals through provider interfaces
+/// Encapsulate peripherals through provider interfaces
 /// Responsible for:
-/// - initialize and maintain hardware device
+/// - initialize and maintain hardware peripherals
 /// - update values at set intervals
 /// - supply provider interfaces for consumers of data
-class HardwareStack {
+class HardwareStack : public VirtualStack {
 public:
     using Idx = uint16_t;
 
@@ -35,7 +36,8 @@ public:
     };
 
     HardwareStack(const Config&& cfg)
-        : _cfg(std::move(cfg)), _peripherals(_cfg.max_peripherals), _providers(_cfg.max_providers) {}
+        : VirtualStack({.alias = cfg.alias, .max_providers = cfg.max_providers}), _cfg(std::move(cfg)),
+          _peripherals(_cfg.max_peripherals) {}
 
 public:
     void initialize() {
@@ -76,8 +78,8 @@ public:
         return interval;
     }
 
-    const std::string_view& alias() const { return _cfg.alias; }
-    prompt::RPCCookbook& cookbook() { return _rpc_cookbook; }
+    // const std::string_view& alias() const { return _cfg.alias; }
+    // prompt::RPCCookbook& cookbook() { return _rpc_cookbook; }
 
 public:
     const AnalogueSensor& analog_sensor(Idx sensor_idx) {
@@ -109,34 +111,27 @@ private:
     const Config _cfg;
 
     Array<std::unique_ptr<Peripheral>> _peripherals;
-    Array<std::shared_ptr<Provider>> _providers;
+    // Array<std::shared_ptr<Provider>> _providers;
 
-    prompt::RPCCookbook _rpc_cookbook;
+    // prompt::RPCCookbook _rpc_cookbook;
 
     friend HardwareStackFactory;
 };
 
-class HardwareStackFactory {
+class HardwareStackFactory : public VirtualStackFactory {
 public:
-    HardwareStackFactory(const HardwareStack::Config&& cfg) : _stack(std::make_shared<HardwareStack>(std::move(cfg))) {}
+    HardwareStackFactory(const HardwareStack::Config&& cfg)
+        : VirtualStackFactory(std::make_shared<HardwareStack>(std::move(cfg))) {}
 
-    void hotload_provider(Providers::ProvidersEnum provider_id, std::shared_ptr<Provider> provider) {
-        assert(provider_id < _stack->_cfg.max_providers);
-        assert(_stack->_providers[provider_id] == nullptr);
-        stack()->cookbook().add_recipe(
-            std::move(provider->rpc_recipe(stack()->alias(), magic_enum::enum_name(provider_id))));
-        _stack->_providers[provider_id] = std::move(provider);
-    }
     void hotload_peripheral(uint8_t peripheral_id, std::unique_ptr<Peripheral> peripheral) {
-        assert(peripheral_id < _stack->_cfg.max_peripherals);
-        assert(_stack->_peripherals[peripheral_id] == nullptr);
-        _stack->_peripherals[peripheral_id] = std::move(peripheral);
+        assert(peripheral_id < hardware_stack()->_cfg.max_peripherals);
+        assert(hardware_stack()->_peripherals[peripheral_id] == nullptr);
+        hardware_stack()->_peripherals[peripheral_id] = std::move(peripheral);
     }
 
-    std::shared_ptr<HardwareStack> stack() { return _stack; }
+    std::shared_ptr<HardwareStack> hardware_stack() const { return std::static_pointer_cast<HardwareStack>(_stack); }
 
 private:
-    std::shared_ptr<HardwareStack> _stack;
 };
 
 } // namespace kaskas::io

@@ -50,9 +50,6 @@ public:
 
     double temperature() const { return _filter.value(); }
 
-    // DEPRECATED
-    // double read() const { return _filter.value(); }
-
     AnalogueSensor temperature_provider() const {
         return {[this]() { return this->temperature(); }};
     }

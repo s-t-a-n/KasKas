@@ -44,6 +44,7 @@ public:
     }
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
+    void sideload_providers(io::VirtualStackFactory& ssf) override {}
 
 private:
     const Config _cfg;

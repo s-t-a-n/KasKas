@@ -50,7 +50,7 @@ public:
         if (!is_ready()) {
             spn::throw_exception(spn::assertion_error("SHT31TempHumidityProbe could not be initialized"));
         }
-        DBGF("SHT31TempHumidityProbe initialized. Humidity: %f %%, temperature: %f °C", read_humidity(),
+        DBGF("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C", read_humidity(),
              read_temperature());
 
         // make sure that heater is off

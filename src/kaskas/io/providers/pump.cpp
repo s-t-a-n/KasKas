@@ -4,7 +4,7 @@ namespace kaskas::io {
 
 namespace {
 // when the case arrises, make this a scalable solution
-static volatile uint32_t s_counter = 0;
+volatile uint32_t s_counter = 0;
 } // namespace
 
 void interrupt_callback() { s_counter++; }

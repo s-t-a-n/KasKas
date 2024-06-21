@@ -22,7 +22,7 @@ private:
 public:
     struct Config {
         // Relay::Config pump_relay_cfg;
-        AnalogueOutput pump_cfg;
+        io::HardwareStack::Idx pump_actuator_idx;
         Interrupt::Config interrupt_cfg;
         double ml_pulse_calibration; // experimentally found flow sensor calibration factor
         time_ms reading_interval;
@@ -30,14 +30,12 @@ public:
     };
 
 public:
-    explicit Pump(Config&& cfg)
-        : _cfg(cfg), _pump(std::move(cfg.pump_cfg)), _interrupt(std::move(cfg.interrupt_cfg)),
-          _flowrate(Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw() / 2.0, .invert = false}) {}
+    explicit Pump(io::HardwareStack& hws, Config&& cfg)
+        : _cfg(cfg), _pump(hws.digital_actuator(_cfg.pump_actuator_idx)), _interrupt(std::move(cfg.interrupt_cfg)),
+          _flowrate(
+              Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw<double>() / 2.0, .invert = false}) {}
 
-    void initialize() {
-        _pump.initialize();
-        _interrupt.initialize();
-    }
+    void initialize() { _interrupt.initialize(); }
 
     //    time_ms time_since_last_injection() { return _last_reading.timeSinceLast(false); }
 
@@ -51,14 +49,18 @@ public:
         const auto time_since_last_reading = _last_reading.timeSinceLast(true);
         const auto pulse_count = read_pulsecount();
         const auto flowrate_lm =
-            ((_cfg.reading_interval.raw() / time_since_last_reading.raw()) * pulse_count) / _cfg.ml_pulse_calibration;
+            ((_cfg.reading_interval.raw<double>() / time_since_last_reading.raw<double>()) * pulse_count)
+            / _cfg.ml_pulse_calibration;
         _flowrate.new_reading(flowrate_lm);
         // Divide the flow rate in litres/minute by 60 to determine how many litres have
         // passed through the sensor in this interval, then multiply by the milliseconds passed to
         // convert to millilitres.
         //        const auto ml_since_last = (flowrate_lm / 60) * 1000; // ?????
-        const auto ml_since_last = (flowrate_lm / 60) * time_since_last_reading.raw();
+        const auto ml_since_last = (flowrate_lm / 60) * time_since_last_reading.raw<double>();
         _ml += ml_since_last;
+
+        DBGF("ML injected: pulses: %i, ml_since_last: %f, ml total: %i, flowrate: %f", pulse_count, ml_since_last, _ml,
+             _flowrate.value())
         return ml_since_last;
     }
 
@@ -70,12 +72,11 @@ public:
         _ml = 0;
         reset_interrupt_counter();
         attach_interrupt();
-        // _pump.set_state(LogicalState::ON);
-        _pump.set_value(LogicalState::ON);
+        _pump.set_state(LogicalState::ON);
     }
 
     void stop_injection() {
-        _pump.set_value(LogicalState::OFF);
+        _pump.set_state(LogicalState::OFF);
         detach_interrupt();
         _lifetime_ml += _ml;
         _flowrate.reset_to(0);
@@ -108,7 +109,7 @@ private:
 private:
     const Config _cfg;
 
-    AnalogueOutput _pump;
+    io::DigitalActuator _pump;
     Interrupt _interrupt;
 
     spn::filter::EWMA<double> _flowrate; // tracks flowrate in liters per minute
