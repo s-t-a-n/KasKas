@@ -23,15 +23,15 @@ using spn::core::Exception;
 using spn::core::time::Timer;
 using spn::eventsystem::Event;
 using spn::eventsystem::EventHandler;
-using spn::filter::EWMA;
+using EWMA = spn::filter::EWMA<double>;
 
 using Events = kaskas::Events;
 using EventSystem = spn::core::EventSystem;
 
 class Fluidsystem final : public Component {
 public:
-    using GroundMoistureSensorFilter = EWMA<double>;
-    using GroundMoistureSensor = Sensor<AnalogueInput, GroundMoistureSensorFilter>;
+    // using GroundMoistureSensorFilter = EWMA;
+    // using GroundMoistureSensor = Sensor<AnalogueInput, GroundMoistureSensorFilter>;
 
     struct Config {
         Pump::Config pump_cfg;
@@ -140,7 +140,28 @@ public:
         }
     }
 
-    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override {
+        using namespace prompt;
+        auto model = std::make_unique<RPCRecipe>(RPCRecipe(
+            "FLU", //
+            {
+                RPCModel(
+                    "timeSinceLastWatering",
+                    [this](const OptStringView& unit_of_time) {
+                        if (unit_of_time == "m")
+                            return RPCResult(std::to_string(time_m(_pump.time_since_last_injection()).printable()));
+                        if (unit_of_time == "h")
+                            return RPCResult(std::to_string(time_h(_pump.time_since_last_injection()).printable()));
+                        return RPCResult(std::to_string(time_s(_pump.time_since_last_injection()).printable()));
+                    }),
+                RPCModel("waterNow",
+                         [this](const OptStringView& amount_in_ml) {
+                             evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(1), Event::Data()));
+                             return RPCResult(RPCResult::State::OK);
+                         }),
+            }));
+        return std::move(model);
+    }
     void sideload_providers(io::VirtualStackFactory& ssf) override {
         ssf.hotload_provider(DataProviders::SOIL_MOISTURE_SETPOINT, std::make_shared<io::ContinuousValue>([this]() {
                                  return this->_cfg.ground_moisture_threshold;

@@ -15,8 +15,7 @@
 #include <utility>
 
 namespace kaskas::io {
-
-using spn::structure::Array;
+using ::spn::structure::Array;
 
 // todo: swap alias with base, make ContinuesValue the base, etc
 using ContinuousValue = AnalogueSensor;

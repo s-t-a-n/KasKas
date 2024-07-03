@@ -2,6 +2,7 @@
 
 #include <spine/core/time.hpp>
 #include <spine/core/timers.hpp>
+#include <spine/filter/filterstack.hpp>
 #include <spine/structure/array.hpp>
 
 #include <optional>
@@ -30,6 +31,24 @@ public:
 
 private:
     std::optional<IntervalTimer> _timer;
+};
+
+class FilteredPeripheral : public Peripheral {
+public:
+    using Filter = spn::filter::Filter<double>;
+
+    // using Peripheral::Peripheral;
+    explicit FilteredPeripheral(const std::optional<time_ms>& sampling_interval = std::nullopt,
+                                size_t number_of_filters = 0)
+        : Peripheral(sampling_interval), _fs(number_of_filters) {}
+
+    void attach_filter(std::unique_ptr<Filter> filter) {
+        assert(_fs.max_number_of_filters() > 0);
+        _fs.attach_filter(std::move(filter));
+    }
+
+protected:
+    spn::filter::Stack<double> _fs;
 };
 
 } // namespace kaskas::io

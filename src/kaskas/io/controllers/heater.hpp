@@ -19,18 +19,18 @@ using spn::controller::PID;
 using spn::core::time::AlarmTimer;
 using spn::core::time::IntervalTimer;
 using spn::core::time::Timer;
-using spn::filter::EWMA;
+// using spn::filter::EWMA;
 
 // todo: put this in a configuration file
 
-constexpr double MIN_AMBIENT_TEMPERATURE = 5.0;
-constexpr double MAX_AMBIENT_TEMPERATURE = 45.0;
+constexpr double MIN_AMBIENT_TEMPERATURE = 12.0;
+constexpr double MAX_AMBIENT_TEMPERATURE = 40.0;
 
-constexpr double MIN_INSIDE_TEMPERATURE = 8.0;
+constexpr double MIN_INSIDE_TEMPERATURE = 12.0;
 constexpr double MAX_INSIDE_TEMPERATURE = 40.0;
 
-constexpr double MIN_SURFACE_TEMPERATURE = 8.0;
-constexpr double MAX_SURFACE_TEMPERATURE = 65.0;
+constexpr double MIN_SURFACE_TEMPERATURE = 12.0;
+constexpr double MAX_SURFACE_TEMPERATURE = 50.0;
 
 // maximal error from setpoint in degrees that is allowed to happen for timewindow TRP_STABLE_TIMEWINDOW until thermal
 // runaway is considered

@@ -32,8 +32,7 @@ public:
 public:
     explicit Pump(io::HardwareStack& hws, Config&& cfg)
         : _cfg(cfg), _pump(hws.digital_actuator(_cfg.pump_actuator_idx)), _interrupt(std::move(cfg.interrupt_cfg)),
-          _flowrate(
-              Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw<double>() / 2.0, .invert = false}) {}
+          _flowrate(Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw<double>() / 2.0}) {}
 
     void initialize() { _interrupt.initialize(); }
 
@@ -51,7 +50,7 @@ public:
         const auto flowrate_lm =
             ((_cfg.reading_interval.raw<double>() / time_since_last_reading.raw<double>()) * pulse_count)
             / _cfg.ml_pulse_calibration;
-        _flowrate.new_reading(flowrate_lm);
+        _flowrate.new_sample(flowrate_lm);
         // Divide the flow rate in litres/minute by 60 to determine how many litres have
         // passed through the sensor in this interval, then multiply by the milliseconds passed to
         // convert to millilitres.

@@ -3,6 +3,9 @@
 #include "kaskas/data_providers.hpp"
 #include "kaskas/prompt/rpc.hpp"
 
+#include <spine/core/debugging.hpp>
+#include <spine/core/exception.hpp>
+
 namespace kaskas::io {
 
 /// Encapsulates a single provider of data

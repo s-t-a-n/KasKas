@@ -7,6 +7,7 @@
 #include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
+#include <spine/filter/filterstack.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
 
 #include <AH/STL/cstdint>
@@ -22,20 +23,15 @@ public:
         time_ms request_timeout = time_ms(100);
 
         time_ms sampling_interval = time_s(1);
-
-        BandPass::Config filter_cfg = // medium band pass to reject significant outliers
-            BandPass::Config{.mode = BandPass::Mode::RELATIVE,
-                             .mantissa = 1,
-                             .decades = 0.01,
-                             .offset = 0,
-                             .rejection_limit = 10,
-                             .throw_on_rejection_limit = true};
     };
 
 public:
     SHT31TempHumidityProbe(const Config& cfg)
-        : Peripheral(cfg.sampling_interval), _cfg(cfg), _sht31(SHT31(_cfg.i2c_address)),
-          _temperature_filter(std::move(_cfg.filter_cfg)), _humidity_filter(std::move(_cfg.filter_cfg)) {}
+        : Peripheral(cfg.sampling_interval), _cfg(cfg), _sht31(SHT31(_cfg.i2c_address)), _temperature_fs(1),
+          _humidity_fs(1) {
+        _temperature_fs.attach_filter(BandPass::Middle());
+        _humidity_fs.attach_filter(BandPass::Middle());
+    }
 
     void initialize() override {
         // DBGF("initializing SHT31TempHumidityProbe");
@@ -78,7 +74,11 @@ public:
             // todo: handle this through hardware stack
             assert(!"SHT31TempHumidityProbe: request expired. is the connection okay?");
         }
+
+        _temperature_fs.new_sample(_sht31.getTemperature());
+        _humidity_fs.new_sample(_sht31.getHumidity());
     }
+
     void safe_shutdown(bool critical) override {
         _sht31.heatOff(); // make sure that heater is off
     }
@@ -91,8 +91,8 @@ public:
         SHT31TempHumidityProbe::update();
         return humidity();
     }
-    double temperature() { return _sht31.getTemperature(); }
-    double humidity() { return _sht31.getHumidity(); }
+    double temperature() { return _temperature_fs.value(); }
+    double humidity() { return _humidity_fs.value(); }
 
     AnalogueSensor temperature_provider() {
         return {[this]() { return this->temperature(); }};
@@ -118,7 +118,7 @@ private:
     const Config _cfg;
     SHT31 _sht31;
 
-    BandPass _temperature_filter;
-    BandPass _humidity_filter;
+    spn::filter::Stack<double> _temperature_fs;
+    spn::filter::Stack<double> _humidity_fs;
 };
 } // namespace kaskas::io
