@@ -10,7 +10,21 @@ from typing import Optional
 from pathlib import Path
 from enum import Enum
 import pandas as pd  # read csv, df manipulation
+import errno
+from multiprocessing.synchronize import Lock as LockType
+from multiprocessing import Lock
+import argparse
 
+# parser = argparse.ArgumentParser('Start house server')
+# parser.add_argument('-v', '--verbose', action='store_true',
+#                     help='Print logging output')
+# parser.add_argument('-g', '--gui', action='store_true',
+#                     help='Show graphical user interface')
+# args = parser.parse_args()
+
+#########################################
+
+# ########################################
 
 def is_float(string: str) -> bool:
     return string.replace(".", "").isnumeric()
@@ -23,9 +37,7 @@ def epoch(dt64) -> int:
 epoch_start = epoch(np.datetime64("now"))
 
 
-""" Find available serial ports"""
-
-
+""" Find available serial ports """
 def find_serial_ports():
     ports = glob.glob("/dev/ttyACM[0-9]*")
     res = []
@@ -52,9 +64,11 @@ class KasKasAPI:
     """_summary_"""
 
     _serial: Serial
+    _lock: LockType
 
-    def __init__(self, ser: Serial) -> None:
-        self._serial = ser
+    def __init__(self, serial: Serial) -> None:
+        self._serial = serial
+        self._lock = Lock()
 
     class OP(Enum):
         FUNCTION_CALL = "!"
@@ -86,15 +100,16 @@ class KasKasAPI:
     def request(
         self, module: str, function: str, arguments: Optional[list[str]] = None
     ) -> Response:
-        self._flush()
-        # print("hello rrr")
+        with self._lock:
+            self._flush()
+            # print("hello rrr")
 
-        argument_substring = ":" + "|".join(arguments) if arguments else ""
-        request_line = f"{module}!{function}{argument_substring}\r"
-        # print(f"writing request line {request_line}")
-        ser.write(bytearray(request_line, "ascii"))
-        ser.flush()
-        return self._read_response_for(module)
+            argument_substring = ":" + "|".join(arguments) if arguments else ""
+            request_line = f"{module}!{function}{argument_substring}\r"
+            # print(f"writing request line {request_line}")
+            ser.write(bytearray(request_line, "ascii"))
+            ser.flush()
+            return self._read_response_for(module)
 
     def _read_response_for(self, module: str, max_skipable_lines: int = 32) -> Response:
         while max_skipable_lines > 0:
@@ -165,37 +180,6 @@ class MetricCollector:
         pass
 
 
-# def api_read() -> Optional[str]:
-#     try:
-#         return ser.readline().decode("utf-8").replace('\r', '').replace('\n', '')
-#     except SerialTimeoutException:
-#         return None
-
-# def api_request(op: str) -> Optional[str]:
-#     ser.read_all() # skip everything in buffer
-#     ser.write(bytearray(op,'ascii'))
-#     ser.flush()
-#     respons = api_read()
-#     print(respons)
-#     return respons
-
-
-# def api_read_fields() -> Optional[list[str]]:
-#     response = api_request(f"MTC!getFields\r")
-
-#     fields = response.split('|')[:-1] if response else None
-#     return fields
-
-# def api_read_metrics() -> Optional[list[str]]:
-#     line = api_read()
-#     metrics = line.split('|')[:-1] if line else None
-#     if metrics and len(metrics) == 1:
-#         # no '|' was found, for now assume this is debug output
-#         print(f"DBG: {line}")
-#         return None
-#     return metrics
-
-
 def collect_to(metrics: list[str], csv_writer) -> None:
     if len(metrics) > 0 and all([is_float(s) for s in metrics]):
         csv_writer.writerow([datetime.now()] + metrics)
@@ -256,8 +240,14 @@ def do_datacollection(api: KasKasAPI, output_fname: Path, sampling_interval: int
             time.sleep(sampling_interval)
     print("datacollection came to a halt")
 
+# from pizco import Server
 
+# address = 'tcp://127.0.0.1:8000'
 api = KasKasAPI(ser)
+# # server = Server(api, address)
+# api_proxy = Server.serve_in_process(KasKasAPI,(),{ "serial": ser },address) # ,verbose=args.verbose, gui=args.gui
+
+
 output_filename = Path("/mnt/USB/kaskas_data.csv")
 
 while True:
