@@ -47,8 +47,6 @@ protected:
                     }
                     // get rid off old recipe
                     // r.reset();
-                } else {
-                    DBGF("wtf: cmd %s, name :%s", std::string(r->command()).c_str(), std::string(name).c_str())
                 }
             }
             new_cookbook.emplace_back(std::move(rf.extract_recipe()));

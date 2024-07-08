@@ -60,8 +60,10 @@ public:
     /// Safely shutdown all peripherals
     void safe_shutdown(bool critical = false) {
         for (auto& p : _peripherals) {
-            if (p)
+            if (p) {
+                HAL::delay(time_ms(100));
                 p->safe_shutdown(critical);
+            }
         }
     }
 

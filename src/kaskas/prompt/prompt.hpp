@@ -49,8 +49,8 @@ public:
     void update() {
         assert(_dl);
 
-        if (const auto message = _dl->receive_message()) {
-            DBGF("update: {%s}", message->as_string().c_str());
+        while (const auto message = _dl->receive_message()) {
+            // DBGF("update: {%s}", message->as_string().c_str());
             // Serial.println("------------------------");
             // Serial.print("Received back: {");
             // const auto s = message->as_string();
@@ -77,10 +77,8 @@ public:
                     _dl->send_message(*reply);
             } else {
                 // Serial.print("Invalid message");
-                DBGF("Couldnt build rpc from message");
+                DBGF("Couldnt build rpc from message: {%s}", message->as_string().c_str());
             }
-        } else {
-            // DBGF("No message at this time");
         }
     }
 

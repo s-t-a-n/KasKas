@@ -39,6 +39,7 @@ public:
         const std::function<double()> value_f;
         const std::function<void(double)> set_value_f;
         const std::function<void(double, double, time_ms)> fade_to_f;
+        const std::function<void(double, time_ms)> creep_to_f;
     };
     AnalogueActuator(const FunctionMap& map) : _map(map){};
 
@@ -47,6 +48,7 @@ public:
     void fade_to(double setpoint, double increment = 0.1, time_ms increment_interval = time_ms(150)) {
         _map.fade_to_f(setpoint, increment, increment_interval);
     }
+    void creep_to(double setpoint, time_ms travel_time) { _map.creep_to_f(setpoint, travel_time); }
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name, const std::string_view& root) {
         return {};

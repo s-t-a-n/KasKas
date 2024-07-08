@@ -22,8 +22,9 @@ public:
     void initialize() override {
         assert(evsys());
         evsys()->attach(Events::SensorFollowUp, this);
+        evsys()->attach(Events::ShutDown, this);
 
-        evsys()->schedule(evsys()->event(Events::SensorFollowUp, _hws.time_until_next_update(), Event::Data()));
+        evsys()->schedule(evsys()->event(Events::SensorFollowUp, _hws.time_until_next_update()));
     }
 
     void safe_shutdown(State state) override {
@@ -33,17 +34,28 @@ public:
 
     void handle_event(const Event& event) override {
         switch (static_cast<Events>(event.id())) {
-        case Events::SensorFollowUp: {
-            // DBG("Hardware: SensorFollowUp");
+        case Events::SensorFollowUp:
             _hws.update_all();
-            evsys()->schedule(evsys()->event(Events::SensorFollowUp, _hws.time_until_next_update(), Event::Data()));
+            evsys()->schedule(evsys()->event(Events::SensorFollowUp, _hws.time_until_next_update()));
             break;
-        }
+        case Events::ShutDown: spn::throw_exception(spn::runtime_exception("Scheduled shutdown.")); break;
         default: assert(!"Event was not handled!"); break;
         };
     }
 
-    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override {
+        using namespace prompt;
+        auto model = std::make_unique<RPCRecipe>(
+            RPCRecipe("HW", //
+                      {
+                          RPCModel("shutdown",
+                                   [this](const OptStringView& _) {
+                                       evsys()->schedule(evsys()->event(Events::ShutDown, time_s(1)));
+                                       return RPCResult(RPCResult::State::OK);
+                                   }),
+                      }));
+        return std::move(model);
+    }
     void sideload_providers(io::VirtualStackFactory& ssf) override {}
 
 private:

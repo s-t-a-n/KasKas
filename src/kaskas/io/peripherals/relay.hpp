@@ -19,6 +19,7 @@ public:
     struct Config {
         HAL::DigitalOutput::Config pin_cfg;
         time_ms backoff_time;
+        bool throw_on_early_flip = true;
     };
 
 public:
@@ -30,9 +31,17 @@ public:
 
     void set_state(LogicalState state) {
         // hard protect against flipping relay back on within backoff threshold
-        if (_backoff_timer && _cfg.backoff_time > time_ms(0) && _backoff_timer->timeSinceLast() < _cfg.backoff_time
-            && state == ON && _pin.state() == OFF) {
-            spn::throw_exception(spn::runtime_error("Tried to flip relay within backoff threshold"));
+        const auto time_since_last_flip = _backoff_timer->timeSinceLast();
+        if (_backoff_timer && _cfg.backoff_time > time_ms(0) && time_since_last_flip < _cfg.backoff_time && state == ON
+            && _pin.state() == OFF) {
+            if (_cfg.throw_on_early_flip) {
+                spn::throw_exception(spn::runtime_exception("Tried to flip relay within backoff threshold"));
+            } else {
+                DBG("--------------------------------------------------------------------------");
+                DBGF("Tried to flip relay within backoff threshold: %ims since last flip",
+                     time_ms(time_since_last_flip).printable());
+                DBG("--------------------------------------------------------------------------");
+            }
         }
 
         if (!_backoff_timer && _cfg.backoff_time > time_s(0))

@@ -238,7 +238,7 @@ public:
 
     void autotune(PID::TuneConfig&& cfg, std::function<void()> process_loop = {}) {
         block_until_setpoint(cfg.startpoint);
-        set_setpoint(cfg.setpoint);
+        set_target_setpoint(cfg.setpoint);
         const auto process_setter = [&](double pwm_value) {
             const auto normalized_response = (pwm_value - _cfg.pid_cfg.output_lower_limit)
                                              / (_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit);
@@ -255,7 +255,7 @@ public:
         update_state();
     }
 
-    void set_setpoint(const Value setpoint) {
+    void set_target_setpoint(const Value setpoint) {
         _pid.set_target_setpoint(std::min(_cfg.max_heater_setpoint, setpoint));
         _climate_trp.adjust_setpoint(setpoint);
     }
@@ -292,18 +292,18 @@ private:
         //
         if (_surface_temperature.value() < MIN_SURFACE_TEMPERATURE
             || _surface_temperature.value() > MAX_SURFACE_TEMPERATURE) {
-            spn::throw_exception(spn::assertion_error("Heater: Heater element temperature out of limits"));
+            spn::throw_exception(spn::assertion_exception("Heater: Heater element temperature out of limits"));
         }
         if (_climate_temperature.value() < MIN_INSIDE_TEMPERATURE
             || _climate_temperature.value() > MAX_INSIDE_TEMPERATURE) {
-            spn::throw_exception(spn::assertion_error("Heater: Climate temperature out of limits"));
+            spn::throw_exception(spn::assertion_exception("Heater: Climate temperature out of limits"));
         }
 
         if (_climate_trp.is_runaway()) {
             HAL::printf("Runaway detected: surfaceT %.2f, climateT %.2f, throttle: %i/255, state: %s",
                         _surface_temperature.value(), _climate_temperature.value(), int(throttle() * 255),
                         std::string(as_stringview(state())).c_str());
-            spn::throw_exception(spn::assertion_error("Heater: Run away detected"));
+            spn::throw_exception(spn::assertion_exception("Heater: Run away detected"));
         }
     }
 

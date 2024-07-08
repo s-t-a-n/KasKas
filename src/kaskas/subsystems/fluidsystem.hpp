@@ -37,7 +37,7 @@ public:
         Pump::Config pump_cfg;
         io::HardwareStack::Idx ground_moisture_sensor_idx;
 
-        float ground_moisture_threshold; // value between 0.0 and 1.0 with 1.0 being the moistest of states the
+        float ground_moisture_target_pc; // value between 0.0 and 1.0 with 1.0 being the moistest of states the
         // sensor can pick up
         uint16_t inject_dosis_ml; // dosis in ml to inject
         time_m inject_check_interval; // interval between checking if injection is needed
@@ -63,10 +63,10 @@ public:
 
         DBGF("Fluidsystem: scheduling WaterInjectCheck event in %u hours (%u minutes).",
              time_h(_cfg.inject_check_interval).printable(), time_m(_cfg.inject_check_interval).printable());
-        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
+        evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval));
 
-        // evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(5), Event::Data()));
-        // evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_s(30), Event::Data()));
+        // evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(5)));
+        // evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_s(30)));
     }
 
     void safe_shutdown(State state) override { _pump.stop_injection(); }
@@ -83,24 +83,23 @@ public:
             // DBG("Fluidsystem: WaterInjectCheck");
             DBGF("Fluidsystem: WaterInjectCheck: Moisture level at %.2f (threshold at %.2f, time since last injection: "
                  "%u s)",
-                 _ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
+                 _ground_moisture_sensor.value(), _cfg.ground_moisture_target_pc,
                  time_s(_pump.time_since_last_injection()).printable());
-            if (_ground_moisture_sensor.value() < _cfg.ground_moisture_threshold
+            if (_ground_moisture_sensor.value() < _cfg.ground_moisture_target_pc
                 && _pump.time_since_last_injection() >= _cfg.inject_check_interval) {
                 DBGF("Fluidsystem: Moisture level (%.2f) crossed threshold (%.2f) and %u s since last, calling for "
                      "injection start.",
-                     _ground_moisture_sensor.value(), _cfg.ground_moisture_threshold,
+                     _ground_moisture_sensor.value(), _cfg.ground_moisture_target_pc,
                      time_s(_pump.time_since_last_injection()).printable());
-                evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(1), Event::Data()));
+                evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(1)));
             }
-            evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval, Event::Data()));
+            evsys()->schedule(evsys()->event(Events::WaterInjectCheck, _cfg.inject_check_interval));
             break;
         }
         case Events::WaterInjectStart: {
             DBG("Fluidsystem: WaterInjectStart");
             _pump.start_injection();
-            evsys()->schedule(
-                evsys()->event(Events::WaterInjectFollowUp, _cfg.pump_cfg.reading_interval, Event::Data()));
+            evsys()->schedule(evsys()->event(Events::WaterInjectFollowUp, _cfg.pump_cfg.reading_interval));
             break;
         }
         case Events::WaterInjectFollowUp: {
@@ -112,7 +111,7 @@ public:
                 // not enough pumped within space of time
                 DBG("Fluidsystem: WaterInjectFollowUp: not enough pumped within space of time");
                 stop = true;
-                evsys()->schedule(evsys()->event(Events::OutOfWater, time_ms(100), Event::Data()));
+                evsys()->schedule(evsys()->event(Events::OutOfWater, time_ms(100)));
             }
             if (_pump.ml_since_injection_start() >= _cfg.inject_dosis_ml) {
                 // reached dosis
@@ -122,10 +121,9 @@ public:
 
             if (stop) {
                 DBG("Fluidsystem: Stopping injection");
-                evsys()->trigger(evsys()->event(Events::WaterInjectStop, time_ms(0), Event::Data()));
+                evsys()->trigger(evsys()->event(Events::WaterInjectStop, time_ms(0)));
             } else {
-                evsys()->schedule(
-                    evsys()->event(Events::WaterInjectFollowUp, _cfg.pump_cfg.reading_interval, Event::Data()));
+                evsys()->schedule(evsys()->event(Events::WaterInjectFollowUp, _cfg.pump_cfg.reading_interval));
             }
             break;
         }
@@ -156,7 +154,7 @@ public:
                     }),
                 RPCModel("waterNow",
                          [this](const OptStringView& amount_in_ml) {
-                             evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(1), Event::Data()));
+                             evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(1)));
                              return RPCResult(RPCResult::State::OK);
                          }),
             }));
@@ -164,7 +162,7 @@ public:
     }
     void sideload_providers(io::VirtualStackFactory& ssf) override {
         ssf.hotload_provider(DataProviders::SOIL_MOISTURE_SETPOINT, std::make_shared<io::ContinuousValue>([this]() {
-                                 return this->_cfg.ground_moisture_threshold;
+                                 return this->_cfg.ground_moisture_target_pc;
                              }));
     }
 

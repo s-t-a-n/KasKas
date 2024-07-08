@@ -24,14 +24,14 @@ public:
 
 public:
     DS18B20TempProbe(const Config& cfg) : FilteredPeripheral(cfg.sampling_interval, 1), _cfg(cfg), _ds18b20(_cfg.pin) {
-        _fs.attach_filter(BandPass::Middle());
+        _fs.attach_filter(BandPass::Broad());
     }
     ~DS18B20TempProbe() override = default;
 
     void initialize() override {
         _ds18b20_probe_selector = _ds18b20.selectNext();
         if (_ds18b20_probe_selector == 0) {
-            spn::throw_exception(spn::assertion_error("DS18B20TempProbe could not be initialized"));
+            spn::throw_exception(spn::assertion_exception("DS18B20TempProbe could not be initialized"));
         }
 
         update();

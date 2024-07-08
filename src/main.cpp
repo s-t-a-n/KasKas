@@ -8,7 +8,10 @@
 
 #    include <spine/controller/pid.hpp>
 #    include <spine/core/debugging.hpp>
+#    include <spine/filter/implementations/bandpass.hpp>
 #    include <spine/filter/implementations/ewma.hpp>
+#    include <spine/filter/implementations/invert.hpp>
+#    include <spine/filter/implementations/mapped_range.hpp>
 
 using KasKas = kaskas::KasKas;
 using HardwareStack = kaskas::io::HardwareStack;
@@ -28,6 +31,8 @@ using spn::eventsystem::EventSystem;
 
 using BandPass = spn::filter::BandPass<double>;
 using EWMA = spn::filter::EWMA<double>;
+using MappedRange = spn::filter::MappedRange<double>;
+using Invert = spn::filter::Invert<double>;
 using Heater = kaskas::io::Heater;
 
 // volatile uint8_t interruptor = 0;
@@ -101,6 +106,7 @@ using namespace kaskas;
 // unsigned long last_free_memory = 0;
 
 void setup() {
+    HAL::delay(time_s(2)); // give time for console to attach before first output
     HAL::initialize(HAL::Config{.baudrate = 115200});
     HAL::println("Wake up");
 
@@ -394,13 +400,18 @@ void setup() {
         }
 
         {
+            // constexpr double moisture_sensor_limits[] = {0.4, 0.6}; // experimentally obtained, low = wet, high = dry
+            constexpr double moisture_sensor_limits[] = {0.3, 0.7}; // experimentally obtained, low = wet, high = dry
+            // constexpr double moisture_sensor_limits[] = {0.0, 1.0}; // experimentally obtained, low = wet, high = dry
             const auto cfg =
-                AnalogueInputPeripheral::Config{.input_cfg = HAL::AnalogueInput::Config{.pin = A2, .pull_up = false},
+                AnalogueInputPeripheral::Config{.input_cfg = HAL::AnalogueInput::Config{.pin = A1, .pull_up = false},
                                                 .sampling_interval = time_s(10),
-                                                .number_of_filters = 2};
+                                                .number_of_filters = 4};
             auto peripheral = std::make_unique<AnalogueInputPeripheral>(std::move(cfg));
-            peripheral->attach_filter(BandPass::Middle());
+            peripheral->attach_filter(BandPass::Broad());
             peripheral->attach_filter(EWMA::Long());
+            peripheral->attach_filter(Invert::Invertor());
+            peripheral->attach_filter(MappedRange::Percentage(moisture_sensor_limits[0], moisture_sensor_limits[1]));
             auto moisture_provider = std::make_shared<AnalogueSensor>(peripheral->analogue_value_provider());
 
             sf.hotload_provider(DataProviders::SOIL_MOISTURE, std::move(moisture_provider));
@@ -408,8 +419,9 @@ void setup() {
         }
 
         {
+            const auto sample_speed = time_ms(50);
             const auto cfg = AnalogueOutputPeripheral::Config{.pin = 5, .active_on_low = true};
-            auto peripheral = std::make_unique<AnalogueOutputPeripheral>(std::move(cfg));
+            auto peripheral = std::make_unique<AnalogueOutputPeripheral>(std::move(cfg), sample_speed);
             auto state_provider = std::make_shared<AnalogueActuator>(peripheral->analogue_output_provider());
 
             sf.hotload_provider(DataProviders::CLIMATE_FAN, std::move(state_provider));
@@ -459,7 +471,7 @@ void setup() {
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
-            sf.hotload_provider(DataProviders::VIOLET_SPECTRUM, std::move(state_provider));
+            sf.hotload_provider(DataProviders::REDBLUE_SPECTRUM, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::VIOLET_SPECTRUM_RELAY, std::move(peripheral));
         }
 
@@ -469,7 +481,7 @@ void setup() {
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
-            sf.hotload_provider(DataProviders::BROAD_SPECTRUM, std::move(state_provider));
+            sf.hotload_provider(DataProviders::FULL_SPECTRUM, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::BROAD_SPECTRUM_RELAY, std::move(peripheral));
         }
 
@@ -498,7 +510,7 @@ void setup() {
         auto prompt_cfg = enable_prompt
                               ? std::make_optional(kaskas::Prompt::Config{.message_length = 64, .pool_size = 10})
                               : std::nullopt;
-        auto kk_cfg = KasKas::Config{.esc_cfg = esc_cfg, .component_cap = 16, .prompt_cfg = prompt_cfg};
+        auto kk_cfg = KasKas::Config{.es_cfg = esc_cfg, .component_cap = 16, .prompt_cfg = prompt_cfg};
         kk = std::make_unique<KasKas>(hws, kk_cfg);
     }
 
@@ -506,7 +518,8 @@ void setup() {
     {
         using kaskas::component::ClimateControl;
 
-        const auto sample_interval = time_ms(1000);
+        const auto ventilation_sample_interval = time_s(1);
+        const auto heating_sample_interval = time_ms(1000);
         const auto max_heater_setpoint = 40.0; // maximum allowed heater setpoint
 
         auto cc_cfg = ClimateControl::Config{
@@ -514,14 +527,20 @@ void setup() {
             .clock_idx = ENUM_IDX(DataProviders::CLOCK),
 
             .ventilation =
-                ClimateControl::Config::Ventilation{.hws_climate_fan_idx = ENUM_IDX(DataProviders::CLIMATE_FAN),
-                                                    .climate_humidity_idx = ENUM_IDX(DataProviders::CLIMATE_HUMIDITY),
-                                                    .minimal_on_duration = time_m(5),
-                                                    .maximal_on_duration = time_m(60),
-                                                    .low_humidity = 65.0,
-                                                    .high_humidity = 75.0,
-                                                    .minimal_interval = time_m(15),
-                                                    .maximal_interval = time_m(60)},
+                ClimateControl::Config::Ventilation{
+                    .hws_climate_fan_idx = ENUM_IDX(DataProviders::CLIMATE_FAN),
+                    .climate_humidity_idx = ENUM_IDX(DataProviders::CLIMATE_HUMIDITY),
+                    // .climate_fan_pid = PID::Config{.tunings = PID::Tunings{.Kp = 34.57, .Ki = 2.71, .Kd = 0},
+                    .climate_fan_pid = PID::Config{.tunings = PID::Tunings{.Kp = 37.13, .Ki = 2.17, .Kd = 3},
+                                                   .output_lower_limit = 19,
+                                                   .output_upper_limit = 90,
+                                                   .sample_interval = ventilation_sample_interval,
+                                                   .direction = PID::Direction::FORWARD},
+                    .minimal_duty_cycle = 0.20,
+                    .schedule_cfg = Schedule::Config{.blocks = {Schedule::Block{
+                                                         .start = time_h(0), .duration = time_h(24), .value = 70.0}}},
+                    .check_interval = ventilation_sample_interval},
+
             .heating = ClimateControl::Config::Heating{
                 .heating_element_fan_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_FAN),
                 .heating_element_temp_sensor_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
@@ -530,16 +549,10 @@ void setup() {
                 .heater_cfg =
                     Heater::Config{.pid_cfg =
                                        PID::Config{//
-                                                   // .tunings = PID::Tunings{.Kp = 60.841, .Ki = 0.376, .Kd =
-                                                   // 0.1}, // SURFACE_TEMP
-                                                   // .tunings =
-                                                   // PID::Tunings{.Kp = 3617, .Ki = 1210, .Kd = 0}, // CLIMATE
-                                                   .tunings = PID::Tunings{.Kp = 62.590051,
-                                                                           .Ki = 0.152824,
-                                                                           .Kd = 0}, // ROUGH COPY
+                                                   .tunings = PID::Tunings{.Kp = 62.590051, .Ki = 0.152824, .Kd = 0},
                                                    .output_lower_limit = 0,
                                                    .output_upper_limit = 255,
-                                                   .sample_interval = sample_interval},
+                                                   .sample_interval = heating_sample_interval},
                                    .max_heater_setpoint = max_heater_setpoint,
                                    .heating_surface_temperature_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
                                    .heating_element_idx = ENUM_IDX(DataProviders::HEATING_ELEMENT),
@@ -554,10 +567,12 @@ void setup() {
                                    Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
                                    Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
                                    Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
-                                   Schedule::Block{.start = time_h(12), .duration = time_h(8), .value = 27.0},
+                                   Schedule::Block{.start = time_h(12),
+                                                   .duration = time_h(8),
+                                                   .value = 24.0}, // 24.0 for seedling, 27.0 for plant
                                    Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0}, // 24.0
                                    Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}}, // 16.0
-                .check_interval = time_s(1)}};
+                .check_interval = heating_sample_interval}};
 
         auto ventilation = std::make_unique<ClimateControl>(*hws, cc_cfg);
         kk->hotload_component(std::move(ventilation));
@@ -566,11 +581,26 @@ void setup() {
     {
         using kaskas::component::Growlights;
         auto growlights_cfg =
-            Growlights::Config{.violet_spectrum_actuator_idx = ENUM_IDX(DataProviders::VIOLET_SPECTRUM),
-                               .broad_spectrum_actuator_idx = ENUM_IDX(DataProviders::BROAD_SPECTRUM),
-                               .clock_idx = ENUM_IDX(DataProviders::CLOCK),
-                               .starting_hour = time_h{6},
-                               .duration_hours = time_h{16}};
+            Growlights::Config{
+                .redblue_spectrum_actuator_idx = ENUM_IDX(DataProviders::REDBLUE_SPECTRUM),
+                .redblue_spectrum_schedule =
+                    Schedule::Config{
+                        .blocks =
+                            {
+                                Schedule::Block{.start = time_h(8), .duration = time_h(12), .value = LogicalState::ON},
+                                Schedule::Block{
+                                    .start = time_h(20), .duration = time_h(12), .value = LogicalState::OFF},
+                            }},
+
+                .full_spectrum_actuator_idx = ENUM_IDX(DataProviders::FULL_SPECTRUM),
+                .full_spectrum_schedule =
+                    Schedule::Config{
+                        .blocks =
+                            {
+                                Schedule::Block{.start = time_h(6), .duration = time_h(16), .value = LogicalState::ON},
+                                Schedule::Block{.start = time_h(22), .duration = time_h(8), .value = LogicalState::OFF},
+                            }},
+                .clock_idx = ENUM_IDX(DataProviders::CLOCK)};
 
         auto growlights = std::make_unique<Growlights>(*hws, growlights_cfg);
         kk->hotload_component(std::move(growlights));
@@ -598,7 +628,7 @@ void setup() {
         auto fluidsystem_cfg = Fluidsystem::Config{
             .pump_cfg = pump_cfg, //
             .ground_moisture_sensor_idx = ENUM_IDX(DataProviders::SOIL_MOISTURE),
-            .ground_moisture_threshold = 0.5, // 0.65
+            .ground_moisture_target_pc = 25, // target moisture percentage
             .inject_dosis_ml = 100,
             .inject_check_interval = time_h(12), // time_h(16)
         };
@@ -633,8 +663,14 @@ void setup() {
     }
 
     {
+        static constexpr auto datasources = {DataProviders::CLIMATE_TEMP,          DataProviders::HEATING_SURFACE_TEMP,
+                                             DataProviders::AMBIENT_TEMP,          DataProviders::HEATING_SETPOINT,
+                                             DataProviders::HEATING_ELEMENT,       DataProviders::CLIMATE_HUMIDITY,
+                                             DataProviders::CLIMATE_FAN,           DataProviders::SOIL_MOISTURE,
+                                             DataProviders::SOIL_MOISTURE_SETPOINT};
+
         using kaskas::component::Metrics;
-        auto cfg = Metrics::Config{};
+        auto cfg = Metrics::Config{.initial_warm_up_time = time_s(30), .active_dataproviders = datasources};
 
         auto ctrl = std::make_unique<Metrics>(*hws, cfg);
         kk->hotload_component(std::move(ctrl));

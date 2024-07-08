@@ -35,7 +35,7 @@ using spn::structure::Vector;
 class KasKas {
 public:
     struct Config {
-        EventSystem::Config esc_cfg;
+        EventSystem::Config es_cfg;
         uint16_t component_cap = 1;
 
         std::optional<Prompt::Config> prompt_cfg;
@@ -43,7 +43,7 @@ public:
 
 public:
     explicit KasKas(std::shared_ptr<io::HardwareStack> hws, Config& cfg)
-        : _cfg(cfg), _evsys({cfg.esc_cfg}), _hws(std::move(hws)),
+        : _cfg(cfg), _evsys({cfg.es_cfg}), _hws(std::move(hws)),
           _components(std::vector<std::unique_ptr<Component>>()) {
         if (_cfg.prompt_cfg) {
             using prompt::SerialDatalink;
@@ -107,7 +107,7 @@ public:
         if (_cfg.prompt_cfg) {
             if (auto recipe = component->rpc_recipe()) {
                 assert(recipe != nullptr);
-                DBGF("Hotloading component rpc recipes!");
+                // DBGF("Hotloading component rpc recipes!");
                 hotload_rpc_recipe(std::move(recipe));
             }
         }

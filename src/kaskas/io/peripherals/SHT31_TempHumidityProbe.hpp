@@ -29,8 +29,8 @@ public:
     SHT31TempHumidityProbe(const Config& cfg)
         : Peripheral(cfg.sampling_interval), _cfg(cfg), _sht31(SHT31(_cfg.i2c_address)), _temperature_fs(1),
           _humidity_fs(1) {
-        _temperature_fs.attach_filter(BandPass::Middle());
-        _humidity_fs.attach_filter(BandPass::Middle());
+        _temperature_fs.attach_filter(BandPass::Broad());
+        _humidity_fs.attach_filter(BandPass::Broad());
     }
 
     void initialize() override {
@@ -44,7 +44,7 @@ public:
         update();
 
         if (!is_ready()) {
-            spn::throw_exception(spn::assertion_error("SHT31TempHumidityProbe could not be initialized"));
+            spn::throw_exception(spn::assertion_exception("SHT31TempHumidityProbe could not be initialized"));
         }
         DBGF("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C", read_humidity(),
              read_temperature());

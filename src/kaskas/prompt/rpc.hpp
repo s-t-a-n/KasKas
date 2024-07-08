@@ -25,7 +25,7 @@ public:
     RPCModel(const std::string& name, const std::function<RPCResult(const OptStringView&)>& call)
         : _name(name), _call(call) {
         const auto s = std::string(name);
-        DBGF("initializing RPCModel with name %s", s.c_str());
+        // DBGF("initializing RPCModel with name %s", s.c_str());
     }
 
     std::string_view name() const { return _name; }
@@ -208,7 +208,7 @@ public:
         const auto recipe = recipe_for_command(msg.cmd());
         if (!recipe) {
             DBGF("no recipe found for message: {%s}", msg.as_string().c_str());
-            Serial.println("no recipe found");
+            // Serial.println("no recipe found");
             return {};
         }
         assert(*recipe != nullptr);
@@ -241,7 +241,7 @@ public:
 
 protected:
     std::optional<RPC> build_rpc(const RPCRecipe& recipe, Dialect::OP optype, const Message& msg) {
-        DBGF("build_rpc: start : {%s}", msg.as_string().c_str());
+        // DBGF("build_rpc: start : {%s}", msg.as_string().c_str());
 
         if (!msg.key()) {
             return {};
@@ -251,7 +251,7 @@ protected:
         if (found_model == nullptr) {
             // no model found
             DBGF("build_rpc: No model found for msg {%s}", msg.as_string().c_str());
-            Serial.println("no model found");
+            // Serial.println("no model found");
             return {};
         }
 

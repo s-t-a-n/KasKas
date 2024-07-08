@@ -121,7 +121,7 @@ public:
         // m._value = std::string_view(buffer->raw + operant_idx + 1, buffer->length - operant_idx - 1 -
         // newline_at_end);
         m._buffer = std::move(buffer);
-        DBGF("from buffer: {%s}", m.as_string().c_str());
+        // DBGF("from buffer: {%s}", m.as_string().c_str());
         return std::move(m);
     }
 

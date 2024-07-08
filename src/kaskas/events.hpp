@@ -7,14 +7,17 @@ namespace kaskas {
 
 enum class Events {
     WakeUp, //
+    ShutDown,
     UIButtonCheck,
     UIWatchDog,
     UIPromptFollowUp,
     SensorFollowUp,
     OutOfWater,
     VentilationFollowUp,
-    VentilationStart,
-    VentilationStop,
+    VentilationCycleCheck,
+    VentilationCycleStart,
+    VentilationCycleStop,
+    VentilationAutoTune,
     HeatingAutoTune,
     HeatingFollowUp,
     HeatingCycleCheck,
@@ -24,15 +27,14 @@ enum class Events {
     WaterInjectStart,
     WaterInjectFollowUp,
     WaterInjectStop,
-    LightCycleStart,
-    LightCycleEnd,
-    VioletSpectrumTurnOn,
-    VioletSpectrumTurnOff,
-    BroadSpectrumTurnOn,
-    BroadSpectrumTurnOff,
-    MetricsStartDatadump,
-    MetricsFollowUp,
-    MetricsStopDatadump,
+    LightRedBlueSpectrumCycleCheck,
+    LightRedBlueSpectrumCycleStart,
+    LightRedBlueSpectrumCycleEnd,
+    LightFullSpectrumCycleCheck,
+    LightFullSpectrumCycleStart,
+    LightFullSpectrumCycleEnd,
+    MetricsReady,
+    MetricsTainted,
     Size
 };
 }; // namespace kaskas

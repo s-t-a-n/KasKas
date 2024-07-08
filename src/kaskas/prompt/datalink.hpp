@@ -57,7 +57,7 @@ public:
         }
         const auto s1 = _unfinished->length;
 
-        DBGF("unfinished length : %i", _unfinished->length);
+        // DBGF("unfinished length : %i", _unfinished->length);
 
         assert(_unfinished->capacity > 0);
         _unfinished->length +=
@@ -108,7 +108,7 @@ public:
         newbuffer->reset();
 
         // copy in the line
-        DBGF("prompt: copying");
+        // DBGF("prompt: copying");
         newbuffer->length = nl + 1;
         assert(_unfinished->length >= newbuffer->length);
         strlcpy(newbuffer->raw, _unfinished->raw, newbuffer->length);
@@ -118,7 +118,7 @@ public:
         // delay(100);
 
         // move forward the remaining of the unfinished line
-        DBGF("prompt: memmoving");
+        // DBGF("prompt: memmoving");
         // Serial.print("unfinished length before MEMMOVE: ");
         // Serial.println(_unfinished->length);
         // Serial.print("newbuffer length before MEMMOVE: ");
@@ -127,7 +127,7 @@ public:
         _unfinished->length -= newbuffer->length;
         memmove(_unfinished->raw, _unfinished->raw + newbuffer->length, _unfinished->length);
         _unfinished->raw[_unfinished->length] = '\0';
-        DBGF("Remaining in buffer: {%s} (removed: {%s})", _unfinished->raw, newbuffer->raw);
+        // DBGF("Remaining in buffer: {%s} (removed: {%s})", _unfinished->raw, newbuffer->raw);
         // Serial.println("memmoved line");
         // Serial.print("unfinished length when leaving: ");
         // Serial.println(_unfinished->length);

@@ -45,9 +45,9 @@ public:
         evsys()->attach(Events::UIPromptFollowUp, this);
         evsys()->attach(Events::OutOfWater, this);
 
-        evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1), Event::Data()));
-        evsys()->schedule(evsys()->event(Events::UIWatchDog, _cfg.watchdog_interval, Event::Data()));
-        evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, time_s(1), Event::Data()));
+        evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1)));
+        evsys()->schedule(evsys()->event(Events::UIWatchDog, _cfg.watchdog_interval));
+        evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, time_s(1)));
     }
 
     void safe_shutdown(State state) override {
@@ -58,7 +58,7 @@ public:
         default: break;
         }
 #if defined(STM32F429xx)
-        _builtin_led_red.set_state(LogicalState::OFF);
+        _builtin_led_red.set_state(LogicalState::ON);
         _builtin_led_blue.set_state(LogicalState::OFF);
         _builtin_led_green.set_state(LogicalState::OFF);
 #endif
@@ -75,9 +75,9 @@ public:
         }
         case Events::UIButtonCheck: {
             if (_userbutton.state() == LogicalState::ON) {
-                spn::throw_exception(spn::runtime_error("Monkey pressed button. Shut down gracefully."));
+                spn::throw_exception(spn::runtime_exception("Monkey pressed button. Shut down gracefully."));
             }
-            evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1), Event::Data()));
+            evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1)));
             break;
         }
         case Events::UIWatchDog: {
@@ -87,13 +87,13 @@ public:
             // _builtin_led_blue.flip();
 #endif
 
-            evsys()->schedule(evsys()->event(Events::UIWatchDog, _cfg.watchdog_interval, Event::Data()));
+            evsys()->schedule(evsys()->event(Events::UIWatchDog, _cfg.watchdog_interval));
             break;
         }
         case Events::UIPromptFollowUp: {
             assert(_prompt);
             _prompt->update();
-            evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, _cfg.prompt_interval, Event::Data()));
+            evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, _cfg.prompt_interval));
             break;
         }
         case Events::OutOfWater: {
