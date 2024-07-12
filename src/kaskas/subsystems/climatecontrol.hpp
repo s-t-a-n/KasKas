@@ -312,6 +312,9 @@ public:
     void sideload_providers(io::VirtualStackFactory& ssf) override {
         ssf.hotload_provider(DataProviders::HEATING_SETPOINT,
                              std::make_shared<io::ContinuousValue>([this]() { return this->_heater.setpoint(); }));
+        ssf.hotload_provider(DataProviders::CLIMATE_HUMIDITY_SETPOINT, std::make_shared<io::ContinuousValue>([this]() {
+                                 return 100.0 - this->_ventilation_control.setpoint();
+                             }));
     }
 
 private:

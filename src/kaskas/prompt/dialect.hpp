@@ -52,11 +52,11 @@ struct Dialect {
     // static constexpr char OPERANT_REPLY[] = "<";
     // static constexpr auto OPERANTS = cat(OPERANT_FUNCTION_CALL, OPERANT_ASSIGNMENT, OPERANT_ACCESS, OPERANT_REPLY);
 
-    static constexpr auto OPERANT_FUNCTION_CALL = "!";
-    static constexpr auto OPERANT_ASSIGNMENT = "=";
-    static constexpr auto OPERANT_ACCESS = "?";
+    static constexpr auto OPERANT_FUNCTION_CALL = ":";
+    static constexpr auto OPERANT_ASSIGNMENT = ":";
+    static constexpr auto OPERANT_ACCESS = ":";
     static constexpr auto OPERANT_REPLY = "<";
-    static constexpr auto OPERANTS = "!=?<";
+    static constexpr auto OPERANTS = ":<";
 
     static constexpr auto KV_SEPARATOR = ":";
     static constexpr auto VALUE_SEPARATOR = "|";

@@ -58,7 +58,7 @@ public:
             // Serial.println("}");
             // Serial.println("------------------------");
 
-            // DBGF("received message");
+            // DBGF("received message: {%s}", message->as_string().c_str());
             // HAL::println("message");
             // HAL::delay(time_ms(200));
 
@@ -78,6 +78,13 @@ public:
             } else {
                 // Serial.print("Invalid message");
                 DBGF("Couldnt build rpc from message: {%s}", message->as_string().c_str());
+                auto cb = _bufferpool->acquire();
+                assert(cb);
+                assert(cb->raw);
+                const auto reply = Message::from_result(
+                    std::move(cb), RPCResult(message->as_string(), RPCResult::State::BAD_INPUT), message->cmd());
+                if (reply)
+                    _dl->send_message(*reply);
             }
         }
     }

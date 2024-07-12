@@ -14,6 +14,7 @@ import errno
 from multiprocessing.synchronize import Lock as LockType
 from multiprocessing import Lock
 import argparse
+from typing import TextIO
 
 # parser = argparse.ArgumentParser('Start house server')
 # parser.add_argument('-v', '--verbose', action='store_true',
@@ -65,10 +66,12 @@ class KasKasAPI:
 
     _serial: Serial
     _lock: LockType
+    _log_file: TextIO
 
-    def __init__(self, serial: Serial) -> None:
+    def __init__(self, serial: Serial, log_fname: Path) -> None:
         self._serial = serial
         self._lock = Lock()
+        self._log_file = open(log_fname,mode="a+")
 
     class OP(Enum):
         FUNCTION_CALL = "!"
@@ -102,8 +105,6 @@ class KasKasAPI:
     ) -> Response:
         with self._lock:
             self._flush()
-            # print("hello rrr")
-
             argument_substring = ":" + "|".join(arguments) if arguments else ""
             request_line = f"{module}!{function}{argument_substring}\r"
             # print(f"writing request line {request_line}")
@@ -155,14 +156,12 @@ class KasKasAPI:
         # print("flush")
         while self._serial.in_waiting > 0:
             try:
-                # print(f"stuck reading got bytes: {self._serial.in_waiting}")
                 line = (
                     self._serial.readline()
                     .decode("utf-8")
                     .replace("\r", "")
                     .replace("\n", "")
                 )
-                # print("unstuck reading")
             except SerialTimeoutException:
                 line = self._serial.read_all()
             self._print_debug_line(line + "\n")
@@ -171,6 +170,8 @@ class KasKasAPI:
         line = line.strip().replace("\r", "").replace("\n", "")
         if len(line) > 0:
             print(f"DBG: {line}")
+            self._log_file.write(f"{datetime.now()}: {line}\n");
+            self._log_file.flush()
 
 
 class MetricCollector:
@@ -188,7 +189,7 @@ def collect_to(metrics: list[str], csv_writer) -> None:
         print(f"Invalid row: {metrics}")
 
 
-def do_datacollection(api: KasKasAPI, output_fname: Path, sampling_interval: int):
+def do_datacollection(api: KasKasAPI, output_fname: Path, log_fname: Path, sampling_interval: int):
     with open(output_filename, "a+", newline="") as file:
 
         print("loading csv file")
@@ -212,7 +213,7 @@ def do_datacollection(api: KasKasAPI, output_fname: Path, sampling_interval: int
                 for s in [s.replace("_", "") for s in fields_response.arguments]
             ]
         ):
-            print("failed to read fields")
+            print(f"failed to read fields, got invalid response: {fields_response.arguments}")
             return
 
         if os.stat(output_filename).st_size == 0:
@@ -236,20 +237,15 @@ def do_datacollection(api: KasKasAPI, output_fname: Path, sampling_interval: int
             # print("hello?")
             collect_to(metrics_response.arguments, writer)
             file.flush()
-            print(f"sleeping for  {sampling_interval}s")
+            # print(f"sleeping for  {sampling_interval}s")
             time.sleep(sampling_interval)
     print("datacollection came to a halt")
 
-# from pizco import Server
-
-# address = 'tcp://127.0.0.1:8000'
-api = KasKasAPI(ser)
-# # server = Server(api, address)
-# api_proxy = Server.serve_in_process(KasKasAPI,(),{ "serial": ser },address) # ,verbose=args.verbose, gui=args.gui
-
+log_filename = Path("/mnt/USB/kaskas.log")
+api = KasKasAPI(ser, log_fname=log_filename)
 
 output_filename = Path("/mnt/USB/kaskas_data.csv")
 
 while True:
-    do_datacollection(api, output_filename, sampling_interval)
+    do_datacollection(api, output_filename,log_filename, sampling_interval)
     time.sleep(5)

@@ -241,7 +241,7 @@ public:
 
 protected:
     std::optional<RPC> build_rpc(const RPCRecipe& recipe, Dialect::OP optype, const Message& msg) {
-        // DBGF("build_rpc: start : {%s}", msg.as_string().c_str());
+        DBGF("build_rpc: start : {%s}", msg.as_string().c_str());
 
         if (!msg.key()) {
             return {};

@@ -69,14 +69,12 @@ public:
         assert(buffer);
         assert(buffer->capacity > 0);
 
-        // ensure null termination
-        buffer->raw[buffer->capacity - 1] = '\0';
+        buffer->raw[buffer->capacity - 1] = '\0'; // ensure null termination
         const auto operant_idx = strcspn(buffer->raw, Dialect::OPERANTS);
 
         // DBGF("buffer: %s, length: %i, operant @ %i", static_cast<const char*>(buffer->raw), buffer->length,
         // operant_idx);
-        if (operant_idx == buffer->length - 1) {
-            // no operant found
+        if (operant_idx == buffer->length - 1) { // no operant found
             return std::nullopt;
         }
         if (operant_idx < Dialect::MINIMAL_CMD_LENGTH || operant_idx > Dialect::MAXIMAL_CMD_LENGTH) {
@@ -105,8 +103,6 @@ public:
             // DBGF("length: %i", length);
             // assert(length == 10);
             m._key = std::string_view(head, buffer->length - (head - buffer->raw) - newline_at_end);
-            const auto s = std::string(*m._key);
-
             m._value = std::nullopt;
         }
 

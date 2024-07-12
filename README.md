@@ -30,3 +30,5 @@ Find the documentation at [the github.io page](https://s-t-a-n.github.io/librari
 - [Hexagonal architecture](https://alistair.cockburn.us/hexagonal-architecture/)
 - [Modern C++ White paper:
   Making things do stuff](https://www.feabhas.com/sites/default/files/uploads/EmbeddedWisdom/Feabhas%20Modern%20C%2B%2B%20white%20paper%20Making%20things%20do%20stuff.pdf)
+- [Monitor plant growth with AI and OpenCV
+  ](https://magpi.raspberrypi.com/articles/monitor-plant-growth-ai-opencv)

@@ -24,6 +24,7 @@ enum class Events {
     HeatingCycleStart,
     HeatingCycleStop,
     WaterInjectCheck,
+    WaterInjectEvaluateEffect,
     WaterInjectStart,
     WaterInjectFollowUp,
     WaterInjectStop,
@@ -33,8 +34,8 @@ enum class Events {
     LightFullSpectrumCycleCheck,
     LightFullSpectrumCycleStart,
     LightFullSpectrumCycleEnd,
-    MetricsReady,
-    MetricsTainted,
+    DAQWarmedUp,
+    DAQTainted,
     Size
 };
 }; // namespace kaskas

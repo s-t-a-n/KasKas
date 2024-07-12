@@ -27,62 +27,78 @@ public:
         double ml_pulse_calibration; // experimentally found flow sensor calibration factor
         time_ms reading_interval;
         time_s pump_timeout;
+        double minimal_pump_flowrate = 0.1;
+    };
+
+    union Status {
+        struct BitFlags {
+            bool out_of_fluid : 1;
+            uint8_t unused : 7;
+        } Flags;
+        uint8_t status = 0;
     };
 
 public:
     explicit Pump(io::HardwareStack& hws, Config&& cfg)
-        : _cfg(cfg), _pump(hws.digital_actuator(_cfg.pump_actuator_idx)), _interrupt(std::move(cfg.interrupt_cfg)),
+        : _cfg(cfg), _status({}), _pump(hws.digital_actuator(_cfg.pump_actuator_idx)),
+          _interrupt(std::move(cfg.interrupt_cfg)),
           _flowrate(Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw<double>() / 2.0}) {}
 
     void initialize() { _interrupt.initialize(); }
 
+    void safe_shutdown() {
+        HAL::delay(time_ms(100));
+        stop_injection();
+    }
+
     //    time_ms time_since_last_injection() { return _last_reading.timeSinceLast(false); }
 
+    bool is_out_of_fluid() const { return _status.Flags.out_of_fluid; }
+    bool is_injecting() const { return _pump.state() == LogicalState::ON; }
     uint32_t ml_since_injection_start() const { return _ml; }
     time_ms time_since_injection_start() { return _pump_timer.timeSinceLast(false); }
     time_ms time_since_last_injection() { return _last_injection.timeSinceLast(false); }
+    uint32_t lifetime_pumped_ml() const { return _lifetime_ml; }
+    double flowrate_lm() const { return _flowrate.value(); }
 
-    double flowrate_lm() { return _flowrate.value(); }
-
-    uint32_t read_ml_injected() {
-        const auto time_since_last_reading = _last_reading.timeSinceLast(true);
-        const auto pulse_count = read_pulsecount();
-        const auto flowrate_lm =
-            ((_cfg.reading_interval.raw<double>() / time_since_last_reading.raw<double>()) * pulse_count)
-            / _cfg.ml_pulse_calibration;
-        _flowrate.new_sample(flowrate_lm);
-        // Divide the flow rate in litres/minute by 60 to determine how many litres have
-        // passed through the sensor in this interval, then multiply by the milliseconds passed to
-        // convert to millilitres.
-        //        const auto ml_since_last = (flowrate_lm / 60) * 1000; // ?????
-        const auto ml_since_last = (flowrate_lm / 60) * time_since_last_reading.raw<double>();
-        _ml += ml_since_last;
-
-        DBGF("ML injected: pulses: %i, ml_since_last: %f, ml total: %i, flowrate: %f", pulse_count, ml_since_last, _ml,
-             _flowrate.value())
-        return ml_since_last;
-    }
-
-    void start_injection() {
+    void start_injection(uint16_t amount_ml = 0) {
         _pump_timer.reset();
         _last_reading.reset();
         _last_injection.reset();
         _flowrate.reset_to(0);
+        _target_ml = amount_ml;
         _ml = 0;
         reset_interrupt_counter();
         attach_interrupt();
         _pump.set_state(LogicalState::ON);
     }
 
+    void update() {
+        if (!is_injecting())
+            return;
+        track_injection();
+
+        if (time_since_injection_start() > _cfg.pump_timeout && flowrate_lm() < _cfg.minimal_pump_flowrate) {
+            DBGF("Pump: not enough pumped within space of time. Flowrate: %.2f, minimal flowrate: %.2f", flowrate_lm(),
+                 _cfg.minimal_pump_flowrate);
+            _status.Flags.out_of_fluid = true;
+            stop_injection();
+            return;
+        }
+
+        if (_target_ml > 0 && _ml >= _target_ml) {
+            stop_injection();
+        }
+    }
+
     void stop_injection() {
         _pump.set_state(LogicalState::OFF);
         detach_interrupt();
         _lifetime_ml += _ml;
+        _target_ml = 0;
         _flowrate.reset_to(0);
         _last_injection.reset();
     }
-
-    uint32_t lifetime_pumped_ml() const { return _lifetime_ml; }
 
 private:
     // interrupt
@@ -105,14 +121,34 @@ private:
         return pulse_count;
     }
 
+    uint32_t track_injection() {
+        const auto time_since_last_reading = _last_reading.timeSinceLast(true);
+        const auto pulse_count = read_pulsecount();
+        const auto flowrate_lm =
+            ((_cfg.reading_interval.raw<double>() / time_since_last_reading.raw<double>()) * pulse_count)
+            / _cfg.ml_pulse_calibration;
+        _flowrate.new_sample(flowrate_lm);
+        // Divide the flow rate in litres/minute by 60 to determine how many litres have
+        // passed through the sensor in this interval, then multiply by the milliseconds passed to
+        // convert to millilitres.
+        const auto ml_since_last = (flowrate_lm / 60) * time_since_last_reading.raw<double>();
+        _ml += ml_since_last;
+
+        DBGF("ML injected: pulses: %i, ml_since_last: %f, ml total: %i, flowrate: %f", pulse_count, ml_since_last, _ml,
+             _flowrate.value())
+        return ml_since_last;
+    }
+
 private:
     const Config _cfg;
+    Status _status;
 
     io::DigitalActuator _pump;
     Interrupt _interrupt;
 
     spn::filter::EWMA<double> _flowrate; // tracks flowrate in liters per minute
 
+    uint32_t _target_ml = 0; // the target amount before `update()` stops injection
     uint32_t _ml = 0; // tracks ml since start of last injection
     uint32_t _lifetime_ml = 0; // tracks ml since boot up
 

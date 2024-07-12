@@ -9,10 +9,10 @@
 #include "kaskas/prompt/cookbook.hpp"
 #include "kaskas/prompt/prompt.hpp"
 #include "kaskas/subsystems/climatecontrol.hpp"
+#include "kaskas/subsystems/data_acquisition.hpp"
 #include "kaskas/subsystems/fluidsystem.hpp"
 #include "kaskas/subsystems/growlights.hpp"
 #include "kaskas/subsystems/hardware.hpp"
-#include "kaskas/subsystems/metrics.hpp"
 #include "kaskas/subsystems/ui.hpp"
 
 #include <spine/core/debugging.hpp>

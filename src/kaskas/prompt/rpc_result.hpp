@@ -32,7 +32,7 @@ struct RPCResult {
         status = std::move(other.status);
         return *this;
     }
-    enum class State { OK, BAD_INPUT, BAD_RESULT };
+    enum class State { UNDEFINED, OK, BAD_INPUT, BAD_RESULT };
 
     RPCResult(OptStringView&& return_value) : return_value(std::move(return_value)), status(State::OK) {}
     RPCResult(OptStringView&& return_value, State status) : return_value(std::move(return_value)), status(status) {}

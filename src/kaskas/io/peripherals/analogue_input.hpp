@@ -39,12 +39,13 @@ public:
     void initialize() override {
         _input.initialize();
         update();
-        DBGF("Analog Sensor initialized. Value: %.2f V", value());
+        DBGF("Analog Sensor initialized. Raw value: %.2f, Filtered value: %.2f", raw_value(), value());
     }
 
-    void update() override { _fs.new_sample(_input.read()); }
+    void update() override { _fs.new_sample(raw_value()); }
     void safe_shutdown(bool critical) override {}
 
+    double raw_value() const { return _input.read(); }
     double value() const { return _fs.value(); }
 
     AnalogueSensor analogue_value_provider() const {

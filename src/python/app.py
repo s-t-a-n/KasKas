@@ -285,7 +285,7 @@ def load_page(display_interval: int, frames_per_visit:int, authenticator: stauth
             with fig_col3:
                 st.markdown("### Climate  humidity")
                 fig3 = px.area(
-                    data_frame=df, y=["CLIMATE_HUMIDITY", "CLIMATE_FAN"], x="TIMESTAMP"
+                    data_frame=df, y=["CLIMATE_HUMIDITY", "CLIMATE_FAN"], x="TIMESTAMP", range_y=[0,100]
                 )
                 st.write(fig3)
             with fig_col4:
@@ -294,6 +294,7 @@ def load_page(display_interval: int, frames_per_visit:int, authenticator: stauth
                     data_frame=df,
                     y=["SOIL_MOISTURE", "SOIL_MOISTURE_SETPOINT"],
                     x="TIMESTAMP",
+                    range_y=[0,100]
                 )
                 st.write(fig4)
 

@@ -24,17 +24,17 @@ total_memory() {
 while true; do
     used=$(memory_usage "$(pgrep -x streamlit)")
     # echo used: $used
-    if [ $used -gt 1500 ];then
+    if [ "$used" -gt 1500 ];then
         echo "Streamlit used too much memory, killing process!"
-        pkill -9 -x streamlit
+        pkill -x streamlit
     fi
     
     
     available=$(available_memory)
     # echo available: $available
-    if [ $available -lt 200 ]; then
+    if [ "$available" -lt 200 ]; then
         echo "Not enough free memory left, killing process!"
-        pkill -9 streamlit
+        pkill -x streamlit
     fi
     
     sleep 1

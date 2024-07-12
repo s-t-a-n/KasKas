@@ -4,6 +4,7 @@
 enum class DataProviders {
     CLIMATE_TEMP, //
     CLIMATE_HUMIDITY,
+    CLIMATE_HUMIDITY_SETPOINT,
     AMBIENT_TEMP,
     CLOCK,
     SOIL_MOISTURE,
