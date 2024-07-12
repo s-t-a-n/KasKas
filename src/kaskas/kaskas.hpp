@@ -42,9 +42,11 @@ public:
     };
 
 public:
-    explicit KasKas(std::shared_ptr<io::HardwareStack> hws, Config& cfg)
-        : _cfg(cfg), _evsys({cfg.es_cfg}), _hws(std::move(hws)),
-          _components(std::vector<std::unique_ptr<Component>>()) {
+    explicit KasKas(std::shared_ptr<io::HardwareStack> hws, Config& cfg) :
+        _cfg(cfg),
+        _evsys({cfg.es_cfg}),
+        _hws(std::move(hws)),
+        _components(std::vector<std::unique_ptr<Component>>()) {
         if (_cfg.prompt_cfg) {
             using prompt::SerialDatalink;
             auto dl = std::make_shared<SerialDatalink>(

@@ -31,9 +31,10 @@ public:
     };
 
 public:
-    explicit AnalogueInputPeripheral(const Config& cfg)
-        : FilteredPeripheral(cfg.sampling_interval, cfg.number_of_filters), _cfg(cfg),
-          _input(std::move(_cfg.input_cfg)) {}
+    explicit AnalogueInputPeripheral(const Config& cfg) :
+        FilteredPeripheral(cfg.sampling_interval, cfg.number_of_filters),
+        _cfg(cfg),
+        _input(std::move(_cfg.input_cfg)) {}
     ~AnalogueInputPeripheral() override = default;
 
     void initialize() override {

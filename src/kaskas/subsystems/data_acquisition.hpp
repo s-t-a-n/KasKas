@@ -33,8 +33,10 @@ public:
     };
 
     DataAcquisition(io::HardwareStack& hws, const Config& cfg) : DataAcquisition(hws, nullptr, cfg) {}
-    DataAcquisition(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
-        : Component(evsys, hws), _cfg(std::move(cfg)), _status({}) {}
+    DataAcquisition(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg) :
+        Component(evsys, hws),
+        _cfg(std::move(cfg)),
+        _status({}) {}
 
     void initialize() override {
         evsys()->attach(Events::DAQWarmedUp, this);

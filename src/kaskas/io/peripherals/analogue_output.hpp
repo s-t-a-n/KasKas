@@ -12,8 +12,10 @@ namespace kaskas::io {
 
 class AnalogueOutputPeripheral : public HAL::AnalogueOutput, public Peripheral {
 public:
-    explicit AnalogueOutputPeripheral(const Config&& cfg, time_ms sampling_speed = time_ms(100))
-        : HAL::AnalogueOutput(std::move(cfg)), Peripheral(sampling_speed), _creep_time_on_target({}) {}
+    explicit AnalogueOutputPeripheral(const Config&& cfg, time_ms sampling_speed = time_ms(100)) :
+        HAL::AnalogueOutput(std::move(cfg)),
+        Peripheral(sampling_speed),
+        _creep_time_on_target({}) {}
     ~AnalogueOutputPeripheral() override = default;
 
     void initialize() override { HAL::AnalogueOutput::initialize(); }

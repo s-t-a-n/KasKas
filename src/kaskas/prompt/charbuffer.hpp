@@ -21,8 +21,10 @@ public:
             memset((unsigned char*)raw, '\0', capacity);
     }
 
-    explicit CharBuffer(size_t buffer_length)
-        : _buffer(std::make_unique<char[]>(buffer_length)), raw(_buffer.get()), capacity(buffer_length) {}
+    explicit CharBuffer(size_t buffer_length) :
+        _buffer(std::make_unique<char[]>(buffer_length)),
+        raw(_buffer.get()),
+        capacity(buffer_length) {}
 
     ~CharBuffer() {
         DBGF("Destroying Charbuffer");

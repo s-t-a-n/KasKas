@@ -15,9 +15,12 @@ namespace kaskas::prompt {
 class Message {
 public:
     Message() = default;
-    Message(Message&& other) noexcept
-        : _cmd(std::move(other._cmd)), _operant(std::move(other._operant)), _key(std::move(other._key)),
-          _value(std::move(other._value)), _buffer(std::move(other._buffer)) {}
+    Message(Message&& other) noexcept :
+        _cmd(std::move(other._cmd)),
+        _operant(std::move(other._operant)),
+        _key(std::move(other._key)),
+        _value(std::move(other._value)),
+        _buffer(std::move(other._buffer)) {}
     Message& operator=(Message& other) = delete;
     Message& operator=(Message&& other) noexcept {
         if (this == &other)
@@ -121,8 +124,8 @@ public:
         return std::move(m);
     }
 
-    static std::optional<Message> from_result(std::shared_ptr<CharBuffer>&& buffer, const RPCResult& result,
-                                              const std::string_view& cmd) {
+    static std::optional<Message>
+    from_result(std::shared_ptr<CharBuffer>&& buffer, const RPCResult& result, const std::string_view& cmd) {
         assert(buffer);
         assert(buffer->capacity > 0);
 

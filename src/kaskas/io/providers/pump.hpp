@@ -39,10 +39,12 @@ public:
     };
 
 public:
-    explicit Pump(io::HardwareStack& hws, Config&& cfg)
-        : _cfg(cfg), _status({}), _pump(hws.digital_actuator(_cfg.pump_actuator_idx)),
-          _interrupt(std::move(cfg.interrupt_cfg)),
-          _flowrate(Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw<double>() / 2.0}) {}
+    explicit Pump(io::HardwareStack& hws, Config&& cfg) :
+        _cfg(cfg),
+        _status({}),
+        _pump(hws.digital_actuator(_cfg.pump_actuator_idx)),
+        _interrupt(std::move(cfg.interrupt_cfg)),
+        _flowrate(Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw<double>() / 2.0}) {}
 
     void initialize() { _interrupt.initialize(); }
 
@@ -79,7 +81,8 @@ public:
         track_injection();
 
         if (time_since_injection_start() > _cfg.pump_timeout && flowrate_lm() < _cfg.minimal_pump_flowrate) {
-            DBGF("Pump: not enough pumped within space of time. Flowrate: %.2f, minimal flowrate: %.2f", flowrate_lm(),
+            DBGF("Pump: not enough pumped within space of time. Flowrate: %.2f, minimal flowrate: %.2f",
+                 flowrate_lm(),
                  _cfg.minimal_pump_flowrate);
             _status.Flags.out_of_fluid = true;
             stop_injection();
@@ -134,7 +137,10 @@ private:
         const auto ml_since_last = (flowrate_lm / 60) * time_since_last_reading.raw<double>();
         _ml += ml_since_last;
 
-        DBGF("ML injected: pulses: %i, ml_since_last: %f, ml total: %i, flowrate: %f", pulse_count, ml_since_last, _ml,
+        DBGF("ML injected: pulses: %i, ml_since_last: %f, ml total: %i, flowrate: %f",
+             pulse_count,
+             ml_since_last,
+             _ml,
              _flowrate.value())
         return ml_since_last;
     }

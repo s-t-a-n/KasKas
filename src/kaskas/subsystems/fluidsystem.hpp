@@ -52,12 +52,13 @@ public:
 
 public:
     Fluidsystem(io::HardwareStack& hws, Config& cfg) : Fluidsystem(hws, nullptr, cfg) {}
-    Fluidsystem(io::HardwareStack& hws, EventSystem* evsys, Config& cfg)
-        : Component(evsys, hws), //
-          _cfg(cfg), //
-          _clock(_hws.clock(_cfg.clock_idx)),
-          _ground_moisture_sensor(_hws.analog_sensor(_cfg.ground_moisture_sensor_idx)), //
-          _pump(_hws, std::move(cfg.pump_cfg)), _ml_per_percent_of_moisture(EWMA::Config{.K = 10}){};
+    Fluidsystem(io::HardwareStack& hws, EventSystem* evsys, Config& cfg) :
+        Component(evsys, hws), //
+        _cfg(cfg), //
+        _clock(_hws.clock(_cfg.clock_idx)),
+        _ground_moisture_sensor(_hws.analog_sensor(_cfg.ground_moisture_sensor_idx)), //
+        _pump(_hws, std::move(cfg.pump_cfg)),
+        _ml_per_percent_of_moisture(EWMA::Config{.K = 10}){};
 
     void initialize() override {
         _pump.initialize();
@@ -74,7 +75,8 @@ public:
         const auto time_until_next_dosis = _clock.time_until_next_occurence(_cfg.time_of_injection);
 
         DBGF("Fluidsystem: scheduling WaterInjectCheck event in %u hours (%u minutes).",
-             time_h(time_until_next_dosis).printable(), time_m(time_until_next_dosis).printable());
+             time_h(time_until_next_dosis).printable(),
+             time_m(time_until_next_dosis).printable());
         evsys()->schedule(evsys()->event(Events::WaterInjectCheck, time_until_next_dosis));
 
         // evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(5)));
@@ -95,7 +97,8 @@ public:
             // DBG("Fluidsystem: WaterInjectCheck");
             DBGF("Fluidsystem: WaterInjectCheck: Moisture level at %.2f (threshold at %.2f, time since last injection: "
                  "%u s)",
-                 _ground_moisture_sensor.value(), _cfg.ground_moisture_target,
+                 _ground_moisture_sensor.value(),
+                 _cfg.ground_moisture_target,
                  time_s(_pump.time_since_last_injection()).printable());
 
             const auto error = _cfg.ground_moisture_target - _ground_moisture_sensor.value();
@@ -112,7 +115,8 @@ public:
             if (target_amount > _cfg.max_dosis_ml) {
                 DBGF("Fluidsystem: WaterInjectCheck: target amount of %.0f mL exceeds max dosis of %uf, clamping "
                      "target amount.",
-                     target_amount, _cfg.max_dosis_ml);
+                     target_amount,
+                     _cfg.max_dosis_ml);
                 target_amount = _cfg.max_dosis_ml;
             }
             evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(1), Event::Data(target_amount)));
@@ -132,7 +136,9 @@ public:
             const auto measured_response = _pump.ml_since_injection_start() / effect;
             DBGF("Fluidsystem: WaterInjectEvaluateEffect: moisture level before injection: %.2f, after: %.2f, gives "
                  "%.2f mL / %% of moisture (was: %.2f)",
-                 _moisture_level_before_injection, new_moisture_level, measured_response,
+                 _moisture_level_before_injection,
+                 new_moisture_level,
+                 measured_response,
                  _ml_per_percent_of_moisture.value());
             _ml_per_percent_of_moisture.new_sample(measured_response);
             _status.Flags.injection_needs_evaluation = false;
@@ -167,8 +173,10 @@ public:
                 _pump.stop_injection();
             DBGF("Fluidsystem: WaterInjectStop: Pumped %i ml in %i ms (pumped in total: %u ml), evaluating effect in "
                  "%u min",
-                 _pump.ml_since_injection_start(), _pump.time_since_injection_start().printable(),
-                 _pump.lifetime_pumped_ml(), time_m(_cfg.delay_before_effect_evaluation).printable());
+                 _pump.ml_since_injection_start(),
+                 _pump.time_since_injection_start().printable(),
+                 _pump.lifetime_pumped_ml(),
+                 time_m(_cfg.delay_before_effect_evaluation).printable());
             _status.Flags.injection_needs_evaluation = true;
             evsys()->schedule(evsys()->event(Events::WaterInjectEvaluateEffect, _cfg.delay_before_effect_evaluation));
             break;
@@ -199,7 +207,8 @@ public:
                              if (_status.Flags.injection_needs_evaluation)
                                  return RPCResult("cannot inject: last injection was not evaluated",
                                                   RPCResult::State::BAD_RESULT);
-                             evsys()->schedule(evsys()->event(Events::WaterInjectStart, time_s(1),
+                             evsys()->schedule(evsys()->event(Events::WaterInjectStart,
+                                                              time_s(1),
                                                               Event::Data(std::stod(*amount_in_ml))));
                              return RPCResult(RPCResult::State::OK);
                          }),

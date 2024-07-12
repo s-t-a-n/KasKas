@@ -156,9 +156,12 @@ private:
 
 class MockDatalink final : public Datalink {
 public:
-    MockDatalink(const Config&& cfg)
-        : Datalink(std::move(cfg)), _stdin(_cfg.pool_size), _stdout(_cfg.pool_size), _active_out(&_stdout),
-          _active_in(&_stdin){};
+    MockDatalink(const Config&& cfg) :
+        Datalink(std::move(cfg)),
+        _stdin(_cfg.pool_size),
+        _stdout(_cfg.pool_size),
+        _active_out(&_stdout),
+        _active_in(&_stdin){};
     ~MockDatalink() override = default;
 
 public:

@@ -28,9 +28,10 @@ public:
         size_t pool_size;
     };
 
-    Prompt(const Config&& cfg)
-        : _cfg(cfg), _rpc_factory(RPCFactory::Config{.directory_size = 16}),
-          _bufferpool(std::make_shared<Pool<CharBuffer>>(_cfg.pool_size)) {
+    Prompt(const Config&& cfg) :
+        _cfg(cfg),
+        _rpc_factory(RPCFactory::Config{.directory_size = 16}),
+        _bufferpool(std::make_shared<Pool<CharBuffer>>(_cfg.pool_size)) {
         for (int i = 0; i < _cfg.pool_size; ++i) {
             _bufferpool->populate(std::make_shared<CharBuffer>(_cfg.message_length));
         }
@@ -81,8 +82,9 @@ public:
                 auto cb = _bufferpool->acquire();
                 assert(cb);
                 assert(cb->raw);
-                const auto reply = Message::from_result(
-                    std::move(cb), RPCResult(message->as_string(), RPCResult::State::BAD_INPUT), message->cmd());
+                const auto reply = Message::from_result(std::move(cb),
+                                                        RPCResult(message->as_string(), RPCResult::State::BAD_INPUT),
+                                                        message->cmd());
                 if (reply)
                     _dl->send_message(*reply);
             }

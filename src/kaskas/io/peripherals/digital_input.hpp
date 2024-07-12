@@ -20,8 +20,10 @@ public:
     };
 
 public:
-    explicit DigitalInputPeripheral(const Config& cfg)
-        : Peripheral(cfg.sampling_interval), _cfg(cfg), _input(std::move(_cfg.input_cfg)) {}
+    explicit DigitalInputPeripheral(const Config& cfg) :
+        Peripheral(cfg.sampling_interval),
+        _cfg(cfg),
+        _input(std::move(_cfg.input_cfg)) {}
     ~DigitalInputPeripheral() override = default;
 
     void initialize() override {

@@ -40,13 +40,25 @@ public:
         const auto seconds = time_s(time_of_day - hours - minutes);
 
         auto today_at_tod = [n, hours, minutes, seconds]() -> DateTime {
-            return DateTime(n.getYear(), n.getMonth(), n.getDay(), hours.raw<char>(), minutes.raw<char>(),
-                            seconds.raw<char>(), n.getWeekDay(), n.getYearDay());
+            return DateTime(n.getYear(),
+                            n.getMonth(),
+                            n.getDay(),
+                            hours.raw<char>(),
+                            minutes.raw<char>(),
+                            seconds.raw<char>(),
+                            n.getWeekDay(),
+                            n.getYearDay());
         };
         auto tomorrow_at_tod = [n, hours, minutes, seconds]() -> DateTime {
             auto t = DateTime(n.getUnixTime() + time_s(time_d(1)).raw<>());
-            return DateTime(t.getYear(), t.getMonth(), t.getDay(), hours.raw<char>(), minutes.raw<char>(),
-                            seconds.raw<char>(), t.getWeekDay(), t.getYearDay());
+            return DateTime(t.getYear(),
+                            t.getMonth(),
+                            t.getDay(),
+                            hours.raw<char>(),
+                            minutes.raw<char>(),
+                            seconds.raw<char>(),
+                            t.getWeekDay(),
+                            t.getYearDay());
         };
 
         if (n.getUnixTime() < today_at_tod().getUnixTime()) // is later today
