@@ -63,8 +63,8 @@ public:
                                    [this](const OptStringView&) { return RPCResult(datasources_as_string()); }),
                           RPCModel("getTimeSeries",
                                    [this](const OptStringView&) {
-                                       if (!is_ready())
-                                           return RPCResult("Data acquisition is not ready for collection",
+                                       if (!is_warmed_up())
+                                           return RPCResult("Data acquisition has not warmed up yet",
                                                             RPCResult::State::BAD_RESULT);
                                        return RPCResult(timeseries_as_string());
                                    }),
@@ -74,8 +74,7 @@ public:
     void sideload_providers(io::VirtualStackFactory& ssf) override {}
 
 public:
-    bool is_ready() const { return _status == Status::READY; }
-    bool is_warmed_up() const { return _status == Status::READY; }
+    bool is_warmed_up() const { return _status.Flags.warmed_up; }
 
     std::string datasources_as_string() {
         std::string fields;
