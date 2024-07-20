@@ -221,6 +221,12 @@ public:
                              _status.Flags.injection_needs_evaluation = false;
                              return RPCResult(RPCResult::State::OK);
                          }),
+                RPCModel(
+                    "injectionEffect",
+                    [this](const OptStringView& _) {
+                        return RPCResult(std::to_string(_ml_per_percent_of_moisture.value()), RPCResult::State::OK);
+                    },
+                    "tracks amount of moisture raised per mL of fluid dosed"),
             }));
         return std::move(model);
     }
@@ -239,7 +245,7 @@ private:
     io::AnalogueSensor _ground_moisture_sensor;
     Pump _pump;
 
-    EWMA _ml_per_percent_of_moisture; // tracks amount of moisture increase achieved by an injection of 1L of fluid
+    EWMA _ml_per_percent_of_moisture; // tracks amount of moisture raised per mL of fluid injected
     double _moisture_level_before_injection = 0;
 
 private:

@@ -17,15 +17,20 @@ namespace kaskas::prompt {
 class RPCModel {
 public:
     RPCModel(const std::string& name) : _name(name) {}
-    RPCModel(const std::string& name, const std::function<RPCResult(const OptStringView&)>& call) :
+    RPCModel(const std::string& name,
+             const std::function<RPCResult(const OptStringView&)>& call,
+             const std::string& help = "") :
         _name(name),
-        _call(call) {}
+        _call(call),
+        _help(help) {}
 
-    std::string_view name() const { return _name; }
+    const std::string_view name() const { return _name; }
+    const std::string_view help() const { return _help; }
     RPCResult call(const OptStringView& value) const { return std::move(_call(value)); }
 
 private:
     const std::string _name;
+    const std::string _help;
     const std::function<RPCResult(const OptStringView&)> _call;
 };
 
