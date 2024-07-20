@@ -87,7 +87,7 @@ public:
                     // heater came out of steady state
                     if (time_s(_current_state_duration.timeSinceLast(false)) > _cfg.stable_timewindow) {
                         // heater went outside of steady state for too long
-                        DBGF("expired: %is, timewindow: %i",
+                        DBG("expired: %is, timewindow: %i",
                              time_s(_current_state_duration.timeSinceLast(false)).printable(),
                              time_s(_cfg.stable_timewindow).printable())
                         DBG("Heater went outside of steady state for too long!");
@@ -102,7 +102,7 @@ public:
                         const auto error = temperature - _temperature_time_window;
                         if (error < _cfg.heating_minimal_rising_c) {
                             // temperature didnt rise fast enough
-                            DBGF("Temperature didnt rise fast enough: delta:%.2fC", error);
+                            DBG("Temperature didnt rise fast enough: delta:%.2fC", error);
                             _is_runaway = true;
                         }
 
@@ -114,7 +114,7 @@ public:
                         const auto error = _temperature_time_window - temperature;
                         if (error < _cfg.heating_minimal_dropping_c) {
                             // temperature didnt drop fast enough
-                            DBGF("temperature didnt drop fast enough, delta:%.2fC", error);
+                            DBG("temperature didnt drop fast enough, delta:%.2fC", error);
                             _is_runaway = true;
                         }
                         _temperature_time_window = temperature;
@@ -184,7 +184,7 @@ public:
         const auto current_temp = temperature();
         _pid.new_reading(current_temp);
 
-        DBGF("Heater initialized: Current surface temperature: %.2f C, initial response : %f",
+        DBG("Heater initialized: Current surface temperature: %.2f C, initial response : %f",
              current_temp,
              _pid.response());
     }
@@ -197,7 +197,7 @@ public:
             _pid.new_reading(current_temp);
             const auto response = _pid.response();
             const auto normalized_response = _pid.setpoint() > 0 ? response / _cfg.pid_cfg.output_upper_limit : 0;
-            // DBGF("Heater update: current temp: %f, response %f, normalized response %f for sp %f", current_temp,
+            // DBG("Heater update: current temp: %f, response %f, normalized response %f for sp %f", current_temp,
             // response, normalized_response, _pid.setpoint());
             assert(normalized_response >= 0.0 && normalized_response <= 1.0);
             _heating_element.fade_to(guarded_setpoint(normalized_response));
@@ -226,7 +226,7 @@ public:
         auto timer = AlarmTimer(timeout);
         while (temperature() < setpoint && (!timer.expired() || timeout == time_ms(0))) {
             _heating_element.fade_to(guarded_setpoint(LogicalState::ON));
-            DBGF("Waiting until temperature of %.2fC reaches %.2fC, saturating thermal capacitance (surfaceT %.2f)",
+            DBG("Waiting until temperature of %.2fC reaches %.2fC, saturating thermal capacitance (surfaceT %.2f)",
                  temperature(),
                  setpoint,
                  _surface_temperature.value());
@@ -237,7 +237,7 @@ public:
         if (saturated)
             return;
         while (temperature() > setpoint && (!timer.expired() || timeout == time_ms(0))) {
-            DBGF("Waiting until temperature of %f C reaches %f C, unloading thermal capacitance (surfaceT %.2f)",
+            DBG("Waiting until temperature of %f C reaches %f C, unloading thermal capacitance (surfaceT %.2f)",
                  temperature(),
                  setpoint,
                  _surface_temperature.value());
@@ -253,7 +253,7 @@ public:
             const auto normalized_response = (pwm_value - _cfg.pid_cfg.output_lower_limit)
                                              / (_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit);
             const auto guarded_normalized_response = guarded_setpoint(normalized_response);
-            DBGF("Autotune: Setting heating element to output: %.3f (surface: %.3fC, climate %.3fC)",
+            DBG("Autotune: Setting heating element to output: %.3f (surface: %.3fC, climate %.3fC)",
                  guarded_normalized_response,
                  _surface_temperature.value(),
                  _climate_temperature.value());
@@ -293,7 +293,7 @@ private:
         const auto adjusted_setpoint = std::clamp(excess > 0.0 ? setpoint - feedback : setpoint, 0.0, 1.0);
 
         if (adjusted_setpoint != setpoint) {
-            DBGF("Heater: T %.2f C is above limit of T %.2f C, clamping response from %.2f to %.2f",
+            DBG("Heater: T %.2f C is above limit of T %.2f C, clamping response from %.2f to %.2f",
                  surface_temperature,
                  _cfg.max_heater_setpoint,
                  setpoint,

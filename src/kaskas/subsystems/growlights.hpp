@@ -11,7 +11,7 @@
 #include <spine/core/timers.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 
-#include <AH/STL/cstdint>
+#include <cstdint>
 
 namespace kaskas::component {
 using spn::core::Exception;
@@ -56,10 +56,10 @@ public:
         evsys()->attach(Events::LightRedBlueSpectrumCycleEnd, this);
 
         auto time_from_now = time_s(5);
-        DBGF("Growlights: Scheduling LightFullSpectrumCycleCheck in %u seconds.", time_from_now.printable());
+        DBG("Growlights: Scheduling LightFullSpectrumCycleCheck in %u seconds.", time_from_now.printable());
         evsys()->schedule(evsys()->event(Events::LightFullSpectrumCycleCheck, time_from_now));
         time_from_now += time_s(5);
-        DBGF("Growlights: Scheduling LightRedBlueSpectrumCycleCheck in %u seconds.", time_from_now.printable());
+        DBG("Growlights: Scheduling LightRedBlueSpectrumCycleCheck in %u seconds.", time_from_now.printable());
         evsys()->schedule(evsys()->event(Events::LightRedBlueSpectrumCycleCheck, time_from_now));
     }
 
@@ -82,17 +82,17 @@ public:
             const auto next_setpoint = _full_spectrum_schedule.value_at(now);
 
             if (next_setpoint > 0 && _full_spectrum.value() == 0) {
-                DBGF("Growlights: Check: full spectrum is currently off, turn on");
+                DBG("Growlights: Check: full spectrum is currently off, turn on");
                 evsys()->trigger(evsys()->event(Events::LightFullSpectrumCycleStart, time_s(1)));
             } else if (next_setpoint == 0 && _full_spectrum.value() > 0) {
-                DBGF("Growlights: Check: full spectrum is currently on, turn off");
+                DBG("Growlights: Check: full spectrum is currently on, turn off");
                 evsys()->trigger(evsys()->event(Events::LightFullSpectrumCycleEnd, time_s(1)));
             }
 
             const auto time_until_next_check = _full_spectrum_schedule.start_of_next_block(now) - now;
             assert(_full_spectrum_schedule.start_of_next_block(now) > now);
 
-            DBGF("Growlights: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
+            DBG("Growlights: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
             assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(evsys()->event(Events::LightFullSpectrumCycleCheck, time_until_next_check));
             break;
@@ -113,17 +113,17 @@ public:
             const auto next_setpoint = _redblue_spectrum_schedule.value_at(now);
 
             if (next_setpoint > 0 && _redblue_spectrum.value() == 0) {
-                DBGF("Growlights: Check: red/blue spectrum is currently off, turn on");
+                DBG("Growlights: Check: red/blue spectrum is currently off, turn on");
                 evsys()->trigger(evsys()->event(Events::LightRedBlueSpectrumCycleStart, time_s(1)));
             } else if (next_setpoint == 0 && _redblue_spectrum.value() > 0) {
-                DBGF("Growlights: Check: red/blue spectrum is currently on, turn off");
+                DBG("Growlights: Check: red/blue spectrum is currently on, turn off");
                 evsys()->trigger(evsys()->event(Events::LightRedBlueSpectrumCycleEnd, time_s(1)));
             }
 
             const auto time_until_next_check = _redblue_spectrum_schedule.start_of_next_block(now) - now;
             assert(_redblue_spectrum_schedule.start_of_next_block(now) > now);
 
-            DBGF("Growlights: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
+            DBG("Growlights: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
             assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(evsys()->event(Events::LightRedBlueSpectrumCycleCheck, time_until_next_check));
             break;
@@ -193,7 +193,7 @@ private:
     //     }
     //     if (nowtime_s < starttime_s) {
     //         assert(nowtime_s < endtime_s);
-    //         DBGF("Growlights: now is OFF time, scheduling LightCycleStart at %i:00 in %u minutes.",
+    //         DBG("Growlights: now is OFF time, scheduling LightCycleStart at %i:00 in %u minutes.",
     //              DateTime(starttime_s.raw()).getHour(), time_m(starttime_s - nowtime_s).printable());
     //         evsys()->schedule(evsys()->event(Events::LightCycleStart, starttime_s - nowtime_s));
     //         return;
@@ -201,7 +201,7 @@ private:
     //     const auto starttime_tomorrow_s = starttime_s + time_d(1);
     //     const auto time_until_start = starttime_tomorrow_s - nowtime_s;
     //     if (nowtime_s < starttime_tomorrow_s) {
-    //         DBGF("Growlights: now is OFF time, scheduling LightCycleStart for tomorrow at %i:00 in %u hours.",
+    //         DBG("Growlights: now is OFF time, scheduling LightCycleStart for tomorrow at %i:00 in %u hours.",
     //              DateTime(starttime_tomorrow_s.raw()).getHour(), time_h(time_until_start).printable());
     //         evsys()->schedule(evsys()->event(Events::LightCycleStart, time_until_start));
     //         return;

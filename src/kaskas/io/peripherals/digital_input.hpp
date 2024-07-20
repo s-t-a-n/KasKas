@@ -29,7 +29,7 @@ public:
     void initialize() override {
         _input.initialize();
         update();
-        DBGF("Analog Sensor initialized. Value: %.2f V", value());
+        DBG("Analog Sensor initialized. Value: %.2f V", value());
     }
 
     void update() override { _value = _input.state() ? LogicalState::ON : LogicalState::OFF; }

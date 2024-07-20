@@ -34,12 +34,12 @@ public:
 
         if (is_ready()) {
             const auto n = now();
-            DBGF("DS3231Clock initialized. The reported time is %u:%u @ %u:%u:%u",
-                 n.getHour(),
-                 n.getMinute(),
-                 n.getDay(),
-                 n.getMonth(),
-                 n.getYear());
+            DBG("DS3231Clock initialized. The reported time is %u:%u @ %u:%u:%u",
+                n.getHour(),
+                n.getMinute(),
+                n.getDay(),
+                n.getMonth(),
+                n.getYear());
         } else {
             ::spn::throw_exception(::spn::assertion_exception("DS3231Clock failed to initialize. Maybe set the time?"));
         }
@@ -47,7 +47,7 @@ public:
 
     void update() override {
         assert(is_ready());
-        _now = DS3231::RTClib::now();
+        _now = DateTime(DS3231::RTClib::now().getUnixTime());
     }
     void safe_shutdown(bool critical) override {}
 
@@ -79,5 +79,3 @@ private:
 };
 
 } // namespace kaskas::io::clock
-
-// using Clock = kaskas::io::clock::DS3231Clock;

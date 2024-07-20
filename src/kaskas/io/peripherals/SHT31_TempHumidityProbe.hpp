@@ -10,7 +10,7 @@
 #include <spine/filter/filterstack.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
 
-#include <AH/STL/cstdint>
+#include <cstdint>
 
 namespace kaskas::io {
 
@@ -37,7 +37,7 @@ public:
     }
 
     void initialize() override {
-        // DBGF("initializing SHT31TempHumidityProbe");
+        // DBG("initializing SHT31TempHumidityProbe");
         TwoWire* wire = &Wire;
         assert(wire != nullptr);
         Wire.begin();
@@ -49,7 +49,7 @@ public:
         if (!is_ready()) {
             spn::throw_exception(spn::assertion_exception("SHT31TempHumidityProbe could not be initialized"));
         }
-        DBGF("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C",
+        DBG("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C",
              read_humidity(),
              read_temperature());
 
@@ -73,7 +73,7 @@ public:
         }
 
         if (timeout.expired()) {
-            DBGF("SHT31TempHumidityProbe: request expired. is the connection okay?");
+            DBG("SHT31TempHumidityProbe: request expired. is the connection okay?");
 
             // todo: handle this through hardware stack
             assert(!"SHT31TempHumidityProbe: request expired. is the connection okay?");
@@ -107,13 +107,13 @@ public:
 
     bool is_ready() {
         if (!_sht31.isConnected()) {
-            DBGF("SHT31 reports not connected with status: %04X and errorcode: %04X",
+            DBG("SHT31 reports not connected with status: %04X and errorcode: %04X",
                  _sht31.readStatus(),
                  _sht31.getError());
             return false;
         }
         if (const auto error = _sht31.getError(); error != SHT31_OK) {
-            DBGF("SHT31 reports errorcode: %04X with status: %04X", error, _sht31.readStatus());
+            DBG("SHT31 reports errorcode: %04X with status: %04X", error, _sht31.readStatus());
             return false;
         }
         return true;

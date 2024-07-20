@@ -28,6 +28,10 @@ public:
         assert(is_updateable());
         return is_updateable() ? _timer->sampling_interval() : time_ms(0);
     }
+    time_ms time_until_next_update() const {
+        assert(is_updateable());
+        return is_updateable() ? _timer->time_until_next() : time_ms(0);
+    }
 
 private:
     std::optional<IntervalTimer> _timer;

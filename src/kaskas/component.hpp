@@ -6,7 +6,6 @@
 
 #include <spine/eventsystem/eventsystem.hpp>
 
-#include <AH/STL/utility>
 
 namespace kaskas {
 

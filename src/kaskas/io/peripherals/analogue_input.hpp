@@ -40,7 +40,7 @@ public:
     void initialize() override {
         _input.initialize();
         update();
-        DBGF("Analog Sensor initialized. Raw value: %.2f, Filtered value: %.2f", raw_value(), value());
+        DBG("Analog Sensor initialized. Raw value: %.2f, Filtered value: %.2f", raw_value(), value());
     }
 
     void update() override { _fs.new_sample(raw_value()); }

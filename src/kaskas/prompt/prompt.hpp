@@ -7,14 +7,13 @@
 
 #include <magic_enum/magic_enum.hpp>
 #include <magic_enum/magic_enum_all.hpp>
-#include <spine/core/assert.hpp>
 #include <spine/core/debugging.hpp>
 #include <spine/platform/hal.hpp>
 #include <spine/structure/list.hpp>
 
-#include <AH/STL/memory>
 #include <cstring>
 #include <initializer_list>
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <variant>
@@ -49,43 +48,17 @@ public:
 
     void update() {
         assert(_dl);
-
-        while (const auto message = _dl->receive_message()) {
-            // DBGF("update: {%s}", message->as_string().c_str());
-            // Serial.println("------------------------");
-            // Serial.print("Received back: {");
-            // const auto s = message->as_string();
-            // Serial.print(s.c_str());
-            // Serial.println("}");
-            // Serial.println("------------------------");
-
-            // DBGF("received message: {%s}", message->as_string().c_str());
-            // HAL::println("message");
-            // HAL::delay(time_ms(200));
-
+        if (const auto message = _dl->receive_message()) {
             if (const auto rpc = _rpc_factory.from_message(*message)) {
-                // DBGF("built rpc from message: %s", message->as_string().c_str());
-                // HAL::println("rpc");
-                // HAL::delay(time_ms(200));
-
                 const auto res = rpc->invoke();
-                auto cb = _bufferpool->acquire();
-                assert(cb);
-                assert(cb->raw);
-
-                const auto reply = Message::from_result(std::move(cb), res, message->cmd());
-                if (reply)
+                if (const auto reply = Message::from_result(_bufferpool->acquire(), res, message->module()))
                     _dl->send_message(*reply);
             } else {
-                // Serial.print("Invalid message");
-                DBGF("Couldnt build rpc from message: {%s}", message->as_string().c_str());
-                auto cb = _bufferpool->acquire();
-                assert(cb);
-                assert(cb->raw);
-                const auto reply = Message::from_result(std::move(cb),
-                                                        RPCResult(message->as_string(), RPCResult::State::BAD_INPUT),
-                                                        message->cmd());
-                if (reply)
+                DBG("Prompt: Couldnt build RPC from message: {%s}", message->as_string().c_str());
+                if (const auto reply =
+                        Message::from_result(_bufferpool->acquire(),
+                                             RPCResult(message->as_string(), RPCResult::State::BAD_INPUT),
+                                             message->module()))
                     _dl->send_message(*reply);
             }
         }
@@ -100,7 +73,7 @@ public:
     }
     void hotload_rpc_recipe(std::unique_ptr<RPCRecipe> recipe) {
         const auto cmd_str = std::string(recipe->command());
-        DBGF("Prompt: Loading recipe: %s", cmd_str.c_str());
+        DBG("Prompt: Loading recipe: %s", cmd_str.c_str());
         _rpc_factory.hotload_rpc_recipe(std::move(recipe));
     }
 

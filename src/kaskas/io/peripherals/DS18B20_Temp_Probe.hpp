@@ -35,7 +35,7 @@ public:
         }
 
         update();
-        DBGF("DS18B20TempProbe initialized. Temperature: %.2f °C", temperature());
+        DBG("DS18B20TempProbe initialized. Temperature: %.2f °C", temperature());
     }
 
     void update() override { _fs.new_sample(_ds18b20.getTempC()); }

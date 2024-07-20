@@ -8,7 +8,7 @@
 #include <spine/filter/implementations/ewma.hpp>
 #include <spine/platform/hal.hpp>
 
-#include <AH/STL/cstdint>
+#include <cstdint>
 
 namespace kaskas::io {
 using spn::core::Exception;
@@ -33,8 +33,9 @@ public:
     union Status {
         struct BitFlags {
             bool out_of_fluid : 1;
-            uint8_t unused : 7;
-        } Flags;
+            bool has_injected_since_start : 1;
+            uint8_t unused : 6;
+        } flags;
         uint8_t status = 0;
     };
 
@@ -55,15 +56,20 @@ public:
 
     //    time_ms time_since_last_injection() { return _last_reading.timeSinceLast(false); }
 
-    bool is_out_of_fluid() const { return _status.Flags.out_of_fluid; }
+    bool is_out_of_fluid() const { return _status.flags.out_of_fluid; }
     bool is_injecting() const { return _pump.state() == LogicalState::ON; }
     uint32_t ml_since_injection_start() const { return _ml; }
-    time_ms time_since_injection_start() { return _pump_timer.timeSinceLast(false); }
-    time_ms time_since_last_injection() { return _last_injection.timeSinceLast(false); }
+    time_ms time_since_injection_start() {
+        return _status.flags.has_injected_since_start ? _pump_timer.timeSinceLast(false) : time_ms(0);
+    }
+    time_ms time_since_last_injection() {
+        return _status.flags.has_injected_since_start ? _last_injection.timeSinceLast(false) : time_ms(0);
+    }
     uint32_t lifetime_pumped_ml() const { return _lifetime_ml; }
     double flowrate_lm() const { return _flowrate.value(); }
 
     void start_injection(uint16_t amount_ml = 0) {
+        _status.flags.has_injected_since_start = true;
         _pump_timer.reset();
         _last_reading.reset();
         _last_injection.reset();
@@ -81,10 +87,10 @@ public:
         track_injection();
 
         if (time_since_injection_start() > _cfg.pump_timeout && flowrate_lm() < _cfg.minimal_pump_flowrate) {
-            DBGF("Pump: not enough pumped within space of time. Flowrate: %.2f, minimal flowrate: %.2f",
-                 flowrate_lm(),
-                 _cfg.minimal_pump_flowrate);
-            _status.Flags.out_of_fluid = true;
+            DBG("Pump: not enough pumped within space of time. Flowrate: %.2f, minimal flowrate: %.2f",
+                flowrate_lm(),
+                _cfg.minimal_pump_flowrate);
+            _status.flags.out_of_fluid = true;
             stop_injection();
             return;
         }
@@ -137,11 +143,11 @@ private:
         const auto ml_since_last = (flowrate_lm / 60) * time_since_last_reading.raw<double>();
         _ml += ml_since_last;
 
-        DBGF("ML injected: pulses: %i, ml_since_last: %f, ml total: %i, flowrate: %f",
-             pulse_count,
-             ml_since_last,
-             _ml,
-             _flowrate.value())
+        DBG("ML injected: pulses: %i, ml_since_last: %f, ml total: %i, flowrate: %f",
+            pulse_count,
+            ml_since_last,
+            _ml,
+            _flowrate.value())
         return ml_since_last;
     }
 

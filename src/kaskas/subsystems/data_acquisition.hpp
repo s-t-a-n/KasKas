@@ -92,7 +92,6 @@ public:
             fields += name.data();
             fields += prompt::Dialect::VALUE_SEPARATOR;
         }
-        fields += "\n";
         return std::move(fields);
     }
 
@@ -104,7 +103,6 @@ public:
             timeseries += std::to_string(value);
             timeseries += prompt::Dialect::VALUE_SEPARATOR;
         }
-        timeseries += "\n";
         return std::move(timeseries);
     }
 

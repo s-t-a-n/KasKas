@@ -73,13 +73,13 @@ using namespace kaskas;
 //                       {
 //                           RPCModel("roVariable",
 //                                    [this](const OptStringView&) {
-//                                        DBGF("roVariable accessed");
+//                                        DBG("roVariable accessed");
 //                                        return RPCResult(std::to_string(roVariable));
 //                                    }),
 //                           RPCModel("rwVariable",
 //                                    [this](const OptStringView& s) {
 //                                        const auto s_str = s ? std::string{*s} : std::string();
-//                                        DBGF("rwVariable accessed with arg: {%s}", s_str.c_str());
+//                                        DBG("rwVariable accessed with arg: {%s}", s_str.c_str());
 //                                        rwVariable = s ? std::stod(std::string(*s)) : rwVariable;
 //                                        return RPCResult(std::to_string(rwVariable));
 //                                    }), //
@@ -89,7 +89,7 @@ using namespace kaskas;
 //                                            return RPCResult(RPCResult::State::BAD_INPUT);
 //                                        }
 //                                        const auto s_str = s ? std::string{*s} : std::string();
-//                                        DBGF("foo called with arg: '%s'", s_str.c_str());
+//                                        DBG("foo called with arg: '%s'", s_str.c_str());
 //
 //                                        return RPCResult(std::to_string(foo(std::stod(s_str))));
 //                                    }),
@@ -108,7 +108,7 @@ using namespace kaskas;
 void setup() {
     HAL::delay(time_s(2)); // give time for console to attach before first output
     HAL::initialize(HAL::Config{.baudrate = 115200});
-    HAL::println("Wake up");
+    LOG("Wake up");
 
     // static volatile int ctr = 0;
     // const auto cb = []() { ctr++; };
@@ -129,7 +129,7 @@ void setup() {
     // // for (int i = 0; i < 3; ++i) {
     // //     HAL::delay(time_s(1));
     // // }
-    // DBGF("ctr: %i", ctr);
+    // DBG("ctr: %i", ctr);
     // while (true) {
     // };
 
@@ -237,7 +237,7 @@ void setup() {
     //     auto a = HAL::UART(HAL::UART::Config{&Serial});
     //     a.initialize();
     //     a.write((uint8_t*)"ollah", 5);
-    //     DBGF("avail: %i", a.available());
+    //     DBG("avail: %i", a.available());
     //     return;
     // }
 
@@ -274,13 +274,13 @@ void setup() {
     //
     //     for (int i = 0; i < 255; ++i) {
     //         fan.set_value(i / 255.0);
-    //         DBGF("setting fan to : %f", i / 255.0);
+    //         DBG("setting fan to : %f", i / 255.0);
     //         HAL::delay_ms(250);
     //     }
     //
     //     for (int i = 0; i < 255; ++i) {
     //         fan.set_value((255 - i) / 255.0);
-    //         DBGF("setting fan to : %f", (255 - i) / 255.0);
+    //         DBG("setting fan to : %f", (255 - i) / 255.0);
     //         HAL::delay_ms(50);
     //     }
     //
@@ -323,7 +323,7 @@ void setup() {
     //             const auto s1 = std::string(msg->cmd());
     //             const auto s2 = std::string(msg->operant());
     //             const auto s3 = std::string(*msg->key());
-    //             DBGF("Message before injection: %s:%s:%s", s1.c_str(), s2.c_str(), s3.c_str());
+    //             DBG("Message before injection: %s:%s:%s", s1.c_str(), s2.c_str(), s3.c_str());
     //
     //             // assert(msg->() != nullptr);
     //
@@ -333,18 +333,18 @@ void setup() {
     //             const auto reply = dl->extract_reply();
     //             if (reply) {
     //                 const auto sk = std::string(*reply->value());
-    //                 DBGF("%s", sk.c_str());
-    //                 DBGF("received a reply: '%s'", reply->as_string().c_str());
+    //                 DBG("%s", sk.c_str());
+    //                 DBG("received a reply: '%s'", reply->as_string().c_str());
     //                 assert(reply->as_string() == std::string_view("MOC<0:85.000000"));
     //             }
     //         }
     //
-    //         DBGF("hello");
+    //         DBG("hello");
     //         // return;
     //     }
-    //     DBGF("bye");
+    //     DBG("bye");
     //
-    //     DBGF("last: %i, current: %i", last_free_memory, HAL::free_memory());
+    //     DBG("last: %i, current: %i", last_free_memory, HAL::free_memory());
     //     last_free_memory = HAL::free_memory();
     //     // assert(last_free_memory == HAL::free_memory());
     // };
@@ -507,11 +507,11 @@ void setup() {
                                            .events_cap = 128,
                                            .handler_cap = 2,
                                            .delay_between_ticks = true,
-                                           .min_delay_between_ticks = time_ms{1},
+                                           .min_delay_between_ticks = time_us{1},
                                            .max_delay_between_ticks = time_ms{1000}};
         constexpr bool enable_prompt = true;
         auto prompt_cfg = enable_prompt
-                              ? std::make_optional(kaskas::Prompt::Config{.message_length = 64, .pool_size = 10})
+                              ? std::make_optional(kaskas::Prompt::Config{.message_length = 128, .pool_size = 20})
                               : std::nullopt;
         auto kk_cfg = KasKas::Config{.es_cfg = esc_cfg, .component_cap = 16, .prompt_cfg = prompt_cfg};
         kk = std::make_unique<KasKas>(hws, kk_cfg);
@@ -573,7 +573,7 @@ void setup() {
                                    Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
                                    Schedule::Block{.start = time_h(12),
                                                    .duration = time_h(8),
-                                                   .value = 24.0}, // 24.0 for seedling, 27.0 for plant
+                                                   .value = 27.0}, // 24.0 for seedling, 27.0 for plant
                                    Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0},
                                    Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}},
                 .check_interval = heating_sample_interval}};
@@ -627,7 +627,7 @@ void setup() {
         auto fluidsystem_cfg = Fluidsystem::Config{.pump_cfg = pump_cfg, //
                                                    .ground_moisture_sensor_idx = ENUM_IDX(DataProviders::SOIL_MOISTURE),
                                                    .clock_idx = ENUM_IDX(DataProviders::CLOCK),
-                                                   .ground_moisture_target = 40, // target moisture percentage
+                                                   .ground_moisture_target = 45, // target moisture percentage
                                                    .max_dosis_ml = 100,
                                                    .time_of_injection = time_h(8),
                                                    .delay_before_effect_evaluation = time_h(2)};
@@ -678,16 +678,16 @@ void setup() {
         kk->hotload_component(std::move(ctrl));
     }
 
-    // DBGF("Memory available: %i", HAL::free_memory());
+    // DBG("Memory available: %i", HAL::free_memory());
 
     // {
     //     auto recipes = hws->cookbook().extract_recipes();
     //     for (auto& r : recipes) {
     //         // const auto cmdstr = std::string(r->command());
-    //         // DBGF("Recipe has command: %s", cmdstr.c_str());
+    //         // DBG("Recipe has command: %s", cmdstr.c_str());
     //         // for (const auto& m : r->models()) {
     //         //     const auto recipe_name = std::string(m.name());
-    //         //     DBGF("-> has: %s", recipe_name.c_str());
+    //         //     DBG("-> has: %s", recipe_name.c_str());
     //         // }
     //         kk->hotload_rpc_recipe(std::move(r));
     //     }
@@ -699,7 +699,7 @@ void setup() {
     // const auto now = clock.now();
     //
     // const auto time_from_now = time_m(clock.time_until_next_occurence(time_h(20)));
-    // DBGF("t: %u", time_from_now.printable());
+    // DBG("t: %u", time_from_now.printable());
     // while (true) {
     //     HAL::delay_ms(100);
     // }
@@ -707,29 +707,29 @@ void setup() {
 void loop() {
     if (kk == nullptr) {
         DBG("loop");
-        // DBGF("interruptor: %i", interruptor);
-        // DBGF("ub: %i", ub.state() == LogicalState::ON ? 1 : 0);
+        // DBG("interruptor: %i", interruptor);
+        // DBG("ub: %i", ub.state() == LogicalState::ON ? 1 : 0);
         HAL::delay(time_ms(1000));
 
         // const auto t = S->temperature(HEATER_SURFACE_TEMP);
-        // DBGF("HEATER_SURFACE_TEMP : %f", t.value());
+        // DBG("HEATER_SURFACE_TEMP : %f", t.value());
         //
         // const auto tcc = S->temperature(CLIMATE_TEMP);
-        // DBGF("CLIMATE_TEMP : %f", tcc.value());
+        // DBG("CLIMATE_TEMP : %f", tcc.value());
         //
         // const auto hcc = S->humidity(CLIMATE_HUMIDITY);
-        // DBGF("CLIMATE_HUMIDITY : %f", hcc.value());
+        // DBG("CLIMATE_HUMIDITY : %f", hcc.value());
         //
         // const auto clock = S->clock(CLOCK);
         // const auto dt = clock.now();
         // const auto at = S->temperature(AMBIENT_TEMP);
         //
-        // DBGF("CLOCK: %.2i:%.2i", dt.getHour(), dt.getMinute());
-        // DBGF("CLOCK epoch: %i", static_cast<unsigned long>(clock.epoch()));
-        // DBGF("AMBIENT_TEMP : %f", at.value());
+        // DBG("CLOCK: %.2i:%.2i", dt.getHour(), dt.getMinute());
+        // DBG("CLOCK epoch: %i", static_cast<unsigned long>(clock.epoch()));
+        // DBG("AMBIENT_TEMP : %f", at.value());
         //
         // const auto sm = S->moisture(SOIL_MOISTURE);
-        // DBGF("SOIL_MOISTURE : %f", sm.value());
+        // DBG("SOIL_MOISTURE : %f", sm.value());
         // S->update_all();
 
     } else {

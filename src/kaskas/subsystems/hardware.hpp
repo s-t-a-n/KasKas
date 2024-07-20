@@ -28,7 +28,7 @@ public:
     }
 
     void safe_shutdown(State state) override {
-        DBGF("Hardware: Safeshutdown");
+        DBG("Hardware: Safeshutdown");
         _hws.safe_shutdown(state == State::CRITICAL);
     }
 

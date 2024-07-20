@@ -110,18 +110,18 @@ public:
         // evsys()->schedule(evsys()->event(Events::VentilationAutoTune, time_s(1)));
 
         auto time_from_now = time_s(15);
-        DBGF("ClimateControl: Scheduling VentilationCycleCheck in %u seconds.", time_from_now.printable());
+        DBG("ClimateControl: Scheduling VentilationCycleCheck in %u seconds.", time_from_now.printable());
         evsys()->schedule(evsys()->event(Events::VentilationCycleCheck, time_from_now));
         evsys()->schedule(evsys()->event(Events::VentilationFollowUp, time_from_now));
 
         time_from_now += time_s(5);
-        DBGF("ClimateControl: Scheduling HeatingCycleCheck in %u seconds.", time_from_now.printable());
+        DBG("ClimateControl: Scheduling HeatingCycleCheck in %u seconds.", time_from_now.printable());
         evsys()->schedule(evsys()->event(Events::HeatingCycleCheck, time_from_now));
         evsys()->schedule(evsys()->event(Events::HeatingFollowUp, time_from_now));
     }
 
     void safe_shutdown(State state) override {
-        DBGF("ClimateControl: safe shutdown");
+        DBG("ClimateControl: safe shutdown");
         // fade instead of cut to minimalize surges
         HAL::delay_ms(100);
         _climate_fan.fade_to(0.0);
@@ -152,22 +152,22 @@ public:
             const auto next_setpoint = _ventilation_schedule.value_at(now);
 
             if (next_setpoint > 0 && _ventilation_control.setpoint() > 0) {
-                DBGF("Ventilation: Check: ventilation is currently on, update value to humidity setpoint: %.2f",
+                DBG("Ventilation: Check: ventilation is currently on, update value to humidity setpoint: %.2f",
                      next_setpoint);
                 _ventilation_control.set_target_setpoint(detail::inverted(next_setpoint));
             } else if (next_setpoint > 0 && _ventilation_control.setpoint() == 0) {
-                DBGF("Ventilation: Check: ventilation is currently off, turn on and set humidity setpoint to: %.2f",
+                DBG("Ventilation: Check: ventilation is currently off, turn on and set humidity setpoint to: %.2f",
                      next_setpoint);
                 evsys()->trigger(evsys()->event(Events::VentilationCycleStart, time_s(1)));
             } else if (next_setpoint == 0 && _heater.setpoint() > 0) {
-                DBGF("Ventilation: Check: ventilation is currently on, turn off");
+                DBG("Ventilation: Check: ventilation is currently on, turn off");
                 evsys()->trigger(evsys()->event(Events::VentilationCycleStop, time_s(1)));
             }
 
             const auto time_until_next_check = _ventilation_schedule.start_of_next_block(now) - now;
             assert(_ventilation_schedule.start_of_next_block(now) > now);
 
-            DBGF("Ventilation: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
+            DBG("Ventilation: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
             assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(evsys()->event(Events::VentilationCycleCheck, time_until_next_check));
             break;
@@ -178,7 +178,7 @@ public:
 
             const auto next_setpoint = _ventilation_schedule.value_at(now_s());
 
-            DBGF("Ventilation: Setting humidity setpoint to %.2f", next_setpoint);
+            DBG("Ventilation: Setting humidity setpoint to %.2f", next_setpoint);
             _ventilation_control.set_target_setpoint(detail::inverted(next_setpoint));
             break;
         }
@@ -227,7 +227,7 @@ public:
             // remove residual heat first
             _climate_fan.fade_to(LogicalState::ON);
             for (auto t = _climate_temperature.value(); t > autotune_startpoint; t = _climate_temperature.value()) {
-                DBGF("Ventilating for temperature %.2f C is lower than startpoint %.2f C before autotune "
+                DBG("Ventilating for temperature %.2f C is lower than startpoint %.2f C before autotune "
                      "start",
                      t,
                      autotune_startpoint);
@@ -260,20 +260,20 @@ public:
             const auto next_setpoint = _heating_schedule.value_at(now);
 
             if (next_setpoint > 0 && _heater.setpoint() > 0) {
-                DBGF("Heater: Check: heater is currently on, update value to setpoint: %.2f", next_setpoint);
+                DBG("Heater: Check: heater is currently on, update value to setpoint: %.2f", next_setpoint);
                 _heater.set_target_setpoint(next_setpoint);
             } else if (next_setpoint > 0 && _heater.setpoint() == 0) {
-                DBGF("Heater: Check: heater is currently off, turn on and set setpoint to: %.2f", next_setpoint);
+                DBG("Heater: Check: heater is currently off, turn on and set setpoint to: %.2f", next_setpoint);
                 evsys()->trigger(evsys()->event(Events::HeatingCycleStart, time_s(1)));
             } else if (next_setpoint == 0 && _heater.setpoint() > 0) {
-                DBGF("Heater: Check: heater is currently on, turn off");
+                DBG("Heater: Check: heater is currently on, turn off");
                 evsys()->trigger(evsys()->event(Events::HeatingCycleStop, time_s(1)));
             }
 
             const auto time_until_next_check = _heating_schedule.start_of_next_block(now) - now;
             assert(_heating_schedule.start_of_next_block(now) > now);
 
-            DBGF("Heating: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
+            DBG("Heating: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
             assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(evsys()->event(Events::HeatingCycleCheck, time_until_next_check));
             break;
@@ -283,7 +283,7 @@ public:
             _power.set_state(LogicalState::ON);
 
             const auto next_setpoint = _heating_schedule.value_at(now_s());
-            DBGF("Heating: HeatingCycleStart: Setting climate control setpoint to %.2f", next_setpoint);
+            DBG("Heating: HeatingCycleStart: Setting climate control setpoint to %.2f", next_setpoint);
 
             _heater.set_target_setpoint(next_setpoint);
             break;
@@ -334,7 +334,7 @@ private:
 
         // if (_print_interval.expired()) {
         //     const auto state_str = std::string(Heater::as_stringview(_heater.state())).c_str();
-        //     DBGF("Heating: ambientT %.2fC, surfaceT %.2f, climateT %.2fC, sp T %.2f C, throttle: %i/255 state: %s",
+        //     DBG("Heating: ambientT %.2fC, surfaceT %.2f, climateT %.2fC, sp T %.2f C, throttle: %i/255 state: %s",
         //          _ambient_temp_sensor.value(), _heating_element_sensor.value(), _climate_temperature.value(),
         //          _heater.setpoint(), int(_heater.throttle() * 255), state_str);
         // }
@@ -352,7 +352,7 @@ private:
         _ventilation_control.new_reading(detail::inverted(climate_humidity));
         const auto normalized_response =
             _ventilation_control.response() / _cfg.ventilation.climate_fan_pid.output_upper_limit;
-        // DBGF("Ventilation: current humidity %.2f %%, fan: %.2f%%", climate_humidity, normalized_response * 100);
+        // DBG("Ventilation: current humidity %.2f %%, fan: %.2f%%", climate_humidity, normalized_response * 100);
 
         if (normalized_response > _cfg.ventilation.minimal_duty_cycle) {
             _climate_fan.creep_to(normalized_response, _cfg.ventilation.check_interval);

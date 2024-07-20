@@ -38,7 +38,7 @@ public:
                 spn::throw_exception(spn::runtime_exception("Tried to flip relay within backoff threshold"));
             } else {
                 DBG("--------------------------------------------------------------------------");
-                DBGF("Tried to flip relay within backoff threshold: %ims since last flip",
+                DBG("Tried to flip relay within backoff threshold: %ims since last flip",
                      time_ms(time_since_last_flip).printable());
                 DBG("--------------------------------------------------------------------------");
             }

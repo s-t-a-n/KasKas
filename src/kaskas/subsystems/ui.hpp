@@ -53,7 +53,7 @@ public:
     }
 
     void safe_shutdown(State state) override {
-        DBGF("UI: Safeshutdown");
+        DBG("UI: Safeshutdown");
         switch (state) {
         case State::SAFE: _signaltower.signal(Signaltower::State::Yellow); break;
         case State::CRITICAL: _signaltower.signal(Signaltower::State::Red); break;

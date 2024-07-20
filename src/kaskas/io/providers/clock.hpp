@@ -1,16 +1,10 @@
 #pragma once
 
-// #include <AH/Arduino-Wrapper.h>
-#include <spine/core/debugging.hpp>
-#include <spine/platform/hal.hpp>
-
-#include <AH/STL/cstdint>
-
-// todo: rip DateTime from DS3231 lib to Spine
 #include "kaskas/io/provider.hpp"
 
-#include <DS3231-RTC.h>
-using DateTime = DS3231::DateTime;
+#include <spine/core/datetime.hpp>
+#include <spine/core/debugging.hpp>
+#include <spine/platform/hal.hpp>
 
 namespace kaskas::io {
 

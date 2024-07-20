@@ -3,7 +3,6 @@
 #include "kaskas/prompt/charbuffer.hpp"
 #include "kaskas/prompt/message.hpp"
 
-#include <spine/core/assert.hpp>
 #include <spine/core/debugging.hpp>
 #include <spine/platform/hal.hpp>
 #include <spine/structure/pool.hpp>
@@ -30,7 +29,9 @@ public:
     virtual void initialize() = 0;
 
     void send_message(const Message& msg) {
-        write(msg.cmd());
+        write(Dialect::REPLY_HEADER);
+
+        write(msg.module());
         write(msg.operant());
 
         if (msg.key()) {
@@ -40,7 +41,8 @@ public:
             write(std::string_view(":"));
             write(*msg.value());
         }
-        write(std::string_view("\n"));
+        write(Dialect::REPLY_FOOTER);
+        write(std::string_view("\n\r"));
     }
 
     std::optional<Message> receive_message() {
@@ -55,24 +57,27 @@ public:
             _unfinished->reset();
         }
 
-        // read to buffer
-        assert(_unfinished->capacity > 0);
-        _unfinished->length +=
-            read(_unfinished->raw + _unfinished->length, _unfinished->capacity - _unfinished->length - 1);
-        assert(_unfinished->length < _unfinished->capacity);
-        _unfinished->raw[_unfinished->length] = '\0';
+        if (_unfinished->length >= _unfinished->capacity - 1) {
+            DBG("Datalink: buffer is full");
+        }
 
-        // nothing to do
-        if (_unfinished->length == 0)
-            return {};
+        // read to buffer
         assert(_unfinished->raw != nullptr);
         assert(_unfinished->capacity > 0);
+        _unfinished->length += read(_unfinished->raw + _unfinished->length,
+                                    _unfinished->capacity - _unfinished->length - 1); // 1 for nullbyte termination
+        assert(_unfinished->length < _unfinished->capacity); // sanity check for read
+
+        if (_unfinished->length == 0) // return when nothing has been read
+            return {};
+
+        _unfinished->raw[_unfinished->length] = '\0'; // null terminate  unconditionally
 
         // check if there is a partial line
         const auto nl = strcspn(_unfinished->raw, return_carriers);
         if (nl == _unfinished->length) {
             if (_unfinished->length >= _unfinished->capacity - Dialect::MINIMAL_CMD_LENGTH) {
-                DBGF("No CRLF found in entire buffer, discarding buffer.")
+                DBG("No CRLF found in entire buffer, discarding buffer.")
                 _unfinished->reset();
             }
             return {};
@@ -84,7 +89,7 @@ public:
             return {};
         message_buffer->reset();
 
-        // copy in the line to the message buffer
+        // copy in the discovered line to the message buffer
         message_buffer->length = nl + 1;
         assert(_unfinished->length >= message_buffer->length);
         strlcpy(message_buffer->raw, _unfinished->raw, message_buffer->length);
@@ -97,12 +102,11 @@ public:
                 ++str;
                 --str_len;
             }
-            if (skip > 0)
-                DBGF("skip: %i", skip);
             return skip;
         };
 
         // move forward all that remains in buffer
+        // todo: ringbuffer ?
         assert(_unfinished->length >= message_buffer->length);
         _unfinished->length -= message_buffer->length;
 
@@ -113,7 +117,13 @@ public:
         memmove(_unfinished->raw, _unfinished->raw + message_buffer->length + skip, _unfinished->length);
         _unfinished->raw[_unfinished->length] = '\0';
 
-        DBGF("Returning message: {%s}, remaining in buffer: {%s}", message_buffer->raw, _unfinished->raw);
+        // warning, todo: the following debug print needs to be cleared of newline characters, otherwise kaskaspython
+        // does not understand what is line belongs to what
+        // DBG("Returning message: {%s}, remaining(%i) in buffer: {%s}",
+        //      message_buffer->raw,
+        //      _unfinished->length,
+        //      _unfinished->raw);
+        // HAL::delay_ms(200);
 
         return Message::from_buffer(std::move(message_buffer));
     }
@@ -172,6 +182,13 @@ public:
         send_message(msg);
         swap_streams();
     }
+
+    void inject_raw_string(const std::string& raw_string) {
+        swap_streams();
+        write((uint8_t*)(raw_string.c_str()), raw_string.size());
+        swap_streams();
+    }
+
     std::optional<Message> extract_reply() {
         swap_streams();
         auto m = receive_message();
@@ -193,6 +210,8 @@ protected:
 
     size_t write(uint8_t* buffer, size_t length) override {
         std::string s((char*)buffer, length);
+        if (length == 0 || _active_out->full())
+            return 0;
         _active_out->push_back(s);
         return length;
     }
@@ -204,8 +223,8 @@ protected:
             if (s.length() <= length - offset) {
                 memmove(buffer + offset, s.data(), s.length());
                 offset += s.length();
-                // DBGF("s.length : %i", s.length());
-                // DBGF("'%s'", s.c_str());
+                // DBG("s.length : %i", s.length());
+                // DBG("'%s'", s.c_str());
                 ++popped;
             } else {
                 break;
@@ -216,7 +235,7 @@ protected:
         }
 
         // const auto s = std::string((char*)buffer, offset);
-        // DBGF("len: %i, s: '%s'", offset, s.c_str());
+        // DBG("len: %i, s: '%s'", offset, s.c_str());
 
         // assert(offset == 15);
         return offset;

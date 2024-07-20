@@ -23,8 +23,9 @@
 #include <spine/structure/pointer.hpp>
 #include <spine/structure/vector.hpp>
 
-#include <AH/STL/utility>
-#include <AH/STL/vector>
+#include <utility>
+#include <vector>
+
 namespace kaskas {
 
 using kaskas::prompt::Prompt;
@@ -52,7 +53,7 @@ public:
             auto dl = std::make_shared<SerialDatalink>(
                 SerialDatalink::Config{.message_length = _cfg.prompt_cfg->message_length,
                                        .pool_size = _cfg.prompt_cfg->pool_size},
-                HAL::UART(HAL::UART::Config{&Serial}));
+                HAL::UART(HAL::UART::Config{.stream = &Serial, .timeout = time_ms(50)})); // todo: validate this timeout
             // using prompt::MockDatalink;
             //         auto prompt_cfg = Prompt::Config{.message_length = 64, .pool_size = 20};
             // auto dl = std::make_shared<MockDatalink>(
@@ -83,17 +84,17 @@ public:
                 auto recipes = _hws->cookbook().extract_recipes();
                 for (auto& r : recipes) {
                     // const auto cmdstr = std::string(r->command());
-                    // DBGF("Recipe has command: %s", cmdstr.c_str());
+                    // DBG("Recipe has command: %s", cmdstr.c_str());
                     // for (const auto& m : r->models()) {
                     //     const auto recipe_name = std::string(m.name());
-                    //     DBGF("-> has: %s", recipe_name.c_str());
+                    //     DBG("-> has: %s", recipe_name.c_str());
                     // }
                     hotload_rpc_recipe(std::move(r));
                 }
             }
 
             _prompt->initialize();
-            DBGF("Initialized prompt");
+            DBG("Initialized prompt");
         }
 
         _evsys.trigger(_evsys.event(Events::WakeUp, time_s(0), Event::Data()));
@@ -109,7 +110,7 @@ public:
         if (_cfg.prompt_cfg) {
             if (auto recipe = component->rpc_recipe()) {
                 assert(recipe != nullptr);
-                // DBGF("Hotloading component rpc recipes!");
+                // DBG("Hotloading component rpc recipes!");
                 hotload_rpc_recipe(std::move(recipe));
             }
         }
@@ -126,10 +127,10 @@ public:
     int loop() {
         // _hws->update_all();
         _evsys.loop();
-        if (_cfg.prompt_cfg) {
-            assert(_prompt);
-            // _prompt->update();
-        }
+        // if (_cfg.prompt_cfg) {
+        // assert(_prompt);
+        // _prompt->update();
+        // }
         return 0;
     }
 
@@ -140,7 +141,7 @@ private:
 
         void handle_exception(const spn::core::Exception& exception) override {
             //
-            DBGF("KasKasExceptionHandler: Handling exception: %s", exception.error_type());
+            DBG("KasKasExceptionHandler: Handling exception: %s", exception.error_type());
             for (auto& sf : _kk._components) {
                 sf->safe_shutdown(Component::State::CRITICAL);
             }

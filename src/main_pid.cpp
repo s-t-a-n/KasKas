@@ -26,7 +26,7 @@
 //
 //     auto sht31 = SHT31TempHumidityProbe(SHT31TempHumidityProbe::Config{});
 //     sht31.initialize();
-//     DBGF("SHT31 initialized");
+//     DBG("SHT31 initialized");
 //
 //     // todo: energybudget; keep track of nominal consumption and reduce power when necessary
 //
@@ -48,7 +48,7 @@
 //     heater.initialize();
 //     // heater.set_setpoint(surface_setpoint);
 //
-//     DBGF("Current temperature is %f C", heater.temperature());
+//     DBG("Current temperature is %f C", heater.temperature());
 //
 //     // while (true) {
 //     // }
@@ -70,7 +70,7 @@
 //
 //     if (do_autotune) {
 //         // while (sht31.read_temperature() > climate_autotune_startpoint) {
-//         //     DBGF("Waiting until climate temperature of %f C reaches %f C, unloading thermal capacitance",
+//         //     DBG("Waiting until climate temperature of %f C reaches %f C, unloading thermal capacitance",
 //         //          sht31.read_temperature(), climate_autotune_startpoint);
 //         //     HAL::delay(time_ms(1000));
 //         //
@@ -78,7 +78,7 @@
 //         const auto process_setter = [&](double value) {
 //             const auto output_value = value * surface_setpoint;
 //             heater.set_setpoint(output_value);
-//             DBGF("Setting heater to setpoint %f", output_value);
+//             DBG("Setting heater to setpoint %f", output_value);
 //             HAL::print(heater.temperature());
 //             HAL::print("|");
 //             HAL::println(sht31.read_temperature());
@@ -128,17 +128,17 @@
 //     while (true) {
 //         const auto humidity = sht31.read_humidity();
 //         humidity_srlatch.new_reading(humidity);
-//         DBGF("Humidity: %f %%, RV: %i ", humidity, humidity_srlatch.response());
+//         DBG("Humidity: %f %%, RV: %i ", humidity, humidity_srlatch.response());
 //         fan.set_state(humidity_srlatch.response());
 //         //
 //         // if (HAL::millis() - windowStartTime > humidity_window_size) {
 //         //     // time to shift the Relay Window
-//         //     DBGF("expired");
+//         //     DBG("expired");
 //         //     windowStartTime += humidity_window_size;
 //         // }
 //         // if (time_ms(humidity_pid.response()) < HAL::millis() - windowStartTime) {
 //         //     fan.set_state(LogicalState::ON);
-//         //     DBGF("Turning on");
+//         //     DBG("Turning on");
 //         // } else
 //         //     fan.set_state(LogicalState::OFF);
 //
@@ -153,7 +153,7 @@
 //         second_order_pid.new_reading(sht31_temp);
 //         const auto new_setpoint = second_order_pid.response();
 //         heater.set_setpoint(new_setpoint);
-//         DBGF("Second order setpoint: %f, heater setpoint: %f", second_order_pid.setpoint(), new_setpoint);
+//         DBG("Second order setpoint: %f, heater setpoint: %f", second_order_pid.setpoint(), new_setpoint);
 //
 //         HAL::print(heater.temperature());
 //         HAL::print("|");

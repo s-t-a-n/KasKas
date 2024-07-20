@@ -12,7 +12,7 @@
 #include <spine/core/standard.hpp>
 #include <spine/structure/array.hpp>
 
-#include <AH/STL/memory>
+#include <memory>
 
 namespace kaskas::io {
 
@@ -72,12 +72,14 @@ public:
     time_ms time_until_next_update() {
         time_ms interval = time_ms(INT32_MAX);
         for (auto& p : _peripherals) {
-            if (p && p->is_updateable() && p->update_interval() < interval) {
-                interval = std::max(p->update_interval(), time_ms(1));
+            if (p && p->is_updateable() && p->time_until_next_update() < interval) {
+                interval = std::max(p->time_until_next_update(), time_ms(1));
                 assert(interval > time_ms(0));
             }
         }
         assert(interval != time_ms(INT32_MAX));
+
+        // DBG("time until next update: %ums", interval.printable());
         return interval;
     }
 

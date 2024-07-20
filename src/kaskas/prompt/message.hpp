@@ -3,10 +3,8 @@
 #include "kaskas/prompt/dialect.hpp"
 #include "kaskas/prompt/rpc_result.hpp"
 
-#include <spine/core/assert.hpp>
 #include <spine/core/debugging.hpp>
 
-#include <AH/STL/memory>
 #include <cstring>
 #include <optional>
 #include <string_view>
@@ -14,136 +12,113 @@
 namespace kaskas::prompt {
 class Message {
 public:
+    enum class Type {};
+
+public:
     Message() = default;
     Message(Message&& other) noexcept :
-        _cmd(std::move(other._cmd)),
+        _module(std::move(other._module)),
         _operant(std::move(other._operant)),
-        _key(std::move(other._key)),
-        _value(std::move(other._value)),
+        _cmd(std::move(other._cmd)),
+        _arguments(std::move(other._arguments)),
         _buffer(std::move(other._buffer)) {}
     Message& operator=(Message& other) = delete;
     Message& operator=(Message&& other) noexcept {
         if (this == &other)
             return *this;
-        _cmd = std::move(other._cmd);
+        _module = std::move(other._module);
         _operant = std::move(other._operant);
-        _key = std::move(other._key);
-        _value = std::move(other._value);
+        _cmd = std::move(other._cmd);
+        _arguments = std::move(other._arguments);
         _buffer = std::move(other._buffer);
         return *this;
     }
 
-    // ~Message() {
-    //     if (_buffer) {
-    //         DBGF("destroying message with {%s}", as_string().c_str());
-    //         memset(_buffer->raw, '\0', _buffer->length);
-    //     }
-    // }
-
-    /*
-     * The following patterns are legal messages:
-     * CMD=             : list all variables than can be set for CMD
-     * CMD?             : list all variable that can be requested for CMD
-     * CMD!             : list all functions that can be called for CMD
-     * CMD=var:1        : set a variable
-     * CMD?var          : request a variable
-     * CMD!function     : function call
-     * CMD<arguments    : reply to request
-     */
-
+public:
     const std::shared_ptr<CharBuffer> buffer() const {
         assert(_buffer);
         return _buffer;
     }
 
-    const std::string_view& cmd() const {
-        assert(_cmd != std::string_view{});
-        return _cmd;
+    const std::string_view& module() const {
+        assert(_module != std::string_view{});
+        return _module;
     }
     const std::string_view& operant() const {
         assert(_operant != std::string_view{});
         return _operant;
     }
 
-    const std::optional<std::string_view>& key() const { return _key; }
-    const std::optional<std::string_view>& value() const { return _value; }
+    const std::optional<std::string_view>& key() const { return _cmd; }
+    const std::optional<std::string_view>& value() const { return _arguments; }
 
     static std::optional<Message> from_buffer(std::shared_ptr<CharBuffer> buffer) {
-        assert(buffer);
-        assert(buffer->capacity > 0);
-
+        assert(buffer && buffer->capacity > 0);
         buffer->raw[buffer->capacity - 1] = '\0'; // ensure null termination
-        const auto operant_idx = strcspn(buffer->raw, Dialect::OPERANTS);
 
-        // DBGF("buffer: %s, length: %i, operant @ %i", static_cast<const char*>(buffer->raw), buffer->length,
-        // operant_idx);
+        if (memcmp(buffer->raw, Dialect::OPERANT_PRINT_USAGE, 2) == 0) { // user request to dump all possible commands
+            Message m;
+            m._module = Dialect::OPERANT_PRINT_USAGE;
+            m._operant = Dialect::OPERANT_PRINT_USAGE;
+            return m;
+        }
+
+        const auto operant_idx = strcspn(buffer->raw, Dialect::OPERANTS.data());
         if (operant_idx == buffer->length - 1) { // no operant found
             return std::nullopt;
         }
-        if (operant_idx < Dialect::MINIMAL_CMD_LENGTH || operant_idx > Dialect::MAXIMAL_CMD_LENGTH) {
-            // command size is too small or too big
+        if (operant_idx < Dialect::MINIMAL_CMD_LENGTH
+            || operant_idx > Dialect::MAXIMAL_CMD_LENGTH) { // command size is too small or too big
             return std::nullopt;
         }
 
         bool newline_at_end = buffer->raw[buffer->length - 1] == '\n';
 
         Message m;
-        auto head = buffer->raw;
-        m._cmd = std::string_view(head, operant_idx);
 
+        // add module
+        auto head = buffer->raw;
+        m._module = std::string_view(head, operant_idx);
+
+        // add operant
         head += operant_idx;
         m._operant = std::string_view(head, 1);
 
+        // extract command and arguments
         head += 1;
         const auto kv_idx = strcspn(head, Dialect::KV_SEPARATOR);
         if (kv_idx < buffer->length - (head - buffer->raw)) {
             // key/value separator found
-            m._key = std::string_view(head, kv_idx);
+            m._cmd = std::string_view(head, kv_idx);
             head += kv_idx + 1; // skip separator
-            m._value = std::string_view(head, buffer->length - (head - buffer->raw) - newline_at_end);
+            const auto arguments_length = buffer->length - (head - buffer->raw) - newline_at_end;
+            m._arguments =
+                arguments_length > 0 ? std::make_optional(std::string_view(head, arguments_length)) : std::nullopt;
         } else {
-            // const auto length = buffer->length - (head - buffer->raw) - newline_at_end;
-            // DBGF("length: %i", length);
-            // assert(length == 10);
-            m._key = std::string_view(head, buffer->length - (head - buffer->raw) - newline_at_end);
-            m._value = std::nullopt;
+            m._cmd = std::string_view(head, buffer->length - (head - buffer->raw) - newline_at_end);
+            m._arguments = std::nullopt;
         }
 
-        // DBGF("total length: %i", buffer->length);
-        // const auto s1 = std::string(m.cmd());
-        // const auto s2 = std::string(m.operant());
-        // const auto s3 = std::string(*m.key());
-        // DBGF("from buffer: %s:%s:%s", s1.c_str(), s2.c_str(), s3.c_str());
-        // assert(m.key()->length() == 10);
-
-        // assert(buffer->length >= operant_idx + 1);
-        // m._value = std::string_view(buffer->raw + operant_idx + 1, buffer->length - operant_idx - 1 -
-        // newline_at_end);
         m._buffer = std::move(buffer);
-        // DBGF("from buffer: {%s}", m.as_string().c_str());
         return std::move(m);
     }
 
     static std::optional<Message>
-    from_result(std::shared_ptr<CharBuffer>&& buffer, const RPCResult& result, const std::string_view& cmd) {
+    from_result(std::shared_ptr<CharBuffer>&& buffer, const RPCResult& result, const std::string_view& module) {
         assert(buffer);
         assert(buffer->capacity > 0);
 
         Message m;
 
-        // m._cmd = cmd;
-        // m._operant = std::string_view(Dialect::OPERANT_REPLY, 1);
-        // m.argument()
-
         m._buffer = std::move(buffer);
 
-        // add command
+        // add module
         auto head = m._buffer->raw;
-        strncpy(head, cmd.data(), cmd.length());
-        m._cmd = std::string_view(head, cmd.length());
+        strncpy(head, module.data(), module.length());
+        m._module = std::string_view(head, module.length());
 
-        // add '<'
-        head += cmd.length();
+        // add operator signifying a reply '<'
+        head += module.length();
         strncpy(head, Dialect::OPERANT_REPLY, 1);
         m._operant = std::string_view(head, 1);
 
@@ -151,8 +126,9 @@ public:
         const auto status_str = std::to_string(magic_enum::enum_integer(result.status));
         head += status_str.length();
         strncpy(head, status_str.c_str(), status_str.length());
-        m._key = std::string_view(head, status_str.length());
+        m._cmd = std::string_view(head, status_str.length());
 
+        // add arguments
         if (result.return_value) {
             // add separator
             head += 1;
@@ -161,23 +137,18 @@ public:
             // add return value
             head += 1;
             strncpy(head, result.return_value->c_str(), result.return_value->length());
-            m._value = std::string_view(head, result.return_value->length());
+            m._arguments = std::string_view(head, result.return_value->length());
             head += result.return_value->length();
         }
-        // add nullbyte
-        head[1] = '\0';
-
+        head[1] = '\0'; // add nullbyte
         m._buffer->length = head - m._buffer->raw;
-
-        // DBGF("return value: '%s'", result.return_value->c_str());
-        // DBGF("resulting reply: %s", m.as_string().c_str());
 
         return std::move(m);
     }
 
     [[nodiscard]] std::string as_string() const {
         std::string s;
-        s += cmd();
+        s += module();
         s += operant();
         if (key()) {
             s += *key();
@@ -189,15 +160,14 @@ public:
         return s;
     }
 
-    // protected:
-    // Message() = default;
-
 private:
-    std::string_view _cmd;
+    std::string_view _module;
     std::string_view _operant;
-    std::optional<std::string_view> _key;
-    std::optional<std::string_view> _value;
+    std::optional<std::string_view> _cmd;
+    std::optional<std::string_view> _arguments;
 
     std::shared_ptr<CharBuffer> _buffer;
 };
+
+// todo: clean this up and migrate this to a message factory
 } // namespace kaskas::prompt

@@ -1,68 +1,57 @@
 #pragma once
+// #include <fmt/core.h>
 #include <magic_enum/magic_enum.hpp>
 #include <magic_enum/magic_enum_all.hpp>
-#include <spine/core/assert.hpp>
 #include <spine/core/debugging.hpp>
+#include <spine/core/utils/concatenate.hpp>
 
+#include <array>
 #include <cstring>
+#include <numeric>
+#include <utility>
 
 namespace kaskas::prompt {
 
-// ripped from: https://stackoverflow.com/a/65440575/18775667
-// we cannot return a char array from a function, therefore we need a wrapper
-template<unsigned N>
-struct CatString {
-    char c[N];
-};
-
-template<unsigned... Len>
-constexpr auto cat(const char (&... strings)[Len]) {
-    constexpr unsigned N = (... + Len) - sizeof...(Len);
-    CatString<N + 1> result = {};
-    result.c[N] = '\0';
-
-    char* dst = result.c;
-    for (const char* src : {strings...}) {
-        for (; *src != '\0'; src++, dst++) {
-            *dst = *src;
-        }
-    }
-    return result.c;
-}
-
 struct Dialect {
-    enum class OP { FUNCTION_CALL, ASSIGNMENT, ACCESS, RETURN_VALUE, PRINT_USAGE, NOP, SIZE };
-    static OP optype_for_operant(const char operant) {
-        auto found_op = OP::NOP;
-        // todo : use find
-        magic_enum::enum_for_each<OP>([operant, &found_op](OP optype) {
-            const auto op_idx = *magic_enum::enum_index(optype);
-            if (op_idx < std::strlen(OPERANTS) && operant == OPERANTS[op_idx]) {
-                // DBGF("found op");
-                found_op = optype;
-            }
-        });
-        return found_op;
-    }
+    static constexpr char API_VERSION[] = "0.0.0";
 
-    // todo: constexpr from OPERANTS
-    // static constexpr char OPERANT_FUNCTION_CALL[] = "!";
-    // static constexpr char OPERANT_ASSIGNMENT[] = "=";
-    // static constexpr char OPERANT_ACCESS[] = "?";
-    // static constexpr char OPERANT_REPLY[] = "<";
-    // static constexpr auto OPERANTS = cat(OPERANT_FUNCTION_CALL, OPERANT_ASSIGNMENT, OPERANT_ACCESS, OPERANT_REPLY);
+    static constexpr auto REPLY_HEADER = "@";
+    static constexpr auto REPLY_FOOTER = ">";
+    enum class OP { REQUEST, REPLY, PRINT_USAGE, NOP, SIZE }; // make sure this matches order of OPERANTS
 
-    static constexpr auto OPERANT_FUNCTION_CALL = ":";
-    static constexpr auto OPERANT_ASSIGNMENT = ":";
-    static constexpr auto OPERANT_ACCESS = ":";
-    static constexpr auto OPERANT_REPLY = "<";
-    static constexpr auto OPERANTS = ":<";
+    static constexpr char OPERANT_REQUEST[] = ":";
+    static constexpr char OPERANT_REPLY[] = "<";
+    static constexpr char OPERANT_PRINT_USAGE[] = "?";
+    static constexpr auto OPERANTS = spn::core::utils::concatenate(OPERANT_REQUEST, OPERANT_REPLY, OPERANT_PRINT_USAGE);
 
     static constexpr auto KV_SEPARATOR = ":";
     static constexpr auto VALUE_SEPARATOR = "|";
 
     static constexpr auto MINIMAL_CMD_LENGTH = 2;
     static constexpr auto MAXIMAL_CMD_LENGTH = 3;
+
+    // todo: spice this up with some FMTLIB sauce?
+    static constexpr auto USAGE_STRING = spn::core::utils::concatenate(
+        "KasKas: API version ",
+        Dialect::API_VERSION,
+        ". Usage:\n\r",
+        "  ?                         : print this help\n\r",
+        "  MOD:CMD                   : call a command of a module\n\r",
+        "  MOD:CMD:ARG|ARG2          : call a command of a module and provide arguments\n\r",
+        "\n\r",
+        "Replies to API requests look as follows: @CMD:STATUSCODE<ARG1|ARG2\n\r");
+
+    static OP optype_for_operant(const char operant) {
+        auto found_op = OP::NOP;
+        // todo : use std::find instead, it gave a funny icw magic_enum
+        magic_enum::enum_for_each<OP>([operant, &found_op](OP optype) {
+            const auto op_idx = *magic_enum::enum_index(optype);
+            if (op_idx < std::strlen(OPERANTS.data()) && operant == OPERANTS[op_idx]) {
+                found_op = optype;
+            }
+        });
+        return found_op;
+    }
 };
 
 } // namespace kaskas::prompt

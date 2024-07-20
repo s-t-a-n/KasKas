@@ -127,7 +127,7 @@
 //         HAL::delay_ms(1);
 //     }
 //     baseline /= baseline_repeat;
-//     DBGF("Baseline %u", baseline);
+//     DBG("Baseline %u", baseline);
 //
 //     // power.set_state(DigitalState::OFF);
 //     // return;
@@ -141,9 +141,9 @@
 //     constexpr auto mA_per_step = mV_per_step / mV_per_A;
 //
 //     const auto v = mA_per_step;
-//     DBGF("mA_per_step :%f", v);
+//     DBG("mA_per_step :%f", v);
 //     HAL::println(v);
-//     // DBGF("mA_per_step :%u / 1000", 1000 * (uint32_t)mA_per_step);
+//     // DBG("mA_per_step :%u / 1000", 1000 * (uint32_t)mA_per_step);
 //
 //     const auto K = 100;
 //     using spn::filter::EWMA;

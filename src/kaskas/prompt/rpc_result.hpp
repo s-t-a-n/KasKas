@@ -1,7 +1,6 @@
 #pragma once
 
 #include <magic_enum/magic_enum.hpp>
-#include <spine/core/assert.hpp>
 #include <spine/core/debugging.hpp>
 #include <spine/platform/hal.hpp>
 

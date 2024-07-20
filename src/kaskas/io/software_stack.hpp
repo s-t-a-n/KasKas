@@ -11,7 +11,7 @@
 #include <spine/core/standard.hpp>
 #include <spine/structure/array.hpp>
 
-#include <AH/STL/memory>
+#include <memory>
 #include <utility>
 
 namespace kaskas::io {
