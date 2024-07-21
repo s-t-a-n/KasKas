@@ -35,9 +35,9 @@ struct Dialect {
         "KasKas: API version ",
         Dialect::API_VERSION,
         ". Usage:\n\r",
-        "  ?                         : print this help\n\r",
-        "  MOD:CMD                   : call a command of a module\n\r",
-        "  MOD:CMD:ARG|ARG2          : call a command of a module and provide arguments\n\r",
+        // "  ?                         : print this help\n\r",
+        // "  MOD:CMD                   : call a command of a module\n\r",
+        // "  MOD:CMD:ARG|ARG2          : call a command of a module and provide arguments\n\r",
         "\n\r",
         "Replies to API requests look as follows: @CMD:STATUSCODE<ARG1|ARG2\n\r");
 

@@ -65,7 +65,7 @@ public:
                                    [this](const OptStringView&) {
                                        if (!is_warmed_up())
                                            return RPCResult("Data acquisition has not warmed up yet",
-                                                            RPCResult::State::BAD_RESULT);
+                                                            RPCResult::Status::BAD_RESULT);
                                        return RPCResult(timeseries_as_string());
                                    }),
                       }));

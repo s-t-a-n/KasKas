@@ -207,24 +207,24 @@ public:
                          [this](const OptStringView& amount_in_ml) {
                              if (!amount_in_ml)
                                  return RPCResult("cannot inject: amount to inject (in ml) not specified",
-                                                  RPCResult::State::BAD_INPUT);
+                                                  RPCResult::Status::BAD_INPUT);
                              if (_status.Flags.injection_needs_evaluation)
                                  return RPCResult("cannot inject: last injection was not evaluated",
-                                                  RPCResult::State::BAD_RESULT);
+                                                  RPCResult::Status::BAD_RESULT);
                              evsys()->schedule(evsys()->event(Events::WaterInjectStart,
                                                               time_s(1),
                                                               Event::Data(std::stod(*amount_in_ml))));
-                             return RPCResult(RPCResult::State::OK);
+                             return RPCResult(RPCResult::Status::OK);
                          }),
                 RPCModel("resetEvaluationLock",
                          [this](const OptStringView& amount_in_ml) {
                              _status.Flags.injection_needs_evaluation = false;
-                             return RPCResult(RPCResult::State::OK);
+                             return RPCResult(RPCResult::Status::OK);
                          }),
                 RPCModel(
                     "injectionEffect",
                     [this](const OptStringView& _) {
-                        return RPCResult(std::to_string(_ml_per_percent_of_moisture.value()), RPCResult::State::OK);
+                        return RPCResult(std::to_string(_ml_per_percent_of_moisture.value()), RPCResult::Status::OK);
                     },
                     "tracks amount of moisture raised per mL of fluid dosed"),
             }));

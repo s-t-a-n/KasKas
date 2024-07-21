@@ -51,7 +51,7 @@ public:
                           RPCModel("shutdown",
                                    [this](const OptStringView& _) {
                                        evsys()->schedule(evsys()->event(Events::ShutDown, time_s(1)));
-                                       return RPCResult(RPCResult::State::OK);
+                                       return RPCResult(RPCResult::Status::OK);
                                    }),
                       }));
         return std::move(model);

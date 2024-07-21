@@ -124,9 +124,13 @@ public:
     std::optional<RPC> from_message(const Message& msg) {
         assert(msg.operant().length() == 1);
         const auto optype = Dialect::optype_for_operant(msg.operant()[0]);
-        assert(optype != Dialect::OP::NOP);
+        // assert(optype != Dialect::OP::NOP);
 
         switch (optype) {
+        case Dialect::OP::NOP: {
+            DBG("invalid operant {%c} found for message: {%s}", msg.operant()[0], msg.as_string().c_str());
+            return {};
+        }
         case Dialect::OP::REQUEST: {
             const auto recipe = recipe_for_command(msg.module());
             if (!recipe) {

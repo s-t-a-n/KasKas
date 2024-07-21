@@ -22,23 +22,23 @@ public:
                       {
                           RPCModel("roVariable",
                                    [this](const OptStringView&) {
-                                       DBGF("roVariable accessed");
+                                       DBG("roVariable accessed");
                                        return RPCResult(std::to_string(roVariable));
                                    }),
                           RPCModel("rwVariable",
                                    [this](const OptStringView& s) {
                                        const auto s_str = s ? std::string{*s} : std::string();
-                                       DBGF("rwVariable accessed with arg: {%s}", s_str.c_str());
+                                       DBG("rwVariable accessed with arg: {%s}", s_str.c_str());
                                        rwVariable = s ? rwVariable + std::stod(std::string(*s)) : rwVariable;
                                        return RPCResult(std::to_string(rwVariable));
                                    }), //
                           RPCModel("foo",
                                    [this](const OptStringView& s) {
                                        if (!s || s->length() == 0) {
-                                           return RPCResult(RPCResult::State::BAD_INPUT);
+                                           return RPCResult(RPCResult::Status::BAD_INPUT);
                                        }
                                        const auto s_str = s ? std::string{*s} : std::string();
-                                       DBGF("foo called with arg: '%s'", s_str.c_str());
+                                       DBG("foo called with arg: '%s'", s_str.c_str());
 
                                        return RPCResult(std::to_string(foo(std::stod(s_str))));
                                    }),
@@ -216,9 +216,6 @@ void loop() {}
 #endif
 
 int main(int argc, char** argv) {
-#if defined(ARDUINO)
-    ARDUINO_MOCK_ALL();
-#endif
     run_all_tests();
     return 0;
 }

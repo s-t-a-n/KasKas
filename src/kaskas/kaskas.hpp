@@ -52,7 +52,9 @@ public:
             using prompt::SerialDatalink;
             auto dl = std::make_shared<SerialDatalink>(
                 SerialDatalink::Config{.message_length = _cfg.prompt_cfg->message_length,
-                                       .pool_size = _cfg.prompt_cfg->pool_size},
+                                       .pool_size = _cfg.prompt_cfg->pool_size,
+                                       .buffer_size = _cfg.prompt_cfg->input_buffer_size,
+                                       .delimiters = _cfg.prompt_cfg->line_delimiters},
                 HAL::UART(HAL::UART::Config{.stream = &Serial, .timeout = time_ms(50)})); // todo: validate this timeout
             // using prompt::MockDatalink;
             //         auto prompt_cfg = Prompt::Config{.message_length = 64, .pool_size = 20};

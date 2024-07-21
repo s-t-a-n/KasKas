@@ -25,14 +25,16 @@ public:
     struct Config {
         size_t message_length;
         size_t pool_size;
+        size_t input_buffer_size;
+        const std::string_view line_delimiters = "\r\n";
     };
 
     Prompt(const Config&& cfg) :
         _cfg(cfg),
         _rpc_factory(RPCFactory::Config{.directory_size = 16}),
-        _bufferpool(std::make_shared<Pool<CharBuffer>>(_cfg.pool_size)) {
+        _bufferpool(std::make_shared<Pool<StaticString>>(_cfg.pool_size)) {
         for (int i = 0; i < _cfg.pool_size; ++i) {
-            _bufferpool->populate(std::make_shared<CharBuffer>(_cfg.message_length));
+            _bufferpool->populate(std::make_shared<StaticString>(_cfg.message_length));
         }
         assert(_bufferpool->is_fully_populated());
     }
@@ -49,16 +51,18 @@ public:
     void update() {
         assert(_dl);
         if (const auto message = _dl->receive_message()) {
+            DBG("update: received message: {%s}", message->as_string().c_str());
             if (const auto rpc = _rpc_factory.from_message(*message)) {
+                // DBG("update: invoking for: {%s}", message->as_string().c_str());
                 const auto res = rpc->invoke();
-                if (const auto reply = Message::from_result(_bufferpool->acquire(), res, message->module()))
+                if (const auto reply = Message::create_from_result(_bufferpool->acquire(), res, message->module()))
                     _dl->send_message(*reply);
             } else {
                 DBG("Prompt: Couldnt build RPC from message: {%s}", message->as_string().c_str());
                 if (const auto reply =
-                        Message::from_result(_bufferpool->acquire(),
-                                             RPCResult(message->as_string(), RPCResult::State::BAD_INPUT),
-                                             message->module()))
+                        Message::create_from_result(_bufferpool->acquire(),
+                                                    RPCResult(message->as_string(), RPCResult::Status::BAD_INPUT),
+                                                    message->module()))
                     _dl->send_message(*reply);
             }
         }
@@ -83,7 +87,7 @@ private:
     RPCFactory _rpc_factory;
 
     std::shared_ptr<Datalink> _dl;
-    std::shared_ptr<Pool<CharBuffer>> _bufferpool;
+    std::shared_ptr<Pool<StaticString>> _bufferpool;
 };
 
 } // namespace kaskas::prompt

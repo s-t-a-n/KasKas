@@ -6,7 +6,6 @@
 
 #include <spine/eventsystem/eventsystem.hpp>
 
-
 namespace kaskas {
 
 using prompt::Prompt;
@@ -26,7 +25,10 @@ public:
     virtual void initialize() { assert(!"Virtual base function called"); }
     virtual void safe_shutdown(State state = State::SAFE) { assert(!"Virtual base function called"); }
 
-    virtual std::unique_ptr<prompt::RPCRecipe> rpc_recipe() { assert(!"Virtual base function called"); }
+    virtual std::unique_ptr<prompt::RPCRecipe> rpc_recipe() {
+        assert(!"Virtual base function called");
+        return {};
+    }
     virtual void sideload_providers(io::VirtualStackFactory& ssf) { assert(!"Virtual base function called"); }
 
 protected:
