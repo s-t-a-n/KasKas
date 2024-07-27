@@ -38,15 +38,15 @@ class RPCRecipeFactory;
 
 struct RPCRecipe {
     RPCRecipe(const std::string& command, const std::initializer_list<RPCModel>& rpcs) :
-        _command(command),
+        _module(command),
         _models(rpcs){};
 
-    const std::string_view command() const { return _command; }
+    const std::string_view module() const { return _module; }
 
     const std::vector<RPCModel>& models() const { return _models; }
     std::vector<RPCModel> extract_models() { return std::move(_models); }
 
-    std::optional<const RPCModel*> find_model_for_key(const std::string_view& key) const {
+    std::optional<const RPCModel*> find_model_for_command(const std::string_view& key) const {
         const RPCModel* found_model = nullptr;
         for (const auto& m : _models) {
             if (m.name() == key) {
@@ -78,7 +78,7 @@ struct RPCRecipe {
     }
 
 private:
-    std::string _command;
+    std::string _module;
     std::vector<RPCModel> _models;
 
     friend RPCRecipeFactory;
@@ -122,17 +122,17 @@ public:
     RPCFactory(const Config&& cfg) : _cfg(cfg) { _rpcs.reserve(_cfg.directory_size); }
 
     std::optional<RPC> from_message(const Message& msg) {
-        assert(msg.operant().length() == 1);
-        const auto optype = Dialect::optype_for_operant(msg.operant()[0]);
+        assert(msg.operant.length() == 1);
+        const auto optype = Dialect::optype_for_operant(msg.operant[0]);
         // assert(optype != Dialect::OP::NOP);
 
         switch (optype) {
         case Dialect::OP::NOP: {
-            DBG("invalid operant {%c} found for message: {%s}", msg.operant()[0], msg.as_string().c_str());
+            DBG("invalid operant {%c} found for message: {%s}", msg.operant[0], msg.as_string().c_str());
             return {};
         }
         case Dialect::OP::REQUEST: {
-            const auto recipe = recipe_for_command(msg.module());
+            const auto recipe = recipe_for_command(msg.module);
             if (!recipe) {
                 DBG("no recipe found for message: {%s}", msg.as_string().c_str());
                 return {};
@@ -141,6 +141,7 @@ public:
             return build_rpc_for_request(**recipe, optype, msg);
         }
         case Dialect::OP::PRINT_USAGE: {
+            DBG("rpc: usage request");
             return build_rpc_for_usage(msg);
         }
         default: DBG("no optype found for message: {%s}", msg.as_string().c_str()); return {};
@@ -165,7 +166,7 @@ protected:
                                      for (const auto& r : _rpcs) {
                                          for (const auto& m : r->models()) {
                                              s += "  ";
-                                             s += r->command();
+                                             s += r->module();
                                              s += ":";
                                              s += m.name();
                                              s += "\n\r";
@@ -173,32 +174,34 @@ protected:
                                      }
                                      assert(s.size() < alloc_estimate && "raise alloc_estimate!");
                                      s.shrink_to_fit();
+                                     // DBG("%s", s.c_str());
                                      return RPCResult(s);
                                  }};
         auto rpc = RPC(Dialect::OP::PRINT_USAGE, model, std::nullopt);
+
         return rpc;
     }
 
     std::optional<RPC> build_rpc_for_request(const RPCRecipe& recipe, Dialect::OP optype, const Message& msg) {
-        if (!msg.key()) {
+        if (!msg.cmd) {
             return {};
         }
 
-        auto found_model = recipe.find_model_for_key(*msg.key());
+        auto found_model = recipe.find_model_for_command(*msg.cmd);
         if (found_model == nullptr) { // no model found
             DBG("build_rpc: No model found for msg {%s}", msg.as_string().c_str());
             return {};
         }
 
         const auto opt_value =
-            msg.value() && !msg.value()->empty() ? std::make_optional(std::string(*msg.value())) : std::nullopt;
+            msg.arguments && !msg.arguments->empty() ? std::make_optional(std::string(*msg.arguments)) : std::nullopt;
         return RPC(optype, *found_model.value(), opt_value);
     }
 
     std::optional<const RPCRecipe*> recipe_for_command(const std::string_view& cmd) {
         for (const auto& recipe : _rpcs) {
-            assert(recipe->command() != std::string_view{});
-            if (std::string_view(recipe->command()) == cmd) {
+            assert(recipe->module() != std::string_view{});
+            if (std::string_view(recipe->module()) == cmd) {
                 const auto cmd_str = std::string(cmd);
                 const auto recipe_cmd_str = std::string(cmd);
                 return recipe.get();

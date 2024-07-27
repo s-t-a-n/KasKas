@@ -153,11 +153,11 @@ public:
 
             if (next_setpoint > 0 && _ventilation_control.setpoint() > 0) {
                 DBG("Ventilation: Check: ventilation is currently on, update value to humidity setpoint: %.2f",
-                     next_setpoint);
+                    next_setpoint);
                 _ventilation_control.set_target_setpoint(detail::inverted(next_setpoint));
             } else if (next_setpoint > 0 && _ventilation_control.setpoint() == 0) {
                 DBG("Ventilation: Check: ventilation is currently off, turn on and set humidity setpoint to: %.2f",
-                     next_setpoint);
+                    next_setpoint);
                 evsys()->trigger(evsys()->event(Events::VentilationCycleStart, time_s(1)));
             } else if (next_setpoint == 0 && _heater.setpoint() > 0) {
                 DBG("Ventilation: Check: ventilation is currently on, turn off");
@@ -191,15 +191,14 @@ public:
         case Events::VentilationAutoTune: {
             DBG("VentilationAutoTune: start.");
 
-            const auto autotune_setpoint = detail::inverted(70.0);
+            const auto sp = event.data().has_value() ? event.data().value() : 70.0;
+            const auto autotune_setpoint = detail::inverted(sp);
 
             _power.set_state(LogicalState::ON);
             _climate_fan.fade_to(LogicalState::OFF);
 
             const auto process_getter = [&]() { return detail::inverted(_climate_humidity.value()); };
-            const auto process_setter = [&](double value) {
-                _climate_fan.fade_to(value / _cfg.ventilation.climate_fan_pid.output_upper_limit);
-            };
+            const auto process_setter = [&](double value) { _climate_fan.fade_to(value / 100.0); };
             const auto process_loop = [&]() { _hws.update_all(); };
 
             _ventilation_control.autotune(
@@ -228,9 +227,9 @@ public:
             _climate_fan.fade_to(LogicalState::ON);
             for (auto t = _climate_temperature.value(); t > autotune_startpoint; t = _climate_temperature.value()) {
                 DBG("Ventilating for temperature %.2f C is lower than startpoint %.2f C before autotune "
-                     "start",
-                     t,
-                     autotune_startpoint);
+                    "start",
+                    t,
+                    autotune_startpoint);
                 _hws.update_all();
                 HAL::delay(time_s(1));
             }
@@ -305,12 +304,23 @@ public:
         auto model = std::make_unique<RPCRecipe>(RPCRecipe(
             "CC", //
             {
+                RPCModel("heaterAutotune",
+                         [this](const OptStringView&) {
+                             evsys()->trigger(Events::HeatingAutoTune);
+                             return RPCResult(RPCResult::Status::OK);
+                         }),
                 RPCModel("heaterStatus",
                          [this](const OptStringView&) {
                              return RPCResult(std::string(magic_enum::enum_name(_heater.state())));
                          }),
                 RPCModel("heaterSetpoint",
                          [this](const OptStringView&) { return RPCResult(std::to_string(_heater.setpoint())); }),
+                RPCModel("ventilationAutotune",
+                         [this](const OptStringView& setpoint) {
+                             const auto data = setpoint ? Event::Data(std::stod(*setpoint)) : Event::Data{};
+                             evsys()->trigger(Events::VentilationAutoTune, data);
+                             return RPCResult(RPCResult::Status::OK);
+                         }),
             }));
         return std::move(model);
     }
@@ -350,9 +360,11 @@ private:
     void ventilation_loop() {
         const auto climate_humidity = _climate_humidity.value();
         _ventilation_control.new_reading(detail::inverted(climate_humidity));
-        const auto normalized_response =
-            _ventilation_control.response() / _cfg.ventilation.climate_fan_pid.output_upper_limit;
-        // DBG("Ventilation: current humidity %.2f %%, fan: %.2f%%", climate_humidity, normalized_response * 100);
+        const auto normalized_response = _ventilation_control.response() / 100;
+        DBG("Ventilation: current humidity %.2f %%, fan: %.2f%% (raw: %.2f)",
+            climate_humidity,
+            normalized_response * 100,
+            _ventilation_control.response());
 
         if (normalized_response > _cfg.ventilation.minimal_duty_cycle) {
             _climate_fan.creep_to(normalized_response, _cfg.ventilation.check_interval);

@@ -50,6 +50,8 @@ public:
         evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1)));
         evsys()->schedule(evsys()->event(Events::UIWatchDog, _cfg.watchdog_interval));
         evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, time_s(1)));
+
+        DBG("UI: Initialized. Prompt interval: %ums", time_ms(_cfg.prompt_interval).printable())
     }
 
     void safe_shutdown(State state) override {
@@ -96,6 +98,8 @@ public:
             assert(_prompt);
             _prompt->update();
             evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, _cfg.prompt_interval));
+
+            // DBG("%s", evsys()->pipeline_as_string().c_str());
             break;
         }
         case Events::OutOfWater: {

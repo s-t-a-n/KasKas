@@ -1,85 +1,91 @@
 #pragma once
 
-#include "kaskas/prompt/StaticString.hpp"
-#include "kaskas/prompt/message_factory.hpp"
+// #include "kaskas/prompt/message_factory.hpp"
 
 #include <optional>
 #include <string_view>
 
 namespace kaskas::prompt {
 
+class IncomingMessageFactory;
+
 /// Represents a message with module, operant, command, and arguments.
 class Message {
 public:
-    enum class Type {};
-
-public:
-    Message() = default;
-    Message(Message&& other) noexcept = default;
-    Message& operator=(Message&& other) noexcept = default;
-
-    /// Returns the buffer associated with the message.
-    const std::shared_ptr<StaticString> buffer() const {
-        assert(_buffer);
-        return _buffer;
+    Message(const Message& other) :
+        module(other.module),
+        operant(other.operant),
+        cmd(other.cmd),
+        arguments(other.arguments) {}
+    Message(Message&& other) :
+        module(std::move(other.module)),
+        operant(std::move(other.operant)),
+        cmd(std::move(other.cmd)),
+        arguments(std::move(other.arguments)) {}
+    Message& operator=(const Message& other) {
+        if (this == &other)
+            return *this;
+        module = other.module;
+        operant = other.operant;
+        cmd = other.cmd;
+        arguments = other.arguments;
+        return *this;
     }
-
-    /// Returns the module associated with the message.
-    const std::string_view& module() const {
-        assert(_module != std::string_view{});
-        return _module;
+    Message& operator=(Message&& other) {
+        if (this == &other)
+            return *this;
+        module = std::move(other.module);
+        operant = std::move(other.operant);
+        cmd = std::move(other.cmd);
+        arguments = std::move(other.arguments);
+        return *this;
     }
+    Message(const std::string_view& module,
+            const std::string_view& operant,
+            const std::optional<std::string_view>& command = {},
+            const std::optional<std::string_view>& arguments = {}) :
+        module(module),
+        operant(operant),
+        cmd(command),
+        arguments(arguments) {}
 
-    /// Returns the operant associated with the message.
-    const std::string_view& operant() const {
-        assert(_operant != std::string_view{});
-        return _operant;
-    }
-
-    /// Returns the command key associated with the message.
-    const std::optional<std::string_view>& key() const { return _cmd; }
-
-    /// Returns the command arguments associated with the message.
-    const std::optional<std::string_view>& value() const { return _arguments; }
-
-    /// Constructs a Message object from a buffer if valid.
-    static std::optional<Message> create_from_buffer(std::shared_ptr<StaticString> buffer) {
-        MessageFactory factory;
-        return factory.from_buffer(buffer);
-    }
-
-    /// Constructs a Message object from an RPC result and a buffer.
-    static std::optional<Message> create_from_result(std::shared_ptr<StaticString>&& buffer,
-                                                     const RPCResult& result,
-                                                     const std::string_view& module) {
-        MessageFactory factory;
-        return factory.from_result(std::move(buffer), result, module);
-    }
+    std::string_view module;
+    std::string_view operant;
+    std::optional<std::string_view> cmd;
+    std::optional<std::string_view> arguments;
 
     /// Returns the message as a string.
     [[nodiscard]] std::string as_string() const {
-        std::string s;
-        s += module();
-        s += operant();
-        if (key()) {
-            s += *key();
-            if (value()) {
+        std::string s{};
+        s.reserve(module.size() + operant.size() + cmd.value_or("").size() + arguments.value_or("").size());
+
+        s += module;
+        s += operant;
+        if (cmd) {
+            s += *cmd;
+            if (arguments) {
                 s += Dialect::KV_SEPARATOR;
-                s += *value();
+                s += *arguments;
             }
         }
         return s;
     }
 
+protected:
+    Message() {}
+
+    friend IncomingMessageFactory;
+};
+
+template<typename T>
+class MessageWithStorage : public Message {
+public:
+    MessageWithStorage(Message&& message, T&& storage) : Message(std::move(message)), _storage(std::move(storage)) {}
+
+    const T& storage() const { return _storage; }
+
 private:
-    std::string_view _module;
-    std::string_view _operant;
-    std::optional<std::string_view> _cmd;
-    std::optional<std::string_view> _arguments;
-
-    std::shared_ptr<StaticString> _buffer;
-
-    friend MessageFactory;
+    T _storage;
 };
 
 } // namespace kaskas::prompt

@@ -33,6 +33,8 @@ struct RPCResult {
     }
     enum class Status { UNDEFINED, OK, BAD_INPUT, BAD_RESULT };
 
+    // constexpr std::array<std::string, 5> StatusIntStrs = {magic_enum::enum_integer(RPCResult::Status::BAD_INPUT)};
+
     RPCResult(OptStringView&& return_value) : return_value(std::move(return_value)), status(Status::OK) {}
     RPCResult(OptStringView&& return_value, Status status) : return_value(std::move(return_value)), status(status) {}
     RPCResult(Status status) : return_value(std::string(magic_enum::enum_name(status))), status(status) {}
@@ -40,5 +42,24 @@ struct RPCResult {
     OptString return_value;
     Status status;
 };
+
+namespace detail {
+constexpr auto numeric_status_names = []() {
+    constexpr auto names = magic_enum::enum_names<RPCResult::Status>();
+    std::array<std::string_view, names.size()> result{};
+    for (size_t i = 0; i < names.size(); ++i) {
+        result[i] = names[i];
+    }
+    return result;
+}();
+
+constexpr const std::string_view& numeric_status(RPCResult::Status status) {
+    auto index = magic_enum::enum_index(status);
+    if (index.has_value()) {
+        return numeric_status_names[index.value()];
+    }
+    return numeric_status_names[0]; // index 0 -> UNDEFINED
+}
+} // namespace detail
 
 } // namespace kaskas::prompt

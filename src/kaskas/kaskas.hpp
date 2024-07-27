@@ -7,6 +7,7 @@
 #include "kaskas/io/peripherals/relay.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/prompt/cookbook.hpp"
+#include "kaskas/prompt/datalink.hpp"
 #include "kaskas/prompt/prompt.hpp"
 #include "kaskas/subsystems/climatecontrol.hpp"
 #include "kaskas/subsystems/data_acquisition.hpp"
@@ -19,6 +20,7 @@
 #include <spine/core/exception.hpp>
 #include <spine/core/time.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
+#include <spine/io/stream/stream.hpp>
 #include <spine/platform/hal.hpp>
 #include <spine/structure/pointer.hpp>
 #include <spine/structure/vector.hpp>
@@ -49,13 +51,12 @@ public:
         _hws(std::move(hws)),
         _components(std::vector<std::unique_ptr<Component>>()) {
         if (_cfg.prompt_cfg) {
-            using prompt::SerialDatalink;
-            auto dl = std::make_shared<SerialDatalink>(
-                SerialDatalink::Config{.message_length = _cfg.prompt_cfg->message_length,
-                                       .pool_size = _cfg.prompt_cfg->pool_size,
-                                       .buffer_size = _cfg.prompt_cfg->input_buffer_size,
-                                       .delimiters = _cfg.prompt_cfg->line_delimiters},
-                HAL::UART(HAL::UART::Config{.stream = &Serial, .timeout = time_ms(50)})); // todo: validate this timeout
+            auto uart = std::make_shared<HAL::UART>(HAL::UART::Config{.stream = &Serial, .timeout = time_ms(50)});
+            using prompt::Datalink;
+            auto dl = std::make_shared<Datalink>(uart,
+                                                 Datalink::Config{.input_buffer_size = _cfg.prompt_cfg->io_buffer_size,
+                                                                  .output_buffer_size = _cfg.prompt_cfg->io_buffer_size,
+                                                                  .delimiters = "\r\n"});
             // using prompt::MockDatalink;
             //         auto prompt_cfg = Prompt::Config{.message_length = 64, .pool_size = 20};
             // auto dl = std::make_shared<MockDatalink>(
@@ -127,13 +128,16 @@ public:
     std::shared_ptr<Prompt> prompt() { return _prompt; }
 
     int loop() {
-        // _hws->update_all();
+        platform_sanity_checks();
         _evsys.loop();
-        // if (_cfg.prompt_cfg) {
-        // assert(_prompt);
-        // _prompt->update();
-        // }
         return 0;
+    }
+
+private:
+    void platform_sanity_checks() {
+        if (HAL::free_memory() < 1024) { // it is good to have no leaks, it is better to be safe
+            spn::throw_exception(spn::runtime_exception("Memory is below a kilobyte. Halting."));
+        }
     }
 
 private:

@@ -1,5 +1,4 @@
 #pragma once
-// #include <fmt/core.h>
 #include <magic_enum/magic_enum.hpp>
 #include <magic_enum/magic_enum_all.hpp>
 #include <spine/core/debugging.hpp>
@@ -15,31 +14,37 @@ namespace kaskas::prompt {
 struct Dialect {
     static constexpr char API_VERSION[] = "0.0.0";
 
-    static constexpr auto REPLY_HEADER = "@";
-    static constexpr auto REPLY_FOOTER = ">";
+    static constexpr std::string_view REPLY_HEADER = "@";
+    static constexpr std::string_view REPLY_FOOTER = ">";
     enum class OP { REQUEST, REPLY, PRINT_USAGE, NOP, SIZE }; // make sure this matches order of OPERANTS
 
     static constexpr char OPERANT_REQUEST[] = ":";
     static constexpr char OPERANT_REPLY[] = "<";
     static constexpr char OPERANT_PRINT_USAGE[] = "?";
-    static constexpr auto OPERANTS = spn::core::utils::concatenate(OPERANT_REQUEST, OPERANT_REPLY, OPERANT_PRINT_USAGE);
 
-    static constexpr auto KV_SEPARATOR = ":";
-    static constexpr auto VALUE_SEPARATOR = "|";
+    // static constexpr std::string_view OPERANTS = ":<?";
 
-    static constexpr auto MINIMAL_CMD_LENGTH = 2;
-    static constexpr auto MAXIMAL_CMD_LENGTH = 3;
+    // the following seems up to impossible in C++17; every solution under the sun I have tried,
+    // we can only wonder why C++ is considered a difficult language. Just to tie together three chars.
+    static constexpr auto OPERANTS = spn::core::utils::concat(OPERANT_REQUEST, OPERANT_REPLY, OPERANT_PRINT_USAGE);
+    static constexpr std::string_view OPERANTS_V = {OPERANTS.data(), OPERANTS.size()};
+
+    static constexpr std::string_view KV_SEPARATOR = ":";
+    static constexpr std::string_view VALUE_SEPARATOR = "|";
+
+    static constexpr auto MINIMAL_CMD_LENGTH = 1;
+    static constexpr auto MAXIMAL_CMD_LENGTH = 10;
 
     // todo: spice this up with some FMTLIB sauce?
-    static constexpr auto USAGE_STRING = spn::core::utils::concatenate(
-        "KasKas: API version ",
-        Dialect::API_VERSION,
-        ". Usage:\n\r",
-        // "  ?                         : print this help\n\r",
-        // "  MOD:CMD                   : call a command of a module\n\r",
-        // "  MOD:CMD:ARG|ARG2          : call a command of a module and provide arguments\n\r",
-        "\n\r",
-        "Replies to API requests look as follows: @CMD:STATUSCODE<ARG1|ARG2\n\r");
+    static constexpr auto USAGE_STRING = spn::core::utils::concat("KasKas: API version ",
+                                                                  Dialect::API_VERSION,
+                                                                  ". Usage:\n\r",
+                                                                  "\n\r",
+                                                                  "Requests to the API must look as follows: \n\r",
+                                                                  "\t\tMODULE:CMD:ARG1|ARG2\n\r"
+                                                                  "Replies to API requests look as follows:\n\r",
+                                                                  "\t\t@CMD:STATUSCODE<ARG1|ARG2\n\r",
+                                                                  "\n\rModules:\n\r");
 
     static OP optype_for_operant(const char operant) {
         auto found_op = OP::NOP;

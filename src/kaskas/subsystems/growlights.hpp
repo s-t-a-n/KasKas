@@ -9,6 +9,7 @@
 #include <spine/core/exception.hpp>
 #include <spine/core/schedule.hpp>
 #include <spine/core/timers.hpp>
+#include <spine/core/utils/time_repr.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 
 #include <cstdint>
@@ -49,11 +50,11 @@ public:
     void initialize() override {
         assert(evsys());
         evsys()->attach(Events::LightFullSpectrumCycleCheck, this);
-        evsys()->attach(Events::LightFullSpectrumCycleStart, this);
-        evsys()->attach(Events::LightFullSpectrumCycleEnd, this);
+        evsys()->attach(Events::LightFullSpectrumTurnOn, this);
+        evsys()->attach(Events::LightFullSpectrumTurnOff, this);
         evsys()->attach(Events::LightRedBlueSpectrumCycleCheck, this);
-        evsys()->attach(Events::LightRedBlueSpectrumCycleStart, this);
-        evsys()->attach(Events::LightRedBlueSpectrumCycleEnd, this);
+        evsys()->attach(Events::LightRedBlueSpectrumTurnOn, this);
+        evsys()->attach(Events::LightRedBlueSpectrumTurnOff, this);
 
         auto time_from_now = time_s(5);
         DBG("Growlights: Scheduling LightFullSpectrumCycleCheck in %u seconds.", time_from_now.printable());
@@ -83,10 +84,10 @@ public:
 
             if (next_setpoint > 0 && _full_spectrum.value() == 0) {
                 DBG("Growlights: Check: full spectrum is currently off, turn on");
-                evsys()->trigger(evsys()->event(Events::LightFullSpectrumCycleStart, time_s(1)));
+                evsys()->trigger(evsys()->event(Events::LightFullSpectrumTurnOn, time_s(1)));
             } else if (next_setpoint == 0 && _full_spectrum.value() > 0) {
                 DBG("Growlights: Check: full spectrum is currently on, turn off");
-                evsys()->trigger(evsys()->event(Events::LightFullSpectrumCycleEnd, time_s(1)));
+                evsys()->trigger(evsys()->event(Events::LightFullSpectrumTurnOff, time_s(1)));
             }
 
             const auto time_until_next_check = _full_spectrum_schedule.start_of_next_block(now) - now;
@@ -97,13 +98,13 @@ public:
             evsys()->schedule(evsys()->event(Events::LightFullSpectrumCycleCheck, time_until_next_check));
             break;
         }
-        case Events::LightFullSpectrumCycleStart: {
-            DBG("Growlights: LightFullSpectrumCycleStart.");
+        case Events::LightFullSpectrumTurnOn: {
+            DBG("Growlights: LightFullSpectrumTurnOn.");
             _full_spectrum.set_state(LogicalState::ON);
             break;
         }
-        case Events::LightFullSpectrumCycleEnd: {
-            DBG("Growlights: LightFullSpectrumCycleEnd.");
+        case Events::LightFullSpectrumTurnOff: {
+            DBG("Growlights: LightFullSpectrumTurnOff.");
             _full_spectrum.set_state(LogicalState::OFF);
             break;
         }
@@ -114,10 +115,10 @@ public:
 
             if (next_setpoint > 0 && _redblue_spectrum.value() == 0) {
                 DBG("Growlights: Check: red/blue spectrum is currently off, turn on");
-                evsys()->trigger(evsys()->event(Events::LightRedBlueSpectrumCycleStart, time_s(1)));
+                evsys()->trigger(evsys()->event(Events::LightRedBlueSpectrumTurnOn, time_s(1)));
             } else if (next_setpoint == 0 && _redblue_spectrum.value() > 0) {
                 DBG("Growlights: Check: red/blue spectrum is currently on, turn off");
-                evsys()->trigger(evsys()->event(Events::LightRedBlueSpectrumCycleEnd, time_s(1)));
+                evsys()->trigger(evsys()->event(Events::LightRedBlueSpectrumTurnOff, time_s(1)));
             }
 
             const auto time_until_next_check = _redblue_spectrum_schedule.start_of_next_block(now) - now;
@@ -128,13 +129,13 @@ public:
             evsys()->schedule(evsys()->event(Events::LightRedBlueSpectrumCycleCheck, time_until_next_check));
             break;
         }
-        case Events::LightRedBlueSpectrumCycleStart: {
-            DBG("Growlights: LightRedBlueSpectrumCycleStart.");
+        case Events::LightRedBlueSpectrumTurnOn: {
+            DBG("Growlights: LightRedBlueSpectrumTurnOn.");
             _redblue_spectrum.set_state(LogicalState::ON);
             break;
         }
-        case Events::LightRedBlueSpectrumCycleEnd: {
-            DBG("Growlights: LightRedBlueSpectrumCycleEnd.");
+        case Events::LightRedBlueSpectrumTurnOff: {
+            DBG("Growlights: LightRedBlueSpectrumTurnOff.");
             _redblue_spectrum.set_state(LogicalState::OFF);
             break;
         }
@@ -143,9 +144,56 @@ public:
         }
     }
 
-    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override { return {}; }
+    std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override {
+        using namespace prompt;
+        auto model = std::make_unique<RPCRecipe>(
+            RPCRecipe("Growlights", //
+                      {
+                          RPCModel(
+                              "turnOn",
+
+                              [this](const OptStringView& unit_of_time) {
+                                  if (!unit_of_time.has_value()) {
+                                      // Handle missing value case
+                                      evsys()->trigger(Events::LightFullSpectrumTurnOn);
+                                      evsys()->schedule(Events::LightRedBlueSpectrumTurnOn, time_s(5));
+                                      return RPCResult(RPCResult::Status::OK);
+                                  }
+
+                                  auto time_variant = spn::core::parse_time(unit_of_time.value());
+                                  if (!time_variant.has_value()) {
+                                      return RPCResult("Error: Invalid time format.");
+                                  }
+
+                                  std::visit(
+                                      [this](auto&& time) {
+                                          evsys()->trigger(Events::LightFullSpectrumTurnOn);
+                                          evsys()->schedule(Events::LightRedBlueSpectrumTurnOn, time_s(5));
+                                          evsys()->schedule(Events::LightFullSpectrumTurnOff, time);
+                                          evsys()->schedule(Events::LightRedBlueSpectrumTurnOff, time + time_s(5));
+                                      },
+                                      time_variant.value());
+                                  return RPCResult(RPCResult::Status::OK);
+                              },
+                              "Args: length and unit of time, eg. 10s or 1d"),
+                          RPCModel("turnOff",
+
+                                   [this](const OptStringView& unit_of_time) {
+                                       if (!unit_of_time.has_value()) {
+                                           // Handle missing value case
+                                           evsys()->trigger(Events::LightRedBlueSpectrumTurnOff);
+                                           evsys()->schedule(Events::LightFullSpectrumTurnOff, time_s(5));
+                                           return RPCResult(RPCResult::Status::OK);
+                                       }
+
+                                       return RPCResult("cannot time turnOff", RPCResult::Status::BAD_INPUT);
+                                   }),
+                      }));
+        return std::move(model);
+    }
     void sideload_providers(io::VirtualStackFactory& ssf) override {}
 
+private:
 private:
     // void deploy_lightcycle() {
     //     // DateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour = 0, uint8_t min = 0, uint8_t sec = 0);

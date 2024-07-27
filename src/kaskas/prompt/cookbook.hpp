@@ -30,7 +30,7 @@ protected:
         // extract all names
         std::set<std::string_view> names;
         for (const auto& rpc_recipe : _recipes) {
-            names.insert(rpc_recipe->command());
+            names.insert(rpc_recipe->module());
         }
 
         for (const auto& name : names) {
@@ -39,7 +39,7 @@ protected:
             RPCRecipeFactory rf(name_str);
 
             for (auto& r : _recipes) {
-                if (r->command() == name) { // extract this recipe
+                if (r->module() == name) { // extract this recipe
                     for (auto& m : r->extract_models()) {
                         DBG("-> %s", std::string(m.name()).c_str());
                         rf.add_model(std::move(m));
