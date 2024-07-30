@@ -6,6 +6,10 @@
 
 #include <stdint.h>
 
+#include <charconv>
+#include <iterator>
+#include <numeric>
+
 namespace kaskas::component {
 class DataAcquisition : public Component {
 public:
@@ -79,31 +83,73 @@ public:
     std::string datasources_as_string() {
         std::string fields;
 
-        size_t alloc_size = 0;
+        size_t reserved_size = 0;
         for (auto datasource : _cfg.active_dataproviders) {
             const auto name = magic_enum::enum_name(datasource);
-            alloc_size += name.length() + 1; // 1 for divider
+            reserved_size += name.length() + 1; // 1 for divider
         }
-        alloc_size += 1; // one for newline
-        fields.reserve(alloc_size);
+        reserved_size += 1; // one for newline
+        fields.reserve(reserved_size);
+        reserved_size = fields.capacity(); // for sanity checks below
 
-        for (auto datasource : _cfg.active_dataproviders) {
+        for (auto it = _cfg.active_dataproviders.begin(); it != _cfg.active_dataproviders.end(); ++it) {
+            const auto& datasource = *it;
             const auto name = magic_enum::enum_name(datasource);
             fields += name.data();
-            fields += prompt::Dialect::VALUE_SEPARATOR;
+            if (std::next(it) != _cfg.active_dataproviders.end())
+                fields += prompt::Dialect::VALUE_SEPARATOR;
         }
+        // for (auto datasource : _cfg.active_dataproviders) {
+        //     const auto name = magic_enum::enum_name(datasource);
+        //     fields += name.data();
+        //     fields += prompt::Dialect::VALUE_SEPARATOR;
+        // }
+
+        assert(fields.capacity() == reserved_size); // no reallocation
         return std::move(fields);
     }
 
     std::string timeseries_as_string() {
-        std::string timeseries;
-        timeseries.reserve(120);
-        for (auto datasource : _cfg.active_dataproviders) {
-            const auto value = _hws.analog_sensor(ENUM_IDX(datasource)).value();
-            timeseries += std::to_string(value);
-            timeseries += prompt::Dialect::VALUE_SEPARATOR;
-        }
-        return std::move(timeseries);
+        // Lambda to handle both calculating the length and constructing the string
+        auto timeseries_repr = [&](std::string* s, bool length_only) -> size_t {
+            size_t len = 0;
+            auto put = [&](std::string_view i) {
+                if (!length_only) {
+                    *s += i;
+                }
+                len += i.size();
+            };
+
+            std::array<char, 32> buffer{};
+
+            // Using iterator to access elements of std::initializer_list
+            for (auto it = _cfg.active_dataproviders.begin(); it != _cfg.active_dataproviders.end(); ++it) {
+                const auto value = _hws.analog_sensor(ENUM_IDX(*it)).value();
+                int written = std::snprintf(buffer.data(), buffer.size(), "%.3f", value);
+                assert(written > 0 && written < buffer.size());
+                if (written > 0 && written < buffer.size())
+                    put(std::string_view(buffer.data(), written));
+                if (std::next(it) != _cfg.active_dataproviders.end())
+                    put(prompt::Dialect::VALUE_SEPARATOR);
+            }
+            return len;
+        };
+
+        // First pass to calculate total length
+        size_t reserved_length = timeseries_repr(nullptr, true);
+
+        // Reserve capacity to avoid multiple allocations
+        std::string timeseries{};
+        timeseries.reserve(reserved_length);
+        reserved_length = timeseries.capacity(); // for sanity checks below
+
+        // Second pass to build the string
+        timeseries_repr(&timeseries, false);
+
+        assert(timeseries.size() <= reserved_length); // no reallocation
+        assert(timeseries.capacity() == reserved_length); // no reallocation
+
+        return timeseries;
     }
 
 private:

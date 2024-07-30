@@ -57,7 +57,11 @@ public:
     /// Returns the message as a string.
     [[nodiscard]] std::string as_string() const {
         std::string s{};
-        s.reserve(module.size() + operant.size() + cmd.value_or("").size() + arguments.value_or("").size());
+
+        auto reserved_length = module.size() + operant.size() + cmd.value_or("").size()
+                               + 1 /* kvsep */ + arguments.value_or("").size() + 1 /* nullbyte */;
+        s.reserve(reserved_length);
+        reserved_length = s.capacity(); // for sanity checks below
 
         s += module;
         s += operant;
@@ -68,13 +72,18 @@ public:
                 s += *arguments;
             }
         }
+
+        if (s.capacity() != reserved_length || s.size() > reserved_length) {
+            DBG("WHAAT realloc with str len {%i}, cap {%i} reserved {%i} with s {%s}",
+                s.size(),
+                s.capacity(),
+                reserved_length,
+                s.c_str());
+        }
+        assert(s.size() <= reserved_length); // single allocation
+        assert(s.capacity() == reserved_length); // single allocation
         return s;
     }
-
-protected:
-    Message() {}
-
-    friend IncomingMessageFactory;
 };
 
 template<typename T>

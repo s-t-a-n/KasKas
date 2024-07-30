@@ -10,8 +10,7 @@
 namespace kaskas::prompt {
 
 using OptString = std::optional<std::string>;
-using OptStringView = std::optional<std::string>;
-// using OptStringView = std::optional<std::string_view>;
+using OptStringView = std::optional<std::string_view>;
 using OptInt = std::optional<int>;
 
 struct RPCResult {
@@ -35,8 +34,11 @@ struct RPCResult {
 
     // constexpr std::array<std::string, 5> StatusIntStrs = {magic_enum::enum_integer(RPCResult::Status::BAD_INPUT)};
 
-    RPCResult(OptStringView&& return_value) : return_value(std::move(return_value)), status(Status::OK) {}
-    RPCResult(OptStringView&& return_value, Status status) : return_value(std::move(return_value)), status(status) {}
+    explicit RPCResult(OptString&& return_value) : return_value(std::move(return_value)), status(Status::OK) {}
+    explicit RPCResult(OptString&& return_value, Status status) :
+        return_value(std::move(return_value)),
+        status(status) {}
+
     RPCResult(Status status) : return_value(std::string(magic_enum::enum_name(status))), status(status) {}
 
     OptString return_value;

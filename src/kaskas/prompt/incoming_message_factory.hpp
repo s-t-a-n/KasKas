@@ -19,6 +19,10 @@ class IncomingMessageFactory {
 public:
     /// Create a Message from the provided string_view.
     static std::optional<Message> from_view(const std::string_view& view) {
+        if (view.empty())
+            return {};
+        // DBG("incoming length : %i", view.size());
+
         const auto parse = [](ParseContext& context) -> ParseResult {
             return ParseResult::intermediary(context)
                 .chain([](ParseContext& ctx) { return throw_out_empty_messages(ctx); })
@@ -47,7 +51,9 @@ private:
     struct ParseContext {
         explicit ParseContext(const std::string_view& view) : view(view), head(view.data()) {}
         std::string_view view;
+
         const char* head;
+        size_t remaining() const { return view.size() - (head - view.data()); }
 
         std::string_view module;
         std::string_view operant;
@@ -65,7 +71,7 @@ private:
     }
 
     static ParseResult parse_usage_request(ParseContext& ctx) {
-        if (spn::core::starts_with(ctx.view, Dialect::OPERANT_PRINT_USAGE)) {
+        if (spn::core::utils::starts_with(ctx.view, Dialect::OPERANT_PRINT_USAGE)) {
             DBG("usage request detected");
             return Message(Dialect::OPERANT_PRINT_USAGE, Dialect::OPERANT_PRINT_USAGE);
         }
@@ -79,7 +85,8 @@ private:
             return op >= Dialect::MINIMAL_CMD_LENGTH && op <= Dialect::MAXIMAL_CMD_LENGTH;
         };
 
-        if (auto op = spn::core::find_first_of(ctx.head, Dialect::OPERANTS_V); op != std::string::npos) {
+        if (auto op = spn::core::utils::find_first_of({ctx.head, ctx.remaining()}, Dialect::OPERANTS_V);
+            op != std::string::npos) {
             if (!validate_command_size(op)) {
                 return ParseResult::failed("Illegal command size");
             }
@@ -93,19 +100,18 @@ private:
     }
 
     static ParseResult parse_command(ParseContext& ctx) {
-        if (auto delim = spn::core::find_first_of(ctx.head, Dialect::KV_SEPARATOR); delim != std::string::npos) {
+        if (auto delim = spn::core::utils::find_first_of({ctx.head, ctx.remaining()}, Dialect::KV_SEPARATOR);
+            delim != std::string::npos) {
             ctx.status = std::string_view(ctx.head, delim);
             ctx.head += delim + 1; // +1 to remove the delim itself as well
             return ParseResult::intermediary(ctx);
         }
-        const auto remaining = ctx.view.size() - (ctx.head - ctx.view.data());
-        ctx.status = std::string_view(ctx.head, remaining);
+        ctx.status = std::string_view(ctx.head, ctx.remaining());
         return ParseResult(Message(ctx.module, ctx.operant, ctx.status));
     }
 
     static ParseResult parse_arguments(ParseContext& ctx) {
-        const auto remaining = ctx.view.size() - (ctx.head - ctx.view.data());
-        ctx.arguments = std::string_view(ctx.head, remaining);
+        ctx.arguments = std::string_view(ctx.head, ctx.remaining());
         return ParseResult::intermediary(ctx);
     }
 

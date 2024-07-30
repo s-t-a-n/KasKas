@@ -58,10 +58,10 @@ public:
 
         auto time_from_now = time_s(5);
         DBG("Growlights: Scheduling LightFullSpectrumCycleCheck in %u seconds.", time_from_now.printable());
-        evsys()->schedule(evsys()->event(Events::LightFullSpectrumCycleCheck, time_from_now));
+        evsys()->schedule(Events::LightFullSpectrumCycleCheck, time_from_now);
         time_from_now += time_s(5);
         DBG("Growlights: Scheduling LightRedBlueSpectrumCycleCheck in %u seconds.", time_from_now.printable());
-        evsys()->schedule(evsys()->event(Events::LightRedBlueSpectrumCycleCheck, time_from_now));
+        evsys()->schedule(Events::LightRedBlueSpectrumCycleCheck, time_from_now);
     }
 
     void safe_shutdown(State state) override {
@@ -84,10 +84,10 @@ public:
 
             if (next_setpoint > 0 && _full_spectrum.value() == 0) {
                 DBG("Growlights: Check: full spectrum is currently off, turn on");
-                evsys()->trigger(evsys()->event(Events::LightFullSpectrumTurnOn, time_s(1)));
+                evsys()->trigger(Events::LightFullSpectrumTurnOn);
             } else if (next_setpoint == 0 && _full_spectrum.value() > 0) {
                 DBG("Growlights: Check: full spectrum is currently on, turn off");
-                evsys()->trigger(evsys()->event(Events::LightFullSpectrumTurnOff, time_s(1)));
+                evsys()->trigger(Events::LightFullSpectrumTurnOff);
             }
 
             const auto time_until_next_check = _full_spectrum_schedule.start_of_next_block(now) - now;
@@ -95,7 +95,7 @@ public:
 
             DBG("Growlights: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
             assert(time_until_next_check.raw<>() > 0);
-            evsys()->schedule(evsys()->event(Events::LightFullSpectrumCycleCheck, time_until_next_check));
+            evsys()->schedule(Events::LightFullSpectrumCycleCheck, time_until_next_check);
             break;
         }
         case Events::LightFullSpectrumTurnOn: {
@@ -115,10 +115,10 @@ public:
 
             if (next_setpoint > 0 && _redblue_spectrum.value() == 0) {
                 DBG("Growlights: Check: red/blue spectrum is currently off, turn on");
-                evsys()->trigger(evsys()->event(Events::LightRedBlueSpectrumTurnOn, time_s(1)));
+                evsys()->trigger(Events::LightRedBlueSpectrumTurnOn);
             } else if (next_setpoint == 0 && _redblue_spectrum.value() > 0) {
                 DBG("Growlights: Check: red/blue spectrum is currently on, turn off");
-                evsys()->trigger(evsys()->event(Events::LightRedBlueSpectrumTurnOff, time_s(1)));
+                evsys()->trigger(Events::LightRedBlueSpectrumTurnOff);
             }
 
             const auto time_until_next_check = _redblue_spectrum_schedule.start_of_next_block(now) - now;
@@ -126,7 +126,7 @@ public:
 
             DBG("Growlights: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
             assert(time_until_next_check.raw<>() > 0);
-            evsys()->schedule(evsys()->event(Events::LightRedBlueSpectrumCycleCheck, time_until_next_check));
+            evsys()->schedule(Events::LightRedBlueSpectrumCycleCheck, time_until_next_check);
             break;
         }
         case Events::LightRedBlueSpectrumTurnOn: {
@@ -150,17 +150,14 @@ public:
             RPCRecipe("Growlights", //
                       {
                           RPCModel(
-                              "turnOn",
-
+                              "turnOnFullSpectrum",
                               [this](const OptStringView& unit_of_time) {
                                   if (!unit_of_time.has_value()) {
-                                      // Handle missing value case
                                       evsys()->trigger(Events::LightFullSpectrumTurnOn);
-                                      evsys()->schedule(Events::LightRedBlueSpectrumTurnOn, time_s(5));
                                       return RPCResult(RPCResult::Status::OK);
                                   }
 
-                                  auto time_variant = spn::core::parse_time(unit_of_time.value());
+                                  auto time_variant = spn::core::utils::parse_time(unit_of_time.value());
                                   if (!time_variant.has_value()) {
                                       return RPCResult("Error: Invalid time format.");
                                   }
@@ -168,25 +165,49 @@ public:
                                   std::visit(
                                       [this](auto&& time) {
                                           evsys()->trigger(Events::LightFullSpectrumTurnOn);
-                                          evsys()->schedule(Events::LightRedBlueSpectrumTurnOn, time_s(5));
                                           evsys()->schedule(Events::LightFullSpectrumTurnOff, time);
-                                          evsys()->schedule(Events::LightRedBlueSpectrumTurnOff, time + time_s(5));
                                       },
                                       time_variant.value());
                                   return RPCResult(RPCResult::Status::OK);
                               },
                               "Args: length and unit of time, eg. 10s or 1d"),
-                          RPCModel("turnOff",
+                          RPCModel(
+                              "turnOnRedBlueSpectrum",
+                              [this](const OptStringView& unit_of_time) {
+                                  if (!unit_of_time.has_value()) {
+                                      evsys()->trigger(Events::LightRedBlueSpectrumTurnOn);
+                                      return RPCResult(RPCResult::Status::OK);
+                                  }
 
+                                  auto time_variant = spn::core::utils::parse_time(unit_of_time.value());
+                                  if (!time_variant.has_value()) {
+                                      return RPCResult("Error: Invalid time format.");
+                                  }
+
+                                  std::visit(
+                                      [this](auto&& time) {
+                                          evsys()->trigger(Events::LightRedBlueSpectrumTurnOn);
+                                          evsys()->schedule(Events::LightRedBlueSpectrumTurnOff, time);
+                                      },
+                                      time_variant.value());
+                                  return RPCResult(RPCResult::Status::OK);
+                              },
+                              "Args: length and unit of time, eg. 10s or 1d"),
+                          RPCModel("turnOffFullSpectrum",
                                    [this](const OptStringView& unit_of_time) {
                                        if (!unit_of_time.has_value()) {
-                                           // Handle missing value case
-                                           evsys()->trigger(Events::LightRedBlueSpectrumTurnOff);
-                                           evsys()->schedule(Events::LightFullSpectrumTurnOff, time_s(5));
+                                           evsys()->trigger(Events::LightFullSpectrumTurnOff);
                                            return RPCResult(RPCResult::Status::OK);
                                        }
-
-                                       return RPCResult("cannot time turnOff", RPCResult::Status::BAD_INPUT);
+                                       return RPCResult("no arguments accepted", RPCResult::Status::BAD_INPUT);
+                                   }),
+                          RPCModel("turnOffRedBlueSpectrum",
+                                   [this](const OptStringView& unit_of_time) {
+                                       if (!unit_of_time.has_value()) {
+                                           evsys()->trigger(Events::LightRedBlueSpectrumTurnOff);
+                                           return RPCResult(RPCResult::Status::OK);
+                                       }
+                                       return RPCResult("no arguments accepted", RPCResult::Status::BAD_INPUT);
                                    }),
                       }));
         return std::move(model);

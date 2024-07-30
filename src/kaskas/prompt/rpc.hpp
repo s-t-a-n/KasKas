@@ -37,8 +37,8 @@ private:
 class RPCRecipeFactory;
 
 struct RPCRecipe {
-    RPCRecipe(const std::string& command, const std::initializer_list<RPCModel>& rpcs) :
-        _module(command),
+    RPCRecipe(const std::string_view& module, const std::initializer_list<RPCModel>& rpcs) :
+        _module(module),
         _models(rpcs){};
 
     const std::string_view module() const { return _module; }
@@ -62,23 +62,28 @@ struct RPCRecipe {
             return {};
         }
 
-        size_t total_length = 0;
+        size_t reserved_length = 0;
         for (auto& m : _models) {
-            total_length += m.name().length();
+            reserved_length += m.name().length();
         }
+        reserved_length = models().size(); // one newline per model
 
         std::string help;
-        help.reserve(total_length + _models.size()); // account for newline
+        help.reserve(reserved_length);
+        reserved_length = help.capacity();
 
         for (auto& m : _models) {
             help += m.name();
             help += "\n";
         }
+
+        assert(help.capacity() == reserved_length);
         return help;
     }
 
 private:
-    std::string _module;
+    std::string _module; // todo: evaluate, if bad, revert to std::string or investigate
+    // std::string_view _module; // todo: evaluate, if bad, revert to std::string or investigate
     std::vector<RPCModel> _models;
 
     friend RPCRecipeFactory;
@@ -156,25 +161,44 @@ public:
 protected:
     std::optional<RPC> build_rpc_for_usage(const Message& msg) {
         static RPCModel model = {"", [&](const OptStringView&) -> RPCResult {
-                                     std::string s;
-                                     constexpr auto alloc_estimate = 1024;
-                                     s.reserve(alloc_estimate);
+                                     auto estimate_string_size = [&](std::string* s, bool length_only) -> size_t {
+                                         size_t len = 0;
+                                         auto put = [&](std::string_view str) {
+                                             if (!length_only) {
+                                                 *s += str;
+                                             }
+                                             len += str.size();
+                                         };
 
-                                     s += Dialect::USAGE_STRING.data();
-                                     s += "\n\r";
+                                         put(Dialect::USAGE_STRING_V);
+                                         put("\n\r");
 
-                                     for (const auto& r : _rpcs) {
-                                         for (const auto& m : r->models()) {
-                                             s += "  ";
-                                             s += r->module();
-                                             s += ":";
-                                             s += m.name();
-                                             s += "\n\r";
+                                         for (const auto& r : _rpcs) {
+                                             for (const auto& m : r->models()) {
+                                                 put("  ");
+                                                 put(r->module());
+                                                 put(":");
+                                                 put(m.name());
+                                                 put("\n\r");
+                                             }
                                          }
-                                     }
-                                     assert(s.size() < alloc_estimate && "raise alloc_estimate!");
-                                     s.shrink_to_fit();
-                                     // DBG("%s", s.c_str());
+
+                                         return len;
+                                     };
+
+                                     // First pass to calculate the total length
+                                     size_t reserved_length = estimate_string_size(nullptr, true);
+
+                                     // Reserve capacity to avoid multiple allocations
+                                     std::string s{};
+                                     s.reserve(reserved_length);
+                                     reserved_length = s.capacity(); // for sanity checks below
+
+                                     // Second pass to build the string
+                                     estimate_string_size(&s, false);
+
+                                     assert(s.size() <= reserved_length); // no reallocation
+                                     assert(s.capacity() == reserved_length); // no reallocation
                                      return RPCResult(s);
                                  }};
         auto rpc = RPC(Dialect::OP::PRINT_USAGE, model, std::nullopt);

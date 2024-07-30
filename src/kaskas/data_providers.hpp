@@ -18,5 +18,8 @@ enum class DataProviders {
     REDBLUE_SPECTRUM,
     FULL_SPECTRUM,
     PUMP,
+    FLUID_INJECTED,
+    FLUID_INJECTED_CUMULATIVE,
+    FLUID_EFFECT,
     SIZE
 };

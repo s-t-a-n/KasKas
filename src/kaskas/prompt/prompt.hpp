@@ -71,6 +71,11 @@ public:
         if (auto transaction = _dl->incoming_transaction()) {
             // DBG("Prompt: New transaction coming over the wire: {%s}", std::string(transaction->incoming()).c_str());
             if (auto message = IncomingMessageFactory::from_view(transaction->incoming())) {
+                // DBG("message: {%s}!", message->as_string().c_str());
+                // DBG("message!");
+                // transaction->outgoing(message->as_string());
+                // transaction->abort();
+
                 if (const auto rpc = _rpc_factory.from_message(*message)) {
                     auto res = rpc->invoke();
 

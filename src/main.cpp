@@ -631,7 +631,7 @@ void setup() {
         auto fluidsystem_cfg = Fluidsystem::Config{.pump_cfg = pump_cfg, //
                                                    .ground_moisture_sensor_idx = ENUM_IDX(DataProviders::SOIL_MOISTURE),
                                                    .clock_idx = ENUM_IDX(DataProviders::CLOCK),
-                                                   .ground_moisture_target = 45, // target moisture percentage
+                                                   .ground_moisture_target = 55, // target moisture percentage
                                                    .max_dosis_ml = 100,
                                                    .time_of_injection = time_h(8),
                                                    .delay_before_effect_evaluation = time_h(2)};
@@ -675,7 +675,10 @@ void setup() {
                                              DataProviders::CLIMATE_HUMIDITY_SETPOINT,
                                              DataProviders::CLIMATE_FAN,
                                              DataProviders::SOIL_MOISTURE,
-                                             DataProviders::SOIL_MOISTURE_SETPOINT};
+                                             DataProviders::SOIL_MOISTURE_SETPOINT,
+                                             DataProviders::FLUID_INJECTED,
+                                             DataProviders::FLUID_INJECTED_CUMULATIVE,
+                                             DataProviders::FLUID_EFFECT};
 
         using kaskas::component::DataAcquisition;
         auto cfg = DataAcquisition::Config{.initial_warm_up_time = time_s(30), .active_dataproviders = datasources};

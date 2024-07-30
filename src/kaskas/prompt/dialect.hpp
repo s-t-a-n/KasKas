@@ -45,6 +45,7 @@ struct Dialect {
                                                                   "Replies to API requests look as follows:\n\r",
                                                                   "\t\t@CMD:STATUSCODE<ARG1|ARG2\n\r",
                                                                   "\n\rModules:\n\r");
+    static constexpr std::string_view USAGE_STRING_V = {USAGE_STRING.data(), USAGE_STRING.size()};
 
     static OP optype_for_operant(const char operant) {
         auto found_op = OP::NOP;

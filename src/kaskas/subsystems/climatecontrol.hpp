@@ -14,6 +14,7 @@
 #include <spine/controller/sr_latch.hpp>
 #include <spine/core/debugging.hpp>
 #include <spine/core/schedule.hpp>
+#include <spine/core/utils/string.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
 #include <spine/filter/implementations/ewma.hpp>
@@ -46,6 +47,7 @@ inline double inverted(double value, double base = 100.0) { return base - value;
 class ClimateControl final : public kaskas::Component {
 public:
     struct Config {
+        const std::string_view name = "ClimateControl";
         io::HardwareStack::Idx hws_power_idx;
         io::HardwareStack::Idx clock_idx;
 
@@ -302,7 +304,7 @@ public:
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe() override {
         using namespace prompt;
         auto model = std::make_unique<RPCRecipe>(RPCRecipe(
-            "CC", //
+            _cfg.name,
             {
                 RPCModel("heaterAutotune",
                          [this](const OptStringView&) {
@@ -317,7 +319,8 @@ public:
                          [this](const OptStringView&) { return RPCResult(std::to_string(_heater.setpoint())); }),
                 RPCModel("ventilationAutotune",
                          [this](const OptStringView& setpoint) {
-                             const auto data = setpoint ? Event::Data(std::stod(*setpoint)) : Event::Data{};
+                             const auto data =
+                                 setpoint ? Event::Data(spn::core::utils::to_double(*setpoint)) : Event::Data{};
                              evsys()->trigger(Events::VentilationAutoTune, data);
                              return RPCResult(RPCResult::Status::OK);
                          }),
@@ -361,10 +364,10 @@ private:
         const auto climate_humidity = _climate_humidity.value();
         _ventilation_control.new_reading(detail::inverted(climate_humidity));
         const auto normalized_response = _ventilation_control.response() / 100;
-        DBG("Ventilation: current humidity %.2f %%, fan: %.2f%% (raw: %.2f)",
-            climate_humidity,
-            normalized_response * 100,
-            _ventilation_control.response());
+        // DBG("Ventilation: current humidity %.2f %%, fan: %.2f%% (raw: %.2f)",
+        // climate_humidity,
+        // normalized_response * 100,
+        // _ventilation_control.response());
 
         if (normalized_response > _cfg.ventilation.minimal_duty_cycle) {
             _climate_fan.creep_to(normalized_response, _cfg.ventilation.check_interval);

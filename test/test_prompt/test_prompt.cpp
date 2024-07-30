@@ -29,7 +29,7 @@ public:
                                    [this](const OptStringView& s) {
                                        const auto s_str = s ? std::string{*s} : std::string();
                                        DBG("rwVariable accessed with arg: {%s}", s_str.c_str());
-                                       rwVariable = s ? rwVariable + std::stod(std::string(*s)) : rwVariable;
+                                       rwVariable = s ? rwVariable + spn::core::utils::to_double(*s) : rwVariable;
                                        return RPCResult(std::to_string(rwVariable));
                                    }), //
                           RPCModel("foo",
@@ -40,7 +40,7 @@ public:
                                        const auto s_str = s ? std::string{*s} : std::string();
                                        DBG("foo called with arg: '%s'", s_str.c_str());
 
-                                       return RPCResult(std::to_string(foo(std::stod(s_str))));
+                                       return RPCResult(std::to_string(foo(spn::core::utils::to_double(s_str))));
                                    }),
                       }));
         return std::move(model);
