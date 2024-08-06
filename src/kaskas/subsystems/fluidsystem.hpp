@@ -93,7 +93,7 @@ public:
         case Events::OutOfWater: {
             //
             LOG("Fluidsystem: Events::OutOfWater: Pump reports it is out of water");
-            break;
+            return;
         }
         case Events::WaterInjectCheck: {
             // should injection take place?
@@ -128,13 +128,21 @@ public:
             DBG("Fluidsystem: WaterInjectCheck: scheduling next check in %u hours",
                 time_h(time_until_next_check).printable())
             evsys()->schedule(Events::WaterInjectCheck, time_until_next_check);
-            break;
+            return;
         }
         case Events::WaterInjectEvaluateEffect: {
             assert(_status.Flags.injection_needs_evaluation);
             const auto new_moisture_level = _ground_moisture_sensor.value();
             const auto effect = new_moisture_level - _moisture_level_before_injection;
-            assert(effect > 0 && "Fluidlevel dropped where it should have risen!");
+
+            if (effect <= 0) {
+                LOG("Fluidsystem: WaterInjectEvaluateEffect: injection of %u mL has negligible effect %.2f, discarding "
+                    "result for evaluation.",
+                    _pump.ml_since_injection_start(),
+                    effect)
+                _status.Flags.injection_needs_evaluation = false;
+                return;
+            }
 
             const auto measured_response = _pump.ml_since_injection_start() / effect;
             LOG("Fluidsystem: WaterInjectEvaluateEffect: moisture level before injection: %.2f, after: %.2f, gives "
@@ -145,7 +153,7 @@ public:
                 _ml_per_percent_of_moisture.value());
             _ml_per_percent_of_moisture.new_sample(measured_response);
             _status.Flags.injection_needs_evaluation = false;
-            break;
+            return;
         }
         case Events::WaterInjectStart: {
             if (_status.Flags.injection_needs_evaluation)
@@ -155,7 +163,7 @@ public:
             _moisture_level_before_injection = _ground_moisture_sensor.value();
             _pump.start_injection(std::floor(event.data().value()));
             evsys()->schedule(Events::WaterInjectFollowUp, _cfg.pump_cfg.reading_interval);
-            break;
+            return;
         }
         case Events::WaterInjectFollowUp: {
             _pump.update();
@@ -169,7 +177,7 @@ public:
                 DBG("Fluidsystem: WaterInjectFollowUp: not enough pumped within space of time: out of fluid.");
                 evsys()->schedule(Events::OutOfWater, time_ms(100));
             }
-            break;
+            return;
         }
         case Events::WaterInjectStop: {
             if (_pump.is_injecting())
@@ -184,9 +192,9 @@ public:
 
             _status.Flags.injection_needs_evaluation = true;
             evsys()->schedule(Events::WaterInjectEvaluateEffect, _cfg.delay_before_effect_evaluation);
-            break;
+            return;
         }
-        default: assert(!"event not handled"); break;
+        default: assert(!"event not handled"); return;
         }
     }
 

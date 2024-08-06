@@ -408,7 +408,7 @@ void setup() {
             // constexpr double moisture_sensor_limits[] = {0.0, 1.0}; // experimentally obtained, low = wet, high = dry
             const auto cfg =
                 AnalogueInputPeripheral::Config{.input_cfg = HAL::AnalogueInput::Config{.pin = A1, .pull_up = false},
-                                                .sampling_interval = time_s(10),
+                                                .sampling_interval = time_s(60),
                                                 .number_of_filters = 4};
             auto peripheral = std::make_unique<AnalogueInputPeripheral>(std::move(cfg));
             peripheral->attach_filter(BandPass::Broad());
@@ -631,9 +631,9 @@ void setup() {
         auto fluidsystem_cfg = Fluidsystem::Config{.pump_cfg = pump_cfg, //
                                                    .ground_moisture_sensor_idx = ENUM_IDX(DataProviders::SOIL_MOISTURE),
                                                    .clock_idx = ENUM_IDX(DataProviders::CLOCK),
-                                                   .ground_moisture_target = 55, // target moisture percentage
-                                                   .max_dosis_ml = 100,
-                                                   .time_of_injection = time_h(8),
+                                                   .ground_moisture_target = 65, // target moisture percentage
+                                                   .max_dosis_ml = 250,
+                                                   .time_of_injection = time_h(6),
                                                    .delay_before_effect_evaluation = time_h(2)};
         auto fluidsystem = std::make_unique<Fluidsystem>(*hws, fluidsystem_cfg);
         kk->hotload_component(std::move(fluidsystem));
