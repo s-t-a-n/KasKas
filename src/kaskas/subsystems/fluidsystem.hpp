@@ -40,6 +40,7 @@ public:
 
         float ground_moisture_target;
 
+        uint16_t calibration_dosis_ml;
         uint16_t max_dosis_ml;
         time_s time_of_injection;
         time_s delay_before_effect_evaluation;
@@ -110,9 +111,9 @@ public:
 
             auto target_amount = _ml_per_percent_of_moisture.value() * error;
             if (_ml_per_percent_of_moisture.value() == 0) {
-                LOG("Fluidsystem: WaterInjectCheck: First injection since startup; injecting maximum dosis to "
+                LOG("Fluidsystem: WaterInjectCheck: First injection since startup; injecting calibration dosis to "
                     "calibrate.");
-                target_amount = _cfg.max_dosis_ml;
+                target_amount = _cfg.calibration_dosis_ml;
             }
 
             if (target_amount > _cfg.max_dosis_ml) {
@@ -237,9 +238,17 @@ public:
                 RPCModel(
                     "injectionEffect",
                     [this](const OptStringView& _) {
-                        return RPCResult(std::to_string(_ml_per_percent_of_moisture.value()), RPCResult::Status::OK);
+                        return RPCResult(std::to_string(_ml_per_percent_of_moisture.value()));
                     },
                     "tracks amount of moisture raised per mL of fluid dosed"),
+                RPCModel(
+                    "calibrationDosis",
+                    [this](const OptStringView& _) { return RPCResult(std::to_string(_cfg.calibration_dosis_ml)); },
+                    "The calibration dosage used when no fluid effect is known"),
+                RPCModel(
+                    "maxDosis",
+                    [this](const OptStringView& _) { return RPCResult(std::to_string(_cfg.max_dosis_ml)); },
+                    "The maximum allowed dosage."),
             }));
         return std::move(model);
     }

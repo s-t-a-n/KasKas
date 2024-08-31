@@ -72,7 +72,7 @@ private:
 
     static ParseResult parse_usage_request(ParseContext& ctx) {
         if (spn::core::utils::starts_with(ctx.view, Dialect::OPERANT_PRINT_USAGE)) {
-            DBG("usage request detected");
+            // DBG("usage request detected");
             return Message(Dialect::OPERANT_PRINT_USAGE, Dialect::OPERANT_PRINT_USAGE);
         }
         return ParseResult::intermediary(ctx);

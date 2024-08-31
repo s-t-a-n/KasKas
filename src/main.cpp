@@ -631,8 +631,9 @@ void setup() {
         auto fluidsystem_cfg = Fluidsystem::Config{.pump_cfg = pump_cfg, //
                                                    .ground_moisture_sensor_idx = ENUM_IDX(DataProviders::SOIL_MOISTURE),
                                                    .clock_idx = ENUM_IDX(DataProviders::CLOCK),
-                                                   .ground_moisture_target = 65, // target moisture percentage
-                                                   .max_dosis_ml = 250,
+                                                   .ground_moisture_target = 55, // target moisture percentage
+                                                   .calibration_dosis_ml = 250,
+                                                   .max_dosis_ml = 500,
                                                    .time_of_injection = time_h(6),
                                                    .delay_before_effect_evaluation = time_h(2)};
         auto fluidsystem = std::make_unique<Fluidsystem>(*hws, fluidsystem_cfg);

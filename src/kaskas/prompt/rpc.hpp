@@ -146,7 +146,7 @@ public:
             return build_rpc_for_request(**recipe, optype, msg);
         }
         case Dialect::OP::PRINT_USAGE: {
-            DBG("rpc: usage request");
+            // DBG("rpc: usage request");
             return build_rpc_for_usage(msg);
         }
         default: DBG("no optype found for message: {%s}", msg.as_string().c_str()); return {};

@@ -2,6 +2,7 @@
 #include "kaskas/prompt/rpc.hpp"
 
 #include <spine/eventsystem/eventsystem.hpp>
+#include <spine/io/stream/implementations/mock.hpp>
 #include <spine/platform/hal.hpp>
 #include <unity.h>
 
@@ -54,11 +55,17 @@ public:
 
 void ut_prompt_basics() {
     using namespace kaskas::prompt;
+    using namespace spn::io;
 
-    auto prompt_cfg = Prompt::Config{.message_length = 64, .pool_size = 20};
+    const auto buffer_size = 1024;
 
-    auto dl = std::make_shared<MockDatalink>(
-        MockDatalink::Config{.message_length = prompt_cfg.message_length, .pool_size = prompt_cfg.pool_size});
+    auto stream = std::make_shared<MockStream>(
+        MockStream(MockStream::Config{.input_buffer_size = buffer_size, .output_buffer_size = buffer_size}));
+
+    auto prompt_cfg = Prompt::Config{.io_buffer_size = buffer_size, .line_delimiters = "\r\n"};
+    auto dl = std::make_shared<Datalink>(
+        stream,
+        Datalink::Config{.input_buffer_size = buffer_size, .output_buffer_size = buffer_size, .delimiters = "\r\n"});
     auto prompt = Prompt(std::move(prompt_cfg));
     prompt.hotload_datalink(dl);
 

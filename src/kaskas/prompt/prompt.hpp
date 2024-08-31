@@ -69,17 +69,16 @@ public:
         _dl->pull();
 
         if (auto transaction = _dl->incoming_transaction()) {
-            // DBG("Prompt: New transaction coming over the wire: {%s}", std::string(transaction->incoming()).c_str());
+            // DBG("Prompt: new transaction: {%s}", std::string(transaction->incoming()).c_str());
             if (auto message = IncomingMessageFactory::from_view(transaction->incoming())) {
-                // DBG("message: {%s}!", message->as_string().c_str());
-                // DBG("message!");
+                // DBG("Prompt: valid message: {%s}!", message->as_string().c_str());
                 // transaction->outgoing(message->as_string());
                 // transaction->abort();
 
                 if (const auto rpc = _rpc_factory.from_message(*message)) {
                     auto res = rpc->invoke();
 
-                    // DBG("invoke: res: {%s}", res.return_value->c_str());
+                    // DBG("Prompt: invoked RPC, result: {%s}", res.return_value->c_str());
 
                     if (const auto reply = OutgoingMessageFactory::from_result(std::move(res), message->module);
                         reply) {

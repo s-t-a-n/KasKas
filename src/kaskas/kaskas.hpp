@@ -22,7 +22,6 @@
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/io/stream/stream.hpp>
 #include <spine/platform/hal.hpp>
-#include <spine/structure/pointer.hpp>
 #include <spine/structure/vector.hpp>
 
 #include <utility>
@@ -56,7 +55,7 @@ public:
             auto dl = std::make_shared<Datalink>(uart,
                                                  Datalink::Config{.input_buffer_size = _cfg.prompt_cfg->io_buffer_size,
                                                                   .output_buffer_size = _cfg.prompt_cfg->io_buffer_size,
-                                                                  .delimiters = "\r\n"});
+                                                                  .delimiters = _cfg.prompt_cfg->line_delimiters});
             // using prompt::MockDatalink;
             //         auto prompt_cfg = Prompt::Config{.message_length = 64, .pool_size = 20};
             // auto dl = std::make_shared<MockDatalink>(
