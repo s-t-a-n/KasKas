@@ -60,8 +60,7 @@ public:
     VirtualStackFactory(const VirtualStack::Config&& cfg) : _stack(std::make_shared<VirtualStack>(std::move(cfg))) {}
     VirtualStackFactory(std::shared_ptr<VirtualStack> stack) : _stack(std::move(stack)) {}
 
-    void hotload_provider(DataProviders provider_id,
-                          std::shared_ptr<Provider> provider,
+    void hotload_provider(DataProviders provider_id, std::shared_ptr<Provider> provider,
                           const std::optional<std::string_view>& module_name = {}) {
         assert(ENUM_IDX(provider_id) < _stack->_cfg.max_providers);
         assert(_stack->_providers[ENUM_IDX(provider_id)] == nullptr);

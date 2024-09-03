@@ -87,8 +87,7 @@ public:
                 } else {
                     DBG("Prompt: Couldnt build RPC from message: {%s}", message->as_string().c_str());
                     if (const auto reply = OutgoingMessageFactory::from_result(
-                            RPCResult(std::move(message->as_string()), RPCResult::Status::BAD_INPUT),
-                            message->module))
+                            RPCResult(std::move(message->as_string()), RPCResult::Status::BAD_INPUT), message->module))
                         detail::send_message(*transaction, *reply);
                 }
             }

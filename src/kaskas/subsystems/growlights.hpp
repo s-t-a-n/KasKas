@@ -38,14 +38,12 @@ public:
 
 public:
     Growlights(io::HardwareStack& hws, const Config& cfg) : Growlights(hws, nullptr, cfg) {}
-    Growlights(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg) :
-        Component(evsys, hws),
-        _cfg(cfg),
-        _redblue_spectrum(_hws.digital_actuator(_cfg.redblue_spectrum_actuator_idx)),
-        _redblue_spectrum_schedule(std::move(_cfg.redblue_spectrum_schedule)),
-        _full_spectrum(_hws.digital_actuator(_cfg.full_spectrum_actuator_idx)),
-        _full_spectrum_schedule(std::move(_cfg.full_spectrum_schedule)),
-        _clock(_hws.clock(_cfg.clock_idx)){};
+    Growlights(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
+        : Component(evsys, hws), _cfg(cfg),
+          _redblue_spectrum(_hws.digital_actuator(_cfg.redblue_spectrum_actuator_idx)),
+          _redblue_spectrum_schedule(std::move(_cfg.redblue_spectrum_schedule)),
+          _full_spectrum(_hws.digital_actuator(_cfg.full_spectrum_actuator_idx)),
+          _full_spectrum_schedule(std::move(_cfg.full_spectrum_schedule)), _clock(_hws.clock(_cfg.clock_idx)){};
 
     void initialize() override {
         assert(evsys());

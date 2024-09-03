@@ -17,15 +17,13 @@ struct RPCResult {
     RPCResult(const RPCResult& other) : return_value(other.return_value), status(other.status) {}
     RPCResult(RPCResult&& other) noexcept : return_value(other.return_value), status(std::move(other.status)) {}
     RPCResult& operator=(const RPCResult& other) {
-        if (this == &other)
-            return *this;
+        if (this == &other) return *this;
         return_value = other.return_value;
         status = other.status;
         return *this;
     }
     RPCResult& operator=(RPCResult&& other) noexcept {
-        if (this == &other)
-            return *this;
+        if (this == &other) return *this;
         return_value = other.return_value;
         status = std::move(other.status);
         return *this;
@@ -35,9 +33,8 @@ struct RPCResult {
     // constexpr std::array<std::string, 5> StatusIntStrs = {magic_enum::enum_integer(RPCResult::Status::BAD_INPUT)};
 
     explicit RPCResult(OptString&& return_value) : return_value(std::move(return_value)), status(Status::OK) {}
-    explicit RPCResult(OptString&& return_value, Status status) :
-        return_value(std::move(return_value)),
-        status(status) {}
+    explicit RPCResult(OptString&& return_value, Status status)
+        : return_value(std::move(return_value)), status(status) {}
 
     RPCResult(Status status) : return_value(std::string(magic_enum::enum_name(status))), status(status) {}
 

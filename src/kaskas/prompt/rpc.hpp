@@ -17,12 +17,9 @@ namespace kaskas::prompt {
 class RPCModel {
 public:
     RPCModel(const std::string& name) : _name(name) {}
-    RPCModel(const std::string& name,
-             const std::function<RPCResult(const OptStringView&)>& call,
-             const std::string& help = "") :
-        _name(name),
-        _call(call),
-        _help(help) {}
+    RPCModel(const std::string& name, const std::function<RPCResult(const OptStringView&)>& call,
+             const std::string& help = "")
+        : _name(name), _call(call), _help(help) {}
 
     const std::string_view name() const { return _name; }
     const std::string_view help() const { return _help; }
@@ -37,9 +34,8 @@ private:
 class RPCRecipeFactory;
 
 struct RPCRecipe {
-    RPCRecipe(const std::string_view& module, const std::initializer_list<RPCModel>& rpcs) :
-        _module(module),
-        _models(rpcs){};
+    RPCRecipe(const std::string_view& module, const std::initializer_list<RPCModel>& rpcs)
+        : _module(module), _models(rpcs){};
 
     const std::string_view module() const { return _module; }
 
@@ -91,8 +87,8 @@ private:
 
 class RPCRecipeFactory {
 public:
-    explicit RPCRecipeFactory(const std::string& command) :
-        _recipe(std::make_unique<RPCRecipe>(RPCRecipe(command, {}))) {}
+    explicit RPCRecipeFactory(const std::string& command)
+        : _recipe(std::make_unique<RPCRecipe>(RPCRecipe(command, {}))) {}
 
     void add_model(RPCModel&& model) { _recipe->_models.emplace_back(std::move(model)); }
     std::unique_ptr<RPCRecipe> extract_recipe() { return std::move(_recipe); }

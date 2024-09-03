@@ -43,9 +43,8 @@ public:
 
 private:
     struct ParseContext {
-        explicit ParseContext(const RPCResult& result, const std::string_view& module) :
-            result(result),
-            module(module) {}
+        explicit ParseContext(const RPCResult& result, const std::string_view& module)
+            : result(result), module(module) {}
         const RPCResult& result;
         std::string_view module;
         std::string_view operant;
@@ -65,8 +64,7 @@ private:
         return ParseResult::intermediary(std::move(ctx));
     }
     static ParseResult parse_arguments(ParseContext& ctx) {
-        if (auto& args = ctx.result.return_value; args)
-            ctx.arguments = args.value();
+        if (auto& args = ctx.result.return_value; args) ctx.arguments = args.value();
         return ParseResult::intermediary(std::move(ctx));
     }
     static ParseResult parse_finalizer(ParseContext& ctx) {

@@ -39,13 +39,12 @@ public:
             } else {
                 DBG("--------------------------------------------------------------------------");
                 DBG("Tried to flip relay within backoff threshold: %ims since last flip",
-                     time_ms(time_since_last_flip).printable());
+                    time_ms(time_since_last_flip).printable());
                 DBG("--------------------------------------------------------------------------");
             }
         }
 
-        if (!_backoff_timer && _cfg.backoff_time > time_s(0))
-            _backoff_timer = std::make_optional(Timer());
+        if (!_backoff_timer && _cfg.backoff_time > time_s(0)) _backoff_timer = std::make_optional(Timer());
 
         _pin.set_state(state);
     }

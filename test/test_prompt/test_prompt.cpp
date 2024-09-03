@@ -85,8 +85,7 @@ void ut_prompt_basics() {
 
         auto msg = Message::from_buffer(std::move(buf));
         TEST_ASSERT_EQUAL(expected_to_be_valid, msg != std::nullopt);
-        if (!expected_to_be_valid)
-            return;
+        if (!expected_to_be_valid) return;
         TEST_ASSERT_EQUAL_STRING(test_input, msg->as_string().c_str());
 
         dl->inject_message(*msg);

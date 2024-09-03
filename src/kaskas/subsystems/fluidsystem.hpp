@@ -56,13 +56,12 @@ public:
 
 public:
     Fluidsystem(io::HardwareStack& hws, Config& cfg) : Fluidsystem(hws, nullptr, cfg) {}
-    Fluidsystem(io::HardwareStack& hws, EventSystem* evsys, Config& cfg) :
-        Component(evsys, hws), //
-        _cfg(cfg), //
-        _clock(_hws.clock(_cfg.clock_idx)),
-        _ground_moisture_sensor(_hws.analog_sensor(_cfg.ground_moisture_sensor_idx)), //
-        _pump(_hws, std::move(cfg.pump_cfg)),
-        _ml_per_percent_of_moisture(EWMA::Config{.K = 10}){};
+    Fluidsystem(io::HardwareStack& hws, EventSystem* evsys, Config& cfg)
+        : Component(evsys, hws), //
+          _cfg(cfg), //
+          _clock(_hws.clock(_cfg.clock_idx)),
+          _ground_moisture_sensor(_hws.analog_sensor(_cfg.ground_moisture_sensor_idx)), //
+          _pump(_hws, std::move(cfg.pump_cfg)), _ml_per_percent_of_moisture(EWMA::Config{.K = 10}){};
 
     void initialize() override {
         _pump.initialize();
@@ -79,8 +78,7 @@ public:
         const auto time_until_next_dosis = _clock.time_until_next_occurence(_cfg.time_of_injection);
 
         DBG("Fluidsystem: scheduling WaterInjectCheck event in %u hours (%u minutes).",
-            time_h(time_until_next_dosis).printable(),
-            time_m(time_until_next_dosis).printable());
+            time_h(time_until_next_dosis).printable(), time_m(time_until_next_dosis).printable());
         evsys()->schedule(Events::WaterInjectCheck, time_until_next_dosis);
 
         // evsys()->schedule(Events::WaterInjectStart, time_s(5));
@@ -101,8 +99,7 @@ public:
             // DBG("Fluidsystem: WaterInjectCheck");
             DBG("Fluidsystem: WaterInjectCheck: Moisture level at %.2f (threshold at %.2f, time since last injection: "
                 "%u s)",
-                _ground_moisture_sensor.value(),
-                _cfg.ground_moisture_target,
+                _ground_moisture_sensor.value(), _cfg.ground_moisture_target,
                 time_s(_pump.time_since_last_injection()).printable());
 
             const auto error = _cfg.ground_moisture_target - _ground_moisture_sensor.value();
@@ -119,8 +116,7 @@ public:
             if (target_amount > _cfg.max_dosis_ml) {
                 DBG("Fluidsystem: WaterInjectCheck: target amount of %.0f mL exceeds max dosis of %uf, clamping "
                     "target amount.",
-                    target_amount,
-                    _cfg.max_dosis_ml);
+                    target_amount, _cfg.max_dosis_ml);
                 target_amount = _cfg.max_dosis_ml;
             }
             evsys()->schedule(Events::WaterInjectStart, time_s(1), Event::Data(target_amount));
@@ -139,8 +135,7 @@ public:
             if (effect <= 0) {
                 LOG("Fluidsystem: WaterInjectEvaluateEffect: injection of %u mL has negligible effect %.2f, discarding "
                     "result for evaluation.",
-                    _pump.ml_since_injection_start(),
-                    effect)
+                    _pump.ml_since_injection_start(), effect)
                 _status.Flags.injection_needs_evaluation = false;
                 return;
             }
@@ -148,9 +143,7 @@ public:
             const auto measured_response = _pump.ml_since_injection_start() / effect;
             LOG("Fluidsystem: WaterInjectEvaluateEffect: moisture level before injection: %.2f, after: %.2f, gives "
                 "%.2f mL / %% of moisture (was: %.2f)",
-                _moisture_level_before_injection,
-                new_moisture_level,
-                measured_response,
+                _moisture_level_before_injection, new_moisture_level, measured_response,
                 _ml_per_percent_of_moisture.value());
             _ml_per_percent_of_moisture.new_sample(measured_response);
             _status.Flags.injection_needs_evaluation = false;
@@ -181,15 +174,12 @@ public:
             return;
         }
         case Events::WaterInjectStop: {
-            if (_pump.is_injecting())
-                _pump.stop_injection();
+            if (_pump.is_injecting()) _pump.stop_injection();
             _injected += _pump.ml_since_injection_start();
             DBG("Fluidsystem: WaterInjectStop: Pumped %i ml in %i ms (pumped in total: %u ml), evaluating effect in "
                 "%u min",
-                _pump.ml_since_injection_start(),
-                _pump.time_since_injection_start().printable(),
-                _pump.lifetime_pumped_ml(),
-                time_m(_cfg.delay_before_effect_evaluation).printable());
+                _pump.ml_since_injection_start(), _pump.time_since_injection_start().printable(),
+                _pump.lifetime_pumped_ml(), time_m(_cfg.delay_before_effect_evaluation).printable());
 
             _status.Flags.injection_needs_evaluation = true;
             evsys()->schedule(Events::WaterInjectEvaluateEffect, _cfg.delay_before_effect_evaluation);
@@ -225,8 +215,7 @@ public:
                              if (_status.Flags.injection_needs_evaluation)
                                  return RPCResult("cannot inject: last injection was not evaluated",
                                                   RPCResult::Status::BAD_RESULT);
-                             evsys()->schedule(Events::WaterInjectStart,
-                                               time_s(1),
+                             evsys()->schedule(Events::WaterInjectStart, time_s(1),
                                                Event::Data(spn::core::utils::to_double(amount_in_ml.value())));
                              return RPCResult(RPCResult::Status::OK);
                          }),
@@ -246,8 +235,7 @@ public:
                     [this](const OptStringView& _) { return RPCResult(std::to_string(_cfg.calibration_dosis_ml)); },
                     "The calibration dosage used when no fluid effect is known"),
                 RPCModel(
-                    "maxDosis",
-                    [this](const OptStringView& _) { return RPCResult(std::to_string(_cfg.max_dosis_ml)); },
+                    "maxDosis", [this](const OptStringView& _) { return RPCResult(std::to_string(_cfg.max_dosis_ml)); },
                     "The maximum allowed dosage."),
             }));
         return std::move(model);
@@ -257,8 +245,7 @@ public:
             DataProviders::SOIL_MOISTURE_SETPOINT,
             std::make_shared<io::ContinuousValue>([this]() { return this->_cfg.ground_moisture_target; }));
         ssf.hotload_provider( //
-            DataProviders::FLUID_INJECTED,
-            std::make_shared<io::ContinuousValue>([this]() {
+            DataProviders::FLUID_INJECTED, std::make_shared<io::ContinuousValue>([this]() {
                 const double injected = this->_injected;
                 this->_injected = 0; // when injected is consumed, it is lost if not captured
                 return injected;

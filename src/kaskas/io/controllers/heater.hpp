@@ -68,10 +68,8 @@ public:
             bool guard_changing_state = true;
         };
 
-        ThermalRunAway(const Config&& cfg) :
-            _cfg(std::move(cfg)),
-            _current_state_duration(Timer{}),
-            _heating_time_window(_cfg.heating_timewindow) {}
+        ThermalRunAway(const Config&& cfg)
+            : _cfg(std::move(cfg)), _current_state_duration(Timer{}), _heating_time_window(_cfg.heating_timewindow) {}
 
         void update(State state, double temperature) {
             if (state != _current_state) { // heater changed states
@@ -89,8 +87,7 @@ public:
                         LOG("Heater went outside of steady state for too long, triggering run away! (time expired: "
                             "%is, timewindow: %is, current temperature %.2fC)",
                             time_s(_current_state_duration.timeSinceLast(false)).printable(),
-                            time_s(_cfg.stable_timewindow).printable(),
-                            temperature)
+                            time_s(_cfg.stable_timewindow).printable(), temperature)
                         _is_runaway = true;
                     }
                     return;
@@ -102,8 +99,7 @@ public:
                         if (error < _cfg.heating_minimal_rising_c) { // temperature didnt rise fast enough
                             LOG("Temperature didnt rise fast enough, triggering run away! (delta:%.2fC, temperature: "
                                 "%.2fC)",
-                                error,
-                                temperature);
+                                error, temperature);
                             _is_runaway = true;
                         }
                         _temperature_time_window = temperature;
@@ -114,8 +110,7 @@ public:
                         if (error < _cfg.heating_minimal_dropping_c) { // temperature didn't drop fast enough
                             LOG("Temperature didnt drop fast enough, triggering run away! (delta:%.2fC, temperature: "
                                 "%.2fC)",
-                                error,
-                                temperature);
+                                error, temperature);
                             _is_runaway = true;
                         }
                         _temperature_time_window = temperature;
@@ -168,16 +163,13 @@ public:
     };
 
 public:
-    Heater(const Config&& cfg, io::HardwareStack& hws) :
-        _cfg(cfg),
-        _hws(hws),
-        _pid(std::move(_cfg.pid_cfg)),
-        _heating_element(_hws.analogue_actuator(_cfg.heating_element_idx)),
-        _surface_temperature(_hws.analog_sensor(_cfg.heating_surface_temperature_idx)),
-        _climate_temperature(_hws.analog_sensor(_cfg.climate_temperature_idx)),
-        _temperature_source(&_surface_temperature),
-        _update_interval(IntervalTimer(_cfg.pid_cfg.sample_interval)),
-        _climate_trp(std::move(_cfg.climate_trp_cfg)) {}
+    Heater(const Config&& cfg, io::HardwareStack& hws)
+        : _cfg(cfg), _hws(hws), _pid(std::move(_cfg.pid_cfg)),
+          _heating_element(_hws.analogue_actuator(_cfg.heating_element_idx)),
+          _surface_temperature(_hws.analog_sensor(_cfg.heating_surface_temperature_idx)),
+          _climate_temperature(_hws.analog_sensor(_cfg.climate_temperature_idx)),
+          _temperature_source(&_surface_temperature), _update_interval(IntervalTimer(_cfg.pid_cfg.sample_interval)),
+          _climate_trp(std::move(_cfg.climate_trp_cfg)) {}
 
     void initialize() {
         _pid.initialize();
@@ -185,8 +177,7 @@ public:
         const auto current_temp = temperature();
         _pid.new_reading(current_temp);
 
-        DBG("Heater initialized: Current surface temperature: %.2f C, initial response : %f",
-            current_temp,
+        DBG("Heater initialized: Current surface temperature: %.2f C, initial response : %f", current_temp,
             _pid.response());
     }
 
@@ -228,20 +219,15 @@ public:
         while (temperature() < setpoint && (!timer.expired() || timeout == time_ms(0))) {
             _heating_element.fade_to(guarded_setpoint(LogicalState::ON));
             DBG("Waiting until temperature of %.2fC reaches %.2fC, saturating thermal capacitance (surfaceT %.2f)",
-                temperature(),
-                setpoint,
-                _surface_temperature.value());
+                temperature(), setpoint, _surface_temperature.value());
             _hws.update_all(); // make sure to update sensors
             HAL::delay(time_ms(1000));
         }
         _heating_element.fade_to(LogicalState::OFF);
-        if (saturated)
-            return;
+        if (saturated) return;
         while (temperature() > setpoint && (!timer.expired() || timeout == time_ms(0))) {
             DBG("Waiting until temperature of %f C reaches %f C, unloading thermal capacitance (surfaceT %.2f)",
-                temperature(),
-                setpoint,
-                _surface_temperature.value());
+                temperature(), setpoint, _surface_temperature.value());
             _hws.update_all(); // make sure to update sensors
             HAL::delay(time_ms(1000));
         }
@@ -255,9 +241,7 @@ public:
                                              / (_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit);
             const auto guarded_normalized_response = guarded_setpoint(normalized_response);
             DBG("Autotune: Setting heating element to output: %.3f (surface: %.3fC, climate %.3fC)",
-                guarded_normalized_response,
-                _surface_temperature.value(),
-                _climate_temperature.value());
+                guarded_normalized_response, _surface_temperature.value(), _climate_temperature.value());
             _heating_element.fade_to(guarded_normalized_response);
         };
         const auto process_getter = [&]() {
@@ -294,11 +278,8 @@ private:
         const auto adjusted_setpoint = std::clamp(excess > 0.0 ? setpoint - feedback : setpoint, 0.0, 1.0);
 
         if (adjusted_setpoint != setpoint) {
-            DBG("Heater: T %.2f C is above limit of T %.2f C, clamping response from %.2f to %.2f",
-                surface_temperature,
-                _cfg.max_heater_setpoint,
-                setpoint,
-                adjusted_setpoint);
+            DBG("Heater: T %.2f C is above limit of T %.2f C, clamping response from %.2f to %.2f", surface_temperature,
+                _cfg.max_heater_setpoint, setpoint, adjusted_setpoint);
         }
         return adjusted_setpoint;
     }
@@ -317,9 +298,7 @@ private:
 
         if (_climate_trp.is_runaway()) {
             HAL::printf("Runaway detected: surfaceT %.2f, climateT %.2f, throttle: %i/255, state: %s",
-                        _surface_temperature.value(),
-                        _climate_temperature.value(),
-                        int(throttle() * 255),
+                        _surface_temperature.value(), _climate_temperature.value(), int(throttle() * 255),
                         std::string(as_stringview(state())).c_str());
             spn::throw_exception(spn::assertion_exception("Heater: Run away detected"));
         }
@@ -343,8 +322,7 @@ private:
         }
 
         // keep track of cooldown time
-        if (_state != State::COOLING && _state != State::IDLE)
-            _cooled_down_for.reset();
+        if (_state != State::COOLING && _state != State::IDLE) _cooled_down_for.reset();
     }
 
 private:

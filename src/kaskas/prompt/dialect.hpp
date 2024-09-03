@@ -36,15 +36,12 @@ struct Dialect {
     static constexpr auto MAXIMAL_CMD_LENGTH = 10;
 
     // todo: spice this up with some FMTLIB sauce?
-    static constexpr auto USAGE_STRING = spn::core::utils::concat("KasKas: API version ",
-                                                                  Dialect::API_VERSION,
-                                                                  ". Usage:\n\r",
-                                                                  "\n\r",
-                                                                  "Requests to the API must look as follows: \n\r",
-                                                                  "\t\tMODULE:CMD:ARG1|ARG2\n\r"
-                                                                  "Replies to API requests look as follows:\n\r",
-                                                                  "\t\t@CMD:STATUSCODE<ARG1|ARG2\n\r",
-                                                                  "\n\rModules:\n\r");
+    static constexpr auto USAGE_STRING =
+        spn::core::utils::concat("KasKas: API version ", Dialect::API_VERSION, ". Usage:\n\r", "\n\r",
+                                 "Requests to the API must look as follows: \n\r",
+                                 "\t\tMODULE:CMD:ARG1|ARG2\n\r"
+                                 "Replies to API requests look as follows:\n\r",
+                                 "\t\t@CMD:STATUSCODE<ARG1|ARG2\n\r", "\n\rModules:\n\r");
     static constexpr std::string_view USAGE_STRING_V = {USAGE_STRING.data(), USAGE_STRING.size()};
 
     static OP optype_for_operant(const char operant) {

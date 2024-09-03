@@ -35,10 +35,9 @@ public:
         Idx max_peripherals = 8;
     };
 
-    HardwareStack(const Config&& cfg) :
-        VirtualStack({.alias = cfg.alias, .max_providers = cfg.max_providers}),
-        _cfg(std::move(cfg)),
-        _peripherals(_cfg.max_peripherals) {}
+    HardwareStack(const Config&& cfg)
+        : VirtualStack({.alias = cfg.alias, .max_providers = cfg.max_providers}), _cfg(std::move(cfg)),
+          _peripherals(_cfg.max_peripherals) {}
 
 public:
     void initialize() {
@@ -125,8 +124,8 @@ private:
 
 class HardwareStackFactory : public VirtualStackFactory {
 public:
-    HardwareStackFactory(const HardwareStack::Config&& cfg) :
-        VirtualStackFactory(std::make_shared<HardwareStack>(std::move(cfg))) {}
+    HardwareStackFactory(const HardwareStack::Config&& cfg)
+        : VirtualStackFactory(std::make_shared<HardwareStack>(std::move(cfg))) {}
 
     void hotload_peripheral(uint8_t peripheral_id, std::unique_ptr<Peripheral> peripheral) {
         assert(peripheral_id < hardware_stack()->_cfg.max_peripherals);

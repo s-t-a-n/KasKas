@@ -34,12 +34,8 @@ public:
 
         if (is_ready()) {
             const auto n = now();
-            DBG("DS3231Clock initialized. The reported time is %u:%u @ %u:%u:%u",
-                n.getHour(),
-                n.getMinute(),
-                n.getDay(),
-                n.getMonth(),
-                n.getYear());
+            DBG("DS3231Clock initialized. The reported time is %u:%u @ %u:%u:%u", n.getHour(), n.getMinute(),
+                n.getDay(), n.getMonth(), n.getYear());
         } else {
             ::spn::throw_exception(::spn::assertion_exception("DS3231Clock failed to initialize. Maybe set the time?"));
         }

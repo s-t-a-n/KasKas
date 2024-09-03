@@ -22,11 +22,9 @@ public:
 
 public:
     UI(io::HardwareStack& hws, const Config& cfg) : UI(hws, nullptr, cfg) {}
-    UI(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg) :
-        Component(evsys, hws),
-        _cfg(cfg),
-        _signaltower(cfg.signaltower_cfg),
-        _userbutton(std::move(_cfg.userbutton_cfg)){};
+    UI(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
+        : Component(evsys, hws), _cfg(cfg), _signaltower(cfg.signaltower_cfg),
+          _userbutton(std::move(_cfg.userbutton_cfg)){};
 
     void initialize() override {
         //

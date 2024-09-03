@@ -18,8 +18,7 @@ public:
         return std::move(_recipes);
     }
     void add_recipe(std::unique_ptr<RPCRecipe> recipe) {
-        if (recipe)
-            _recipes.emplace_back(std::move(recipe));
+        if (recipe) _recipes.emplace_back(std::move(recipe));
     }
 
 protected:

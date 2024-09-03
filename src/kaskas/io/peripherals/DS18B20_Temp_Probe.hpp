@@ -25,11 +25,8 @@ public:
     };
 
 public:
-    DS18B20TempProbe(const Config& cfg) :
-        FilteredPeripheral(cfg.sampling_interval, 1),
-        _cfg(cfg),
-        _onewire(_cfg.pin),
-        _ds18b20(&_onewire) {
+    DS18B20TempProbe(const Config& cfg)
+        : FilteredPeripheral(cfg.sampling_interval, 1), _cfg(cfg), _onewire(_cfg.pin), _ds18b20(&_onewire) {
         _fs.attach_filter(BandPass::Broad());
     }
     ~DS18B20TempProbe() override = default;

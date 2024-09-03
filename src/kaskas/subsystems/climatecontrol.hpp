@@ -74,21 +74,18 @@ public:
 
 public:
     ClimateControl(io::HardwareStack& hws, const Config& cfg) : ClimateControl(hws, nullptr, cfg) {}
-    ClimateControl(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg) :
-        Component(evsys, hws),
-        _cfg(std::move(cfg)),
-        _clock(_hws.clock(_cfg.clock_idx)),
-        _ambient_temp_sensor(_hws.analog_sensor(_cfg.heating.ambient_temp_idx)),
-        _climate_fan(_hws.analogue_actuator(_cfg.ventilation.hws_climate_fan_idx)),
-        _ventilation_control(std::move(_cfg.ventilation.climate_fan_pid)),
-        _ventilation_schedule(std::move(_cfg.ventilation.schedule_cfg)),
-        _climate_humidity(_hws.analog_sensor(_cfg.ventilation.climate_humidity_idx)),
-        _climate_temperature(_hws.analog_sensor(_cfg.heating.climate_temp_sensor_idx)),
-        _heating_element_fan(_hws.analogue_actuator(_cfg.heating.heating_element_fan_idx)),
-        _heating_element_sensor(_hws.analog_sensor(_cfg.heating.heating_element_temp_sensor_idx)),
-        _heater(std::move(cfg.heating.heater_cfg), _hws),
-        _heating_schedule(std::move(_cfg.heating.schedule_cfg)),
-        _power(_hws.digital_actuator(_cfg.hws_power_idx)){};
+    ClimateControl(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
+        : Component(evsys, hws), _cfg(std::move(cfg)), _clock(_hws.clock(_cfg.clock_idx)),
+          _ambient_temp_sensor(_hws.analog_sensor(_cfg.heating.ambient_temp_idx)),
+          _climate_fan(_hws.analogue_actuator(_cfg.ventilation.hws_climate_fan_idx)),
+          _ventilation_control(std::move(_cfg.ventilation.climate_fan_pid)),
+          _ventilation_schedule(std::move(_cfg.ventilation.schedule_cfg)),
+          _climate_humidity(_hws.analog_sensor(_cfg.ventilation.climate_humidity_idx)),
+          _climate_temperature(_hws.analog_sensor(_cfg.heating.climate_temp_sensor_idx)),
+          _heating_element_fan(_hws.analogue_actuator(_cfg.heating.heating_element_fan_idx)),
+          _heating_element_sensor(_hws.analog_sensor(_cfg.heating.heating_element_temp_sensor_idx)),
+          _heater(std::move(cfg.heating.heater_cfg), _hws), _heating_schedule(std::move(_cfg.heating.schedule_cfg)),
+          _power(_hws.digital_actuator(_cfg.hws_power_idx)){};
 
     void initialize() override {
         //
@@ -210,9 +207,7 @@ public:
                                 .satured_at_start = false,
                                 .cycles = 30,
                                 .aggressiveness = spn::controller::PIDAutotuner::ZNMode::BasicPID},
-                process_setter,
-                process_getter,
-                process_loop);
+                process_setter, process_getter, process_loop);
             _climate_fan.fade_to(LogicalState::OFF);
             adjust_power_state();
             break;
@@ -230,8 +225,7 @@ public:
             for (auto t = _climate_temperature.value(); t > autotune_startpoint; t = _climate_temperature.value()) {
                 DBG("Ventilating for temperature %.2f C is lower than startpoint %.2f C before autotune "
                     "start",
-                    t,
-                    autotune_startpoint);
+                    t, autotune_startpoint);
                 _hws.update_all();
                 HAL::delay(time_s(1));
             }

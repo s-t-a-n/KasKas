@@ -41,8 +41,8 @@ public:
     using Config = BufferedStream::Config;
 
 public:
-    Datalink(std::shared_ptr<spn::io::Stream> stream, BufferedStream::Config&& cfg) :
-        _stream(std::move(stream), std::move(cfg)) {}
+    Datalink(std::shared_ptr<spn::io::Stream> stream, BufferedStream::Config&& cfg)
+        : _stream(std::move(stream), std::move(cfg)) {}
     void initialize() {}
 
     // void send_message(const Message& msg) {

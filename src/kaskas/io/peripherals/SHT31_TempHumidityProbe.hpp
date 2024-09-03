@@ -26,12 +26,9 @@ public:
     };
 
 public:
-    SHT31TempHumidityProbe(const Config& cfg) :
-        Peripheral(cfg.sampling_interval),
-        _cfg(cfg),
-        _sht31(SHT31(_cfg.i2c_address)),
-        _temperature_fs(1),
-        _humidity_fs(1) {
+    SHT31TempHumidityProbe(const Config& cfg)
+        : Peripheral(cfg.sampling_interval), _cfg(cfg), _sht31(SHT31(_cfg.i2c_address)), _temperature_fs(1),
+          _humidity_fs(1) {
         _temperature_fs.attach_filter(BandPass::Broad());
         _humidity_fs.attach_filter(BandPass::Broad());
     }
@@ -49,9 +46,8 @@ public:
         if (!is_ready()) {
             spn::throw_exception(spn::assertion_exception("SHT31TempHumidityProbe could not be initialized"));
         }
-        DBG("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C",
-             read_humidity(),
-             read_temperature());
+        DBG("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C", read_humidity(),
+            read_temperature());
 
         // make sure that heater is off
         _sht31.heatOff();
@@ -67,8 +63,7 @@ public:
             if (_sht31.dataReady()) {
                 bool success = _sht31.readData();
                 _sht31.requestData();
-                if (success)
-                    break;
+                if (success) break;
             }
         }
 
@@ -107,9 +102,8 @@ public:
 
     bool is_ready() {
         if (!_sht31.isConnected()) {
-            DBG("SHT31 reports not connected with status: %04X and errorcode: %04X",
-                 _sht31.readStatus(),
-                 _sht31.getError());
+            DBG("SHT31 reports not connected with status: %04X and errorcode: %04X", _sht31.readStatus(),
+                _sht31.getError());
             return false;
         }
         if (const auto error = _sht31.getError(); error != SHT31_OK) {

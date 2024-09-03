@@ -12,10 +12,8 @@ namespace kaskas::io {
 
 class AnalogueOutputPeripheral : public HAL::AnalogueOutput, public Peripheral {
 public:
-    explicit AnalogueOutputPeripheral(const Config&& cfg, time_ms sampling_speed = time_ms(100)) :
-        HAL::AnalogueOutput(std::move(cfg)),
-        Peripheral(sampling_speed),
-        _creep_time_on_target({}) {}
+    explicit AnalogueOutputPeripheral(const Config&& cfg, time_ms sampling_speed = time_ms(100))
+        : HAL::AnalogueOutput(std::move(cfg)), Peripheral(sampling_speed), _creep_time_on_target({}) {}
     ~AnalogueOutputPeripheral() override = default;
 
     void initialize() override { HAL::AnalogueOutput::initialize(); }
@@ -23,8 +21,7 @@ public:
     void safe_shutdown(bool critical) override { this->fade_to(0.0); }
 
     void update() override {
-        if (!_is_creeping)
-            return;
+        if (!_is_creeping) return;
         const auto creep_delta = _creep_target_value - value();
         if (std::fabs(creep_delta) < std::fabs(_creep_target_increment)) { // on target
             if (value() != _creep_target_value) { // finalize
@@ -56,8 +53,7 @@ public:
 
     /// set a target value and let the updater approach the value with a single increment per sample
     void creep_to(const double setpoint, const time_ms travel_time = time_s(1000)) {
-        if (value() == setpoint)
-            return;
+        if (value() == setpoint) return;
 
         _is_creeping = true;
         _creep_target_value = setpoint;

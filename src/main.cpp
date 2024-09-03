@@ -372,9 +372,8 @@ void setup() {
     {
         using namespace kaskas::io;
 
-        auto stack_cfg = HardwareStack::Config{.alias = "IO",
-                                               .max_providers = ENUM_IDX(DataProviders::SIZE),
-                                               .max_peripherals = Peripherals::SIZE};
+        auto stack_cfg = HardwareStack::Config{
+            .alias = "IO", .max_providers = ENUM_IDX(DataProviders::SIZE), .max_peripherals = Peripherals::SIZE};
 
         auto sf = HardwareStackFactory(std::move(stack_cfg));
 
@@ -589,25 +588,27 @@ void setup() {
 
     {
         using kaskas::component::Growlights;
-        auto growlights_cfg = Growlights::Config{
-            .redblue_spectrum_actuator_idx = ENUM_IDX(DataProviders::REDBLUE_SPECTRUM),
-            .redblue_spectrum_schedule =
-                Schedule::Config{
-                    .blocks =
-                        {
-                            Schedule::Block{.start = time_h(8), .duration = time_h(12), .value = LogicalState::ON},
-                            Schedule::Block{.start = time_h(20), .duration = time_h(12), .value = LogicalState::OFF},
-                        }},
+        auto growlights_cfg =
+            Growlights::Config{
+                .redblue_spectrum_actuator_idx = ENUM_IDX(DataProviders::REDBLUE_SPECTRUM),
+                .redblue_spectrum_schedule =
+                    Schedule::Config{
+                        .blocks =
+                            {
+                                Schedule::Block{.start = time_h(8), .duration = time_h(12), .value = LogicalState::ON},
+                                Schedule::Block{
+                                    .start = time_h(20), .duration = time_h(12), .value = LogicalState::OFF},
+                            }},
 
-            .full_spectrum_actuator_idx = ENUM_IDX(DataProviders::FULL_SPECTRUM),
-            .full_spectrum_schedule =
-                Schedule::Config{
-                    .blocks =
-                        {
-                            Schedule::Block{.start = time_h(6), .duration = time_h(16), .value = LogicalState::ON},
-                            Schedule::Block{.start = time_h(22), .duration = time_h(8), .value = LogicalState::OFF},
-                        }},
-            .clock_idx = ENUM_IDX(DataProviders::CLOCK)};
+                .full_spectrum_actuator_idx = ENUM_IDX(DataProviders::FULL_SPECTRUM),
+                .full_spectrum_schedule =
+                    Schedule::Config{
+                        .blocks =
+                            {
+                                Schedule::Block{.start = time_h(6), .duration = time_h(16), .value = LogicalState::ON},
+                                Schedule::Block{.start = time_h(22), .duration = time_h(8), .value = LogicalState::OFF},
+                            }},
+                .clock_idx = ENUM_IDX(DataProviders::CLOCK)};
 
         auto growlights = std::make_unique<Growlights>(*hws, growlights_cfg);
         kk->hotload_component(std::move(growlights));

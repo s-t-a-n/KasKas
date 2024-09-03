@@ -19,8 +19,7 @@ class IncomingMessageFactory {
 public:
     /// Create a Message from the provided string_view.
     static std::optional<Message> from_view(const std::string_view& view) {
-        if (view.empty())
-            return {};
+        if (view.empty()) return {};
         // DBG("incoming length : %i", view.size());
 
         const auto parse = [](ParseContext& context) -> ParseResult {

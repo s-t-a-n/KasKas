@@ -44,16 +44,14 @@ public:
     };
 
 public:
-    explicit KasKas(std::shared_ptr<io::HardwareStack> hws, Config& cfg) :
-        _cfg(cfg),
-        _evsys({cfg.es_cfg}),
-        _hws(std::move(hws)),
-        _components(std::vector<std::unique_ptr<Component>>()) {
+    explicit KasKas(std::shared_ptr<io::HardwareStack> hws, Config& cfg)
+        : _cfg(cfg), _evsys({cfg.es_cfg}), _hws(std::move(hws)),
+          _components(std::vector<std::unique_ptr<Component>>()) {
         if (_cfg.prompt_cfg) {
             auto uart = std::make_shared<HAL::UART>(HAL::UART::Config{.stream = &Serial, .timeout = time_ms(50)});
             using prompt::Datalink;
-            auto dl = std::make_shared<Datalink>(uart,
-                                                 Datalink::Config{.input_buffer_size = _cfg.prompt_cfg->io_buffer_size,
+            auto dl =
+                std::make_shared<Datalink>(uart, Datalink::Config{.input_buffer_size = _cfg.prompt_cfg->io_buffer_size,
                                                                   .output_buffer_size = _cfg.prompt_cfg->io_buffer_size,
                                                                   .delimiters = _cfg.prompt_cfg->line_delimiters});
             // using prompt::MockDatalink;

@@ -37,10 +37,8 @@ public:
     };
 
     DataAcquisition(io::HardwareStack& hws, const Config& cfg) : DataAcquisition(hws, nullptr, cfg) {}
-    DataAcquisition(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg) :
-        Component(evsys, hws),
-        _cfg(std::move(cfg)),
-        _status({}) {}
+    DataAcquisition(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg)
+        : Component(evsys, hws), _cfg(std::move(cfg)), _status({}) {}
 
     void initialize() override {
         evsys()->attach(Events::DAQWarmedUp, this);
@@ -96,8 +94,7 @@ public:
             const auto& datasource = *it;
             const auto name = magic_enum::enum_name(datasource);
             fields += name.data();
-            if (std::next(it) != _cfg.active_dataproviders.end())
-                fields += prompt::Dialect::VALUE_SEPARATOR;
+            if (std::next(it) != _cfg.active_dataproviders.end()) fields += prompt::Dialect::VALUE_SEPARATOR;
         }
         // for (auto datasource : _cfg.active_dataproviders) {
         //     const auto name = magic_enum::enum_name(datasource);
@@ -127,10 +124,8 @@ public:
                 const auto value = _hws.analog_sensor(ENUM_IDX(*it)).value();
                 int written = std::snprintf(buffer.data(), buffer.size(), "%.3f", value);
                 assert(written > 0 && written < buffer.size());
-                if (written > 0 && written < buffer.size())
-                    put(std::string_view(buffer.data(), written));
-                if (std::next(it) != _cfg.active_dataproviders.end())
-                    put(prompt::Dialect::VALUE_SEPARATOR);
+                if (written > 0 && written < buffer.size()) put(std::string_view(buffer.data(), written));
+                if (std::next(it) != _cfg.active_dataproviders.end()) put(prompt::Dialect::VALUE_SEPARATOR);
             }
             return len;
         };
