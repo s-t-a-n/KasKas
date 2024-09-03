@@ -49,6 +49,7 @@ public:
 
     using Value = double;
 
+    // todo: move this into a generic Spine class that monitors using an expected envelope
     class ThermalRunAway {
     public:
         // todo: make an autotuner to find limits of normal usage experimentally
@@ -73,8 +74,7 @@ public:
             _heating_time_window(_cfg.heating_timewindow) {}
 
         void update(State state, double temperature) {
-            if (state != _current_state) {
-                // heater changed states
+            if (state != _current_state) { // heater changed states
                 _last_state = _current_state;
                 _current_state = state;
                 reset_timers();
@@ -83,38 +83,39 @@ public:
             }
 
             if (_current_state == State::HEATING) {
-                if (_cfg.guard_stable_state and _last_state == State::STEADY_STATE) {
-                    // heater came out of steady state
-                    if (time_s(_current_state_duration.timeSinceLast(false)) > _cfg.stable_timewindow) {
-                        // heater went outside of steady state for too long
-                        DBG("expired: %is, timewindow: %i",
-                             time_s(_current_state_duration.timeSinceLast(false)).printable(),
-                             time_s(_cfg.stable_timewindow).printable())
-                        DBG("Heater went outside of steady state for too long!");
+                if (_cfg.guard_stable_state and _last_state == State::STEADY_STATE) { // heater came out of steady state
+                    if (time_s(_current_state_duration.timeSinceLast(false))
+                        > _cfg.stable_timewindow) { // heater went outside of steady state for too long
+                        LOG("Heater went outside of steady state for too long, triggering run away! (time expired: "
+                            "%is, timewindow: %is, current temperature %.2fC)",
+                            time_s(_current_state_duration.timeSinceLast(false)).printable(),
+                            time_s(_cfg.stable_timewindow).printable(),
+                            temperature)
                         _is_runaway = true;
                     }
                     return;
                 }
 
                 if (_cfg.guard_changing_state and _heating_time_window.expired()) {
-                    if (temperature < _setpoint) {
-                        // heater is trying to rise temperature
+                    if (temperature < _setpoint) { // heater is trying to rise temperature
                         const auto error = temperature - _temperature_time_window;
-                        if (error < _cfg.heating_minimal_rising_c) {
-                            // temperature didnt rise fast enough
-                            DBG("Temperature didnt rise fast enough: delta:%.2fC", error);
+                        if (error < _cfg.heating_minimal_rising_c) { // temperature didnt rise fast enough
+                            LOG("Temperature didnt rise fast enough, triggering run away! (delta:%.2fC, temperature: "
+                                "%.2fC)",
+                                error,
+                                temperature);
                             _is_runaway = true;
                         }
-
                         _temperature_time_window = temperature;
                     }
 
-                    if (temperature > _setpoint) {
-                        // heater should be dropping temperature
+                    if (temperature > _setpoint) { // heater should be dropping temperature
                         const auto error = _temperature_time_window - temperature;
-                        if (error < _cfg.heating_minimal_dropping_c) {
-                            // temperature didnt drop fast enough
-                            DBG("temperature didnt drop fast enough, delta:%.2fC", error);
+                        if (error < _cfg.heating_minimal_dropping_c) { // temperature didn't drop fast enough
+                            LOG("Temperature didnt drop fast enough, triggering run away! (delta:%.2fC, temperature: "
+                                "%.2fC)",
+                                error,
+                                temperature);
                             _is_runaway = true;
                         }
                         _temperature_time_window = temperature;
@@ -185,8 +186,8 @@ public:
         _pid.new_reading(current_temp);
 
         DBG("Heater initialized: Current surface temperature: %.2f C, initial response : %f",
-             current_temp,
-             _pid.response());
+            current_temp,
+            _pid.response());
     }
 
     void update() {
@@ -227,9 +228,9 @@ public:
         while (temperature() < setpoint && (!timer.expired() || timeout == time_ms(0))) {
             _heating_element.fade_to(guarded_setpoint(LogicalState::ON));
             DBG("Waiting until temperature of %.2fC reaches %.2fC, saturating thermal capacitance (surfaceT %.2f)",
-                 temperature(),
-                 setpoint,
-                 _surface_temperature.value());
+                temperature(),
+                setpoint,
+                _surface_temperature.value());
             _hws.update_all(); // make sure to update sensors
             HAL::delay(time_ms(1000));
         }
@@ -238,9 +239,9 @@ public:
             return;
         while (temperature() > setpoint && (!timer.expired() || timeout == time_ms(0))) {
             DBG("Waiting until temperature of %f C reaches %f C, unloading thermal capacitance (surfaceT %.2f)",
-                 temperature(),
-                 setpoint,
-                 _surface_temperature.value());
+                temperature(),
+                setpoint,
+                _surface_temperature.value());
             _hws.update_all(); // make sure to update sensors
             HAL::delay(time_ms(1000));
         }
@@ -254,9 +255,9 @@ public:
                                              / (_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit);
             const auto guarded_normalized_response = guarded_setpoint(normalized_response);
             DBG("Autotune: Setting heating element to output: %.3f (surface: %.3fC, climate %.3fC)",
-                 guarded_normalized_response,
-                 _surface_temperature.value(),
-                 _climate_temperature.value());
+                guarded_normalized_response,
+                _surface_temperature.value(),
+                _climate_temperature.value());
             _heating_element.fade_to(guarded_normalized_response);
         };
         const auto process_getter = [&]() {
@@ -294,10 +295,10 @@ private:
 
         if (adjusted_setpoint != setpoint) {
             DBG("Heater: T %.2f C is above limit of T %.2f C, clamping response from %.2f to %.2f",
-                 surface_temperature,
-                 _cfg.max_heater_setpoint,
-                 setpoint,
-                 adjusted_setpoint);
+                surface_temperature,
+                _cfg.max_heater_setpoint,
+                setpoint,
+                adjusted_setpoint);
         }
         return adjusted_setpoint;
     }

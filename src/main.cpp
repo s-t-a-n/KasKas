@@ -543,7 +543,8 @@ void setup() {
                         .minimal_duty_cycle = 0.21,
                         .schedule_cfg =
                             Schedule::Config{
-                                .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(24), .value = 70.0}}},
+                                .blocks = {Schedule::Block{.start = time_h(22), .duration = time_h(10), .value = 75.0},
+                                           Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 65.0}}},
                         .check_interval = ventilation_sample_interval},
 
                 .heating =
