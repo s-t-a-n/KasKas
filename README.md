@@ -1,29 +1,34 @@
 # KasKas
 
 <!-- CI status -->
-[![ci](https://github.com/s-t-a-n/KasKas/workflows/ci/badge.svg)](https://github.com/s-t-a-n/KasKas/actions?query=workflow=ci)
+[![ci](https://github.com/s-t-a-n/KasKas/workflows/ci.yml/badge.svg)](https://github.com/s-t-a-n/KasKas/actions?query=workflow=ci)
 [![last commit](https://badgen.net/github/last-commit/s-t-a-n/KasKas)](https://GitHub.com/s-t-a-n/KasKas/commit/)
 [![license](https://img.shields.io/github/license/s-t-a-n/KasKas.svg)](https://github.com/s-t-a-n/KasKas/blob/master/LICENSE)
 
 
 <!-- short description -->
-C++ Arduino project for a running a little greenhouse
+Embedded C++ Application for a running a little greenhouse.
 
-## Aims
+| Chamber | Control | Outside |
+:-------------:|:--------------:|:--------------:
+| ![](https://github.com/s-t-a-n/kaskas/blob/master/doc/kaskas_chamber.jpg?raw=true) | ![](https://github.com/s-t-a-n/kaskas/blob/master/doc/kaskas_control.png?raw=true) | ![](https://github.com/s-t-a-n/kaskas/blob/master/doc/kaskas_outside.png?raw=true) |
+
+
+Powered by [Spine](https://github.com/s-t-a-n/Spine).
+
+## Design philosophy
 
 <!-- more detailed description -->
 
-## Documentation
+## How to run
 
-Find the documentation at [the github.io page](https://s-t-a-n.github.io/libraries/KasKas/KasKas.html)
+1. Get PlatformIO.
+2. Run `pio run` in the root of repository to compile
 
-## Build instructions
+## How to test
 
-<!-- instructions to get the simplest example working -->
-
-## Contributing
-
-<!-- rules/suggestions -->
+1. Get PlatformIO.
+2. Run `pio test -e unittest` in the root of repository to compile
 
 ## References
 
