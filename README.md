@@ -31,7 +31,12 @@ Plants are chaotic creatures that run on their own code without any outside effo
 ## Design philosophy
 
 - keep all configurable parameters inside the main.cpp so any arbitrary settings end up in a single place
-- keep the various components as modular as possible 
+- keep the various components as modular as possible
+
+
+## Schematic overview
+
+![](https://github.com/s-t-a-n/kaskas/blob/master/doc/kaskas_schema.png?raw=true) 
 
 ## How to run
 
