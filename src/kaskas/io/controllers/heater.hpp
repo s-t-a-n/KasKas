@@ -233,7 +233,7 @@ public:
         }
     }
 
-    void autotune(PID::TuneConfig&& cfg, std::function<void()> process_loop = {}) {
+    PID::Tunings autotune(PID::TuneConfig&& cfg, std::function<void()> process_loop = {}) {
         block_until_setpoint(cfg.startpoint);
         set_target_setpoint(cfg.setpoint);
         const auto process_setter = [&](double pwm_value) {
@@ -248,8 +248,9 @@ public:
             _hws.update_all(); // make sure to update sensors
             return temperature();
         };
-        _pid.autotune(cfg, process_setter, process_getter, process_loop);
+        const auto tunings = _pid.autotune(cfg, process_setter, process_getter, process_loop);
         update_state();
+        return tunings;
     }
 
     void set_target_setpoint(const Value setpoint) {

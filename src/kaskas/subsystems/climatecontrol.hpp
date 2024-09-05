@@ -200,7 +200,7 @@ public:
             const auto process_setter = [&](double value) { _climate_fan.fade_to(value / 100.0); };
             const auto process_loop = [&]() { _hws.update_all(); };
 
-            _ventilation_control.autotune(
+            const auto tunings = _ventilation_control.autotune(
                 PID::TuneConfig{.setpoint = autotune_setpoint,
                                 .startpoint = 0,
                                 .hysteresis = 0.3,
@@ -210,6 +210,8 @@ public:
                 process_setter, process_getter, process_loop);
             _climate_fan.fade_to(LogicalState::OFF);
             adjust_power_state();
+            LOG("VentilationAutoTune: Autotuning complete, results: kp: %f, ki: %f, kd: %f", tunings.Kp, tunings.Ki, tunings.Kd);
+            // todo: hotload the new tunings
             break;
         }
         case Events::HeatingAutoTune: {
@@ -234,7 +236,7 @@ public:
             const auto process_loop = [&]() { _hws.update_all(); };
 
             _heating_element_fan.fade_to(LogicalState::ON);
-            _heater.autotune(PID::TuneConfig{.setpoint = autotune_setpoint,
+            const auto tunings = _heater.autotune(PID::TuneConfig{.setpoint = autotune_setpoint,
                                              .startpoint = autotune_startpoint,
                                              .hysteresis = 0.03,
                                              .satured_at_start = true,
@@ -242,6 +244,8 @@ public:
                              process_loop);
             adjust_power_state();
             adjust_heater_fan_state();
+            LOG("HeatingAutoTune: Autotuning complete, results: kp: %f, ki: %f, kd: %f", tunings.Kp, tunings.Ki, tunings.Kd);
+            // todo: hotload the new tunings
             break;
         }
         case Events::HeatingFollowUp: {
