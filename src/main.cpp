@@ -564,7 +564,7 @@ void setup() {
                                 .max_heater_setpoint = max_heater_setpoint,
                                 .heating_surface_temperature_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
                                 .heating_element_idx = ENUM_IDX(DataProviders::HEATING_ELEMENT),
-                                .climate_trp_cfg = Heater::ThermalRunAway::Config{.stable_timewindow = time_m(20),
+                                .climate_trp_cfg = Heater::ThermalRunAway::Config{.stable_timewindow = time_m(30),
                                                                                   .heating_minimal_rising_c = 0.1,
                                                                                   .heating_minimal_dropping_c = 0.01,
                                                                                   .heating_timewindow = time_m(45)}},
