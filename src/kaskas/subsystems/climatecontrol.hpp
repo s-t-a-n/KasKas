@@ -210,7 +210,8 @@ public:
                 process_setter, process_getter, process_loop);
             _climate_fan.fade_to(LogicalState::OFF);
             adjust_power_state();
-            LOG("VentilationAutoTune: Autotuning complete, results: kp: %f, ki: %f, kd: %f", tunings.Kp, tunings.Ki, tunings.Kd);
+            LOG("VentilationAutoTune: Autotuning complete, results: kp: %f, ki: %f, kd: %f", tunings.Kp, tunings.Ki,
+                tunings.Kd);
             // todo: hotload the new tunings
             break;
         }
@@ -237,14 +238,15 @@ public:
 
             _heating_element_fan.fade_to(LogicalState::ON);
             const auto tunings = _heater.autotune(PID::TuneConfig{.setpoint = autotune_setpoint,
-                                             .startpoint = autotune_startpoint,
-                                             .hysteresis = 0.03,
-                                             .satured_at_start = true,
-                                             .cycles = 10},
-                             process_loop);
+                                                                  .startpoint = autotune_startpoint,
+                                                                  .hysteresis = 0.03,
+                                                                  .satured_at_start = true,
+                                                                  .cycles = 10},
+                                                  process_loop);
             adjust_power_state();
             adjust_heater_fan_state();
-            LOG("HeatingAutoTune: Autotuning complete, results: kp: %f, ki: %f, kd: %f", tunings.Kp, tunings.Ki, tunings.Kd);
+            LOG("HeatingAutoTune: Autotuning complete, results: kp: %f, ki: %f, kd: %f", tunings.Kp, tunings.Ki,
+                tunings.Kd);
             // todo: hotload the new tunings
             break;
         }
