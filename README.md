@@ -11,7 +11,7 @@ Embedded C++ Application for a running a little greenhouse.
 
 | Chamber | Control | Outside |
 :-------------:|:--------------:|:--------------:
-| ![](https://github.com/s-t-a-n/kaskas/blob/master/doc/kaskas_chamber.jpg?raw=true) | ![](https://github.com/s-t-a-n/kaskas/blob/master/doc/kaskas_control.png?raw=true) | ![](https://github.com/s-t-a-n/kaskas/blob/master/doc/kaskas_outside.png?raw=true) |
+| ![](https://github.com/s-t-a-n/kaskas/blob/develop/doc/kaskas_chamber.png?raw=true) | ![](https://github.com/s-t-a-n/kaskas/blob/develop/doc/kaskas_control.png?raw=true) | ![](https://github.com/s-t-a-n/kaskas/blob/develop/doc/kaskas_outside.png?raw=true) |
 
 Note: No, they are tomatoplants.
 
@@ -36,7 +36,7 @@ Plants are chaotic creatures that run on their own code without any outside effo
 
 ## Schematic overview
 
-![](https://github.com/s-t-a-n/kaskas/blob/master/doc/kaskas_schema.png?raw=true) 
+![](https://github.com/s-t-a-n/kaskas/blob/develop/doc/kaskas_schema.png?raw=true) 
 
 ## How to run
 
