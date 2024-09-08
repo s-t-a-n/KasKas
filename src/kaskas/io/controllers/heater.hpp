@@ -82,11 +82,11 @@ public:
 
             if (_current_state == State::HEATING) {
                 if (_cfg.guard_stable_state and _last_state == State::STEADY_STATE) { // heater came out of steady state
-                    if (time_s(_current_state_duration.timeSinceLast(false))
+                    if (time_s(_current_state_duration.time_since_last(false))
                         > _cfg.stable_timewindow) { // heater went outside of steady state for too long
                         LOG("Heater went outside of steady state for too long, triggering run away! (time expired: "
                             "%is, timewindow: %is, current temperature %.2fC)",
-                            time_s(_current_state_duration.timeSinceLast(false)).printable(),
+                            time_s(_current_state_duration.time_since_last(false)).printable(),
                             time_s(_cfg.stable_timewindow).printable(), temperature)
                         _is_runaway = true;
                     }
@@ -315,7 +315,7 @@ private:
         } else if (is_element_heating) {
             _state = State::HEATING;
         } else {
-            if (_cooled_down_for.timeSinceLast(false) < _cfg.cooldown_min_length) {
+            if (_cooled_down_for.time_since_last(false) < _cfg.cooldown_min_length) {
                 _state = State::COOLING;
             } else {
                 _state = State::IDLE;

@@ -18,7 +18,7 @@
 
 #include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>
-#include <spine/core/time.hpp>
+#include <spine/core/si_units.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/io/stream/stream.hpp>
 #include <spine/platform/hal.hpp>

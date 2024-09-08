@@ -206,7 +206,7 @@ public:
                                 .hysteresis = 0.3,
                                 .satured_at_start = false,
                                 .cycles = 30,
-                                .aggressiveness = spn::controller::PIDAutotuner::ZNMode::BasicPID},
+                                .aggressiveness = spn::controller::PIDAutotuner::Aggressiveness::BasicPID},
                 process_setter, process_getter, process_loop);
             _climate_fan.fade_to(LogicalState::OFF);
             adjust_power_state();

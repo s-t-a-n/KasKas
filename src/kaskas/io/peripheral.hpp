@@ -1,6 +1,6 @@
 #pragma once
 
-#include <spine/core/time.hpp>
+#include <spine/core/si_units.hpp>
 #include <spine/core/timers.hpp>
 #include <spine/filter/filterstack.hpp>
 #include <spine/structure/array.hpp>
@@ -26,7 +26,7 @@ public:
     bool is_updateable() const { return _timer != std::nullopt; }
     time_ms update_interval() const {
         assert(is_updateable());
-        return is_updateable() ? _timer->sampling_interval() : time_ms(0);
+        return is_updateable() ? _timer->interval() : time_ms(0);
     }
     time_ms time_until_next_update() const {
         assert(is_updateable());
@@ -47,7 +47,7 @@ public:
         : Peripheral(sampling_interval), _fs(number_of_filters) {}
 
     void attach_filter(std::unique_ptr<Filter> filter) {
-        assert(_fs.max_number_of_filters() > 0);
+        assert(_fs.filter_slots() > 0);
         _fs.attach_filter(std::move(filter));
     }
 

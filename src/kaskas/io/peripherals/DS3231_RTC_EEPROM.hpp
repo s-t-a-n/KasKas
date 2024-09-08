@@ -5,6 +5,7 @@
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/providers/non_volatile_memory.hpp"
 
+#include <Wire.h>
 #include <DS3231-RTC.h>
 #include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>
@@ -24,11 +25,9 @@ public:
     ~DS3231Clock() override = default;
 
     void initialize() override {
-        // DBG("Initializing DS3231Clock");
-        HAL::I2C::initialize();
+        Wire.begin(); // not using HAL as it's I2C implementation needs be carefully drafted first
 
-        // set DS3231's clockmode to 24h, as basic civilisation demands
-        _ds3231.setClockMode(false);
+        _ds3231.setClockMode(false); // set DS3231's clockmode to 24h, as basic civilisation demands
 
         update();
 

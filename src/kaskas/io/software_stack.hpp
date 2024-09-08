@@ -8,7 +8,7 @@
 #include "kaskas/io/providers/digital.hpp"
 #include "kaskas/prompt/cookbook.hpp"
 
-#include <spine/core/standard.hpp>
+#include <spine/core/utils/enum.hpp>
 #include <spine/structure/array.hpp>
 
 #include <memory>

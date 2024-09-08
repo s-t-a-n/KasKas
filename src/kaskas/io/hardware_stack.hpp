@@ -9,7 +9,6 @@
 #include "kaskas/io/software_stack.hpp"
 #include "kaskas/prompt/cookbook.hpp"
 
-#include <spine/core/standard.hpp>
 #include <spine/structure/array.hpp>
 
 #include <memory>

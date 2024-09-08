@@ -58,10 +58,10 @@ public:
     bool is_injecting() const { return _pump.state() == LogicalState::ON; }
     uint32_t ml_since_injection_start() const { return _ml; }
     time_ms time_since_injection_start() {
-        return _status.flags.has_injected_since_start ? _pump_timer.timeSinceLast(false) : time_ms(0);
+        return _status.flags.has_injected_since_start ? _pump_timer.time_since_last(false) : time_ms(0);
     }
     time_ms time_since_last_injection() {
-        return _status.flags.has_injected_since_start ? _last_injection.timeSinceLast(false) : time_ms(0);
+        return _status.flags.has_injected_since_start ? _last_injection.time_since_last(false) : time_ms(0);
     }
     uint32_t lifetime_pumped_ml() const { return _lifetime_ml; }
     double flowrate_lm() const { return _flowrate.value(); }
@@ -127,7 +127,7 @@ private:
     }
 
     uint32_t track_injection() {
-        const auto time_since_last_reading = _last_reading.timeSinceLast(true);
+        const auto time_since_last_reading = _last_reading.time_since_last(true);
         const auto pulse_count = read_pulsecount();
         const auto flowrate_lm =
             ((_cfg.reading_interval.raw<double>() / time_since_last_reading.raw<double>()) * pulse_count)

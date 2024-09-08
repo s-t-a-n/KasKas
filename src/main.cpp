@@ -412,7 +412,7 @@ void setup() {
             auto peripheral = std::make_unique<AnalogueInputPeripheral>(std::move(cfg));
             peripheral->attach_filter(BandPass::Broad());
             peripheral->attach_filter(EWMA::Long());
-            peripheral->attach_filter(Invert::Invertor());
+            peripheral->attach_filter(Invert::NormalizedInverter());
             peripheral->attach_filter(MappedRange::Percentage(moisture_sensor_limits[0], moisture_sensor_limits[1]));
             auto moisture_provider = std::make_shared<AnalogueSensor>(peripheral->analogue_value_provider());
 
@@ -543,7 +543,7 @@ void setup() {
                         .schedule_cfg =
                             Schedule::Config{
                                 .blocks = {Schedule::Block{.start = time_h(22), .duration = time_h(10), .value = 75.0},
-                                           Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 65.0}}},
+                                           Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 75.0}}},
                         .check_interval = ventilation_sample_interval},
 
                 .heating =

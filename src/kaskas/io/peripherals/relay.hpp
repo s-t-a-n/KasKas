@@ -31,7 +31,7 @@ public:
 
     void set_state(LogicalState state) {
         // hard protect against flipping relay back on within backoff threshold
-        const auto time_since_last_flip = _backoff_timer->timeSinceLast();
+        const auto time_since_last_flip = _backoff_timer->time_since_last();
         if (_backoff_timer && _cfg.backoff_time > time_ms(0) && time_since_last_flip < _cfg.backoff_time && state == ON
             && _pin.state() == OFF) {
             if (_cfg.throw_on_early_flip) {
