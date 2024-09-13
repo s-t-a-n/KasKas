@@ -1,17 +1,15 @@
 #pragma once
 
-#include <spine/structure/list.hpp>
-// #include <spine/structure/vector.hpp>
-
 #include "kaskas/prompt/rpc.hpp"
 
 #include <set>
+#include <list>
 
 namespace kaskas::prompt {
 
 class RPCCookbook {
 public:
-    using CookBook = spn::structure::List<std::unique_ptr<RPCRecipe>>;
+    using CookBook = std::list<std::unique_ptr<RPCRecipe>>;
 
     CookBook&& extract_recipes() {
         consolidate_recipes();

@@ -11,8 +11,8 @@
 #include <magic_enum/magic_enum_all.hpp>
 #include <spine/core/debugging.hpp>
 #include <spine/platform/hal.hpp>
-#include <spine/structure/list.hpp>
 
+#include <list>
 #include <cstring>
 #include <initializer_list>
 #include <memory>
