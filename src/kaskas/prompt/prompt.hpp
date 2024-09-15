@@ -12,9 +12,9 @@
 #include <spine/core/debugging.hpp>
 #include <spine/platform/hal.hpp>
 
-#include <list>
 #include <cstring>
 #include <initializer_list>
+#include <list>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -25,22 +25,20 @@ namespace kaskas::prompt {
 namespace detail {
 
 inline void send_message(spn::io::BufferedStream::Transaction& transaction, const MessageWithStorage<RPCResult>& msg) {
-    transaction.outgoing(Dialect::REPLY_HEADER);
+    //    transaction.outgoing(Dialect::REPLY_HEADER);
 
     transaction.outgoing(msg.module);
     transaction.outgoing(msg.operant);
 
-    if (msg.cmd) {
-        transaction.outgoing(msg.cmd.value());
+    if (msg.cmd_or_status) {
+        transaction.outgoing(msg.cmd_or_status.value());
     }
     if (msg.arguments) {
-        // DBG("before sending: {%s}", std::string(msg.arguments.value()).c_str());
-        // DBG("before sending storage: {%s}", std::string(msg.storage().return_value.value()).c_str());
         transaction.outgoing(std::string_view(":"));
         transaction.outgoing(msg.arguments.value());
     }
-    transaction.outgoing(Dialect::REPLY_FOOTER);
-    transaction.outgoing(std::string_view("\r\n"));
+    //    transaction.outgoing(Dialect::REPLY_FOOTER);
+    transaction.outgoing(std::string_view(Dialect::REPLY_CR));
 }
 
 } // namespace detail
@@ -60,26 +58,15 @@ public:
         _dl->initialize();
     }
 
-    // void attach() { dbg::enable_dbg_output(false); }
-    // void detach() { dbg::enable_dbg_output(true); }
-
     void update() {
         assert(_dl);
 
         _dl->pull();
 
         if (auto transaction = _dl->incoming_transaction()) {
-            // DBG("Prompt: new transaction: {%s}", std::string(transaction->incoming()).c_str());
             if (auto message = IncomingMessageFactory::from_view(transaction->incoming())) {
-                // DBG("Prompt: valid message: {%s}!", message->as_string().c_str());
-                // transaction->outgoing(message->as_string());
-                // transaction->abort();
-
                 if (const auto rpc = _rpc_factory.from_message(*message)) {
                     auto res = rpc->invoke();
-
-                    // DBG("Prompt: invoked RPC, result: {%s}", res.return_value->c_str());
-
                     if (const auto reply = OutgoingMessageFactory::from_result(std::move(res), message->module);
                         reply) {
                         detail::send_message(*transaction, *reply);
@@ -93,23 +80,6 @@ public:
             }
             transaction->commit();
         }
-
-        // if (const auto message = _dl->receive_message()) {
-        //     DBG("update: received message: {%s}", message->as_string().c_str());
-        //     if (const auto rpc = _rpc_factory.from_message(*message)) {
-        //         // DBG("update: invoking for: {%s}", message->as_string().c_str());
-        //         auto res = rpc->invoke();
-        //         if (const auto reply = OutgoingMessageFactory::from_result(std::move(res), message->module); reply)
-        //             _dl->send_message(*reply);
-        //     } else {
-        //         DBG("Prompt: Couldnt build RPC from message: {%s}", message->as_string().c_str());
-        //         if (const auto reply = OutgoingMessageFactory::from_result(
-        //                 RPCResult(message->as_string(), RPCResult::Status::BAD_INPUT),
-        //                 message->module))
-        //             _dl->send_message(*reply);
-        //     }
-        // }
-
         _dl->push();
     }
 

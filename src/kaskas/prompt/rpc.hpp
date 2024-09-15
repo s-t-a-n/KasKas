@@ -121,6 +121,7 @@ public:
         size_t directory_size = 32;
     };
     RPCFactory(const Config&& cfg) : _cfg(cfg) { _rpcs.reserve(_cfg.directory_size); }
+    RPCFactory(const Config& cfg) : RPCFactory(Config(cfg)) {}
 
     std::optional<RPC> from_message(const Message& msg) {
         assert(msg.operant.length() == 1);
@@ -203,11 +204,11 @@ protected:
     }
 
     std::optional<RPC> build_rpc_for_request(const RPCRecipe& recipe, Dialect::OP optype, const Message& msg) {
-        if (!msg.cmd) {
+        if (!msg.cmd_or_status) {
             return {};
         }
 
-        auto found_model = recipe.find_model_for_command(*msg.cmd);
+        auto found_model = recipe.find_model_for_command(*msg.cmd_or_status);
         if (found_model == nullptr) { // no model found
             DBG("build_rpc: No model found for msg {%s}", msg.as_string().c_str());
             return {};

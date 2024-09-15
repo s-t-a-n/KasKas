@@ -36,7 +36,12 @@ struct RPCResult {
     explicit RPCResult(OptString&& return_value, Status status)
         : return_value(std::move(return_value)), status(status) {}
 
-    RPCResult(Status status) : return_value(std::string(magic_enum::enum_name(status))), status(status) {}
+    RPCResult(Status status) : return_value(std::nullopt), status(status) {}
+
+    [[nodiscard]] std::string as_string() const {
+        return return_value ? std::string(magic_enum::enum_name(status)) + ":" + *return_value
+                            : std::string(magic_enum::enum_name(status));
+    };
 
     OptString return_value;
     Status status;

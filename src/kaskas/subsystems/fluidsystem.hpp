@@ -8,6 +8,7 @@
 
 #include <spine/core/exception.hpp>
 #include <spine/core/timers.hpp>
+#include <spine/core/logging.hpp>
 #include <spine/core/utils/string.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/filter/implementations/ewma.hpp>

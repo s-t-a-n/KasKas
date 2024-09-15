@@ -5,6 +5,7 @@
 #    include "kaskas/io/peripherals/analogue_input.hpp"
 #    include "kaskas/io/peripherals/analogue_output.hpp"
 #    include "kaskas/kaskas.hpp"
+#    include "kaskas/prompt/prompt.hpp"
 
 #    include <spine/controller/pid.hpp>
 #    include <spine/core/debugging.hpp>
@@ -35,11 +36,6 @@ using MappedRange = spn::filter::MappedRange<double>;
 using Invert = spn::filter::Invert<double>;
 using Heater = kaskas::io::Heater;
 
-// volatile uint8_t interruptor = 0;
-// DigitalInput ub();
-
-kaskas::io::HardwareStack* S = nullptr;
-
 namespace Peripherals {
 enum PeripheralsEnum {
     DS18B20,
@@ -57,317 +53,12 @@ enum PeripheralsEnum {
 };
 }
 
-#    include "kaskas/prompt/prompt.hpp"
-
 using namespace kaskas;
-
-// class MockController {
-// public:
-//     std::unique_ptr<prompt::RPCRecipe> rpc_recipe() {
-//         using namespace prompt;
-//         using kaskas::prompt::OptStringView;
-//
-//         using spn::structure::Array;
-//         auto model = std::make_unique<RPCRecipe>(
-//             RPCRecipe("MOC", //
-//                       {
-//                           RPCModel("roVariable",
-//                                    [this](const OptStringView&) {
-//                                        DBG("roVariable accessed");
-//                                        return RPCResult(std::to_string(roVariable));
-//                                    }),
-//                           RPCModel("rwVariable",
-//                                    [this](const OptStringView& s) {
-//                                        const auto s_str = s ? std::string{*s} : std::string();
-//                                        DBG("rwVariable accessed with arg: {%s}", s_str.c_str());
-//                                        rwVariable = s ? std::stod(std::string(*s)) : rwVariable;
-//                                        return RPCResult(std::to_string(rwVariable));
-//                                    }), //
-//                           RPCModel("foo",
-//                                    [this](const OptStringView& s) {
-//                                        if (!s || s->length() == 0) {
-//                                            return RPCResult(RPCResult::State::BAD_INPUT);
-//                                        }
-//                                        const auto s_str = s ? std::string{*s} : std::string();
-//                                        DBG("foo called with arg: '%s'", s_str.c_str());
-//
-//                                        return RPCResult(std::to_string(foo(std::stod(s_str))));
-//                                    }),
-//                       }));
-//         return std::move(model);
-//     }
-//
-//     const double roVariable = 42;
-//     double rwVariable = 42;
-//
-//     double foo(double variable) { return roVariable + rwVariable + variable; }
-// };
-
-// unsigned long last_free_memory = 0;
 
 void setup() {
     HAL::delay(time_s(2)); // give time for console to attach before first output
     HAL::initialize(HAL::Config{.baudrate = 115200});
     LOG("Wake up");
-
-    // static volatile int ctr = 0;
-    // const auto cb = []() { ctr++; };
-    // Interrupt a(
-    //     Interrupt::Config{.pin = 2, .mode = Interrupt::TriggerType::FALLING_EDGE, .pull_up = false, .callback = cb});
-    // a.initialize();
-    // a.attach_interrupt();
-    //
-    // io::Relay b(io::Relay::Config{.pin_cfg = HAL::DigitalOutput::Config{.pin = 13, .active_on_low = true},
-    //                               .backoff_time = time_ms(1000)});
-    // b.initialize();
-    //
-    // HAL::delay(time_s(10));
-    // b.set_state(LogicalState::ON);
-    // HAL::delay(time_s(3));
-    // b.set_state(LogicalState::OFF);
-    //
-    // // for (int i = 0; i < 3; ++i) {
-    // //     HAL::delay(time_s(1));
-    // // }
-    // DBG("ctr: %i", ctr);
-    // while (true) {
-    // };
-
-    //     {
-    //         HAL::delay(time_s(2));
-    //
-    // #    include <DS3231-RTC.h>
-    // #    include <Wire.h>
-    //
-    //         DS3231::DS3231 myRTC;
-    //
-    //         byte year;
-    //         byte month;
-    //         byte date;
-    //         byte dOW;
-    //         byte hour;
-    //         byte minute;
-    //         byte second;
-    //
-    //         const auto getDateStuff = [](byte& year, byte& month, byte& date, byte& dOW, byte& hour, byte& minute,
-    //                                      byte& second) {
-    //             // Call this if you notice something coming in on
-    //             // the serial port. The stuff coming in should be in
-    //             // the order YYMMDDwHHMMSS, with an 'x' at the end.
-    //             boolean gotString = false;
-    //             char inChar;
-    //             byte temp1, temp2;
-    //             char inString[20];
-    //
-    //             byte j = 0;
-    //             while (!gotString) {
-    //                 if (Serial.available()) {
-    //                     inChar = Serial.read();
-    //                     inString[j] = inChar;
-    //                     j += 1;
-    //                     if (inChar == 'x') {
-    //                         gotString = true;
-    //                     }
-    //                 }
-    //             }
-    //             Serial.println(inString);
-    //             // Read year first
-    //             temp1 = (byte)inString[0] - 48;
-    //             temp2 = (byte)inString[1] - 48;
-    //             year = temp1 * 10 + temp2;
-    //             // now month
-    //             temp1 = (byte)inString[2] - 48;
-    //             temp2 = (byte)inString[3] - 48;
-    //             month = temp1 * 10 + temp2;
-    //             // now date
-    //             temp1 = (byte)inString[4] - 48;
-    //             temp2 = (byte)inString[5] - 48;
-    //             date = temp1 * 10 + temp2;
-    //             // now Day of Week
-    //             dOW = (byte)inString[6] - 48;
-    //             // now hour
-    //             temp1 = (byte)inString[7] - 48;
-    //             temp2 = (byte)inString[8] - 48;
-    //             hour = temp1 * 10 + temp2;
-    //             // now minute
-    //             temp1 = (byte)inString[9] - 48;
-    //             temp2 = (byte)inString[10] - 48;
-    //             minute = temp1 * 10 + temp2;
-    //             // now second
-    //             temp1 = (byte)inString[11] - 48;
-    //             temp2 = (byte)inString[12] - 48;
-    //             second = temp1 * 10 + temp2;
-    //         };
-    //
-    //         Wire.begin();
-    //
-    //         Serial.println("order: YYMMDDwHHMMSS, with an 'x' at the end");
-    //         while (true) {
-    //             // If something is coming in on the serial line, it's
-    //             // a time correction so set the clock accordingly.
-    //             if (Serial.available()) {
-    //                 getDateStuff(year, month, date, dOW, hour, minute, second);
-    //
-    //                 myRTC.setClockMode(false); // set to 24h
-    //                 // setClockMode(true); // set to 12h
-    //
-    //                 myRTC.setYear(year);
-    //                 myRTC.setMonth(month);
-    //                 myRTC.setDate(date);
-    //                 myRTC.setDoW(dOW);
-    //                 myRTC.setHour(hour);
-    //                 myRTC.setMinute(minute);
-    //                 myRTC.setSecond(second);
-    //
-    //                 // Test of alarm functions
-    //                 // set A1 to one minute past the time we just set the clock
-    //                 // on current day of week.
-    //                 myRTC.setA1Time(dOW, hour, minute + 1, second, 0x0, true, false, false);
-    //                 // set A2 to two minutes past, on current day of month.
-    //                 myRTC.setA2Time(date, hour, minute + 2, 0x0, false, false, false);
-    //                 // Turn on both alarms, with external interrupt
-    //                 myRTC.turnOnAlarm(1);
-    //                 myRTC.turnOnAlarm(2);
-    //             }
-    //             delay(1000);
-    //         }
-    //     }
-
-    // {
-    //     auto a = HAL::UART(HAL::UART::Config{&Serial});
-    //     a.initialize();
-    //     a.write((uint8_t*)"ollah", 5);
-    //     DBG("avail: %i", a.available());
-    //     return;
-    // }
-
-    // {
-    //     HAL::delay(time_s(3));
-    //
-    //     auto pump = io::Relay(io::Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = 13, .active_on_low = true},
-    //                                             .backoff_time = time_s(10)});
-    //     pump.initialize();
-    //
-    //     HAL::delay(time_s(3));
-    //     pump.set_state(LogicalState::ON);
-    //     HAL::delay(time_s(10));
-    //     pump.set_state(LogicalState::OFF);
-    //     return;
-    // }
-
-    // {
-    //     HAL::delay(time_s(3));
-    //     auto power = io::Relay(io::Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = 4, .active_on_low = true},
-    //                                              .backoff_time = time_s(10)});
-    //     power.initialize();
-    //     power.set_state(LogicalState::ON);
-    //
-    //     auto fan = HAL::AnalogueOutput(HAL::AnalogueOutput::Config{.pin = 5, .active_on_low = true});
-    //     fan.initialize();
-    //
-    //     auto fan2 = HAL::AnalogueOutput(HAL::AnalogueOutput::Config{.pin = 7, .active_on_low = true});
-    //     fan2.initialize();
-    //     fan2.set_value(LogicalState::ON);
-    //
-    //     // fan.set_value(0.95);
-    //     // HAL::delay(time_s(100));
-    //
-    //     for (int i = 0; i < 255; ++i) {
-    //         fan.set_value(i / 255.0);
-    //         DBG("setting fan to : %f", i / 255.0);
-    //         HAL::delay_ms(250);
-    //     }
-    //
-    //     for (int i = 0; i < 255; ++i) {
-    //         fan.set_value((255 - i) / 255.0);
-    //         DBG("setting fan to : %f", (255 - i) / 255.0);
-    //         HAL::delay_ms(50);
-    //     }
-    //
-    //     HAL::delay(time_s(5));
-    //     fan.set_value(0);
-    //     return;
-    // }
-
-    // const auto do_thing = [&]() {
-    //     last_free_memory = HAL::free_memory();
-    //     {
-    //         using namespace kaskas::prompt;
-    //
-    //         auto prompt_cfg = Prompt::Config{.message_length = 64, .pool_size = 20};
-    //
-    //         auto dl = std::make_shared<MockDatalink>(
-    //             MockDatalink::Config{.message_length = prompt_cfg.message_length, .pool_size =
-    //             prompt_cfg.pool_size});
-    //         auto prompt = Prompt(std::move(prompt_cfg));
-    //         prompt.hotload_datalink(dl);
-    //
-    //         auto mc = MockController();
-    //         prompt.hotload_rpc_recipe(mc.rpc_recipe());
-    //
-    //         prompt.initialize();
-    //
-    //         auto bufferpool = dl->bufferpool();
-    //         assert(bufferpool);
-    //         {
-    //             const auto test_input = "MOC!foo:1";
-    //             const auto test_input_len = strlen(test_input);
-    //             auto buf = bufferpool->acquire();
-    //             assert(test_input_len < buf->capacity);
-    //             strncpy(buf->raw, test_input, buf->capacity);
-    //             buf->length = test_input_len;
-    //
-    //             auto msg = Message::from_buffer(std::move(buf));
-    //             assert(msg != std::nullopt);
-    //
-    //             const auto s1 = std::string(msg->cmd());
-    //             const auto s2 = std::string(msg->operant());
-    //             const auto s3 = std::string(*msg->key());
-    //             DBG("Message before injection: %s:%s:%s", s1.c_str(), s2.c_str(), s3.c_str());
-    //
-    //             // assert(msg->() != nullptr);
-    //
-    //             dl->inject_message(*msg);
-    //             prompt.update();
-    //
-    //             const auto reply = dl->extract_reply();
-    //             if (reply) {
-    //                 const auto sk = std::string(*reply->value());
-    //                 DBG("%s", sk.c_str());
-    //                 DBG("received a reply: '%s'", reply->as_string().c_str());
-    //                 assert(reply->as_string() == std::string_view("MOC<0:85.000000"));
-    //             }
-    //         }
-    //
-    //         DBG("hello");
-    //         // return;
-    //     }
-    //     DBG("bye");
-    //
-    //     DBG("last: %i, current: %i", last_free_memory, HAL::free_memory());
-    //     last_free_memory = HAL::free_memory();
-    //     // assert(last_free_memory == HAL::free_memory());
-    // };
-    // do_thing();
-    // do_thing();
-    // do_thing();
-    // do_thing();
-    // return;
-
-    // {
-    //     using namespace kaskas::prompt;
-    //     const auto message_length = 128;
-    //     const auto message_pool_size = 16;
-    //
-    //     auto dl = std::make_unique<SerialDatalink>(
-    //         SerialDatalink::Config{.message_length = message_length, .pool_size = message_pool_size},
-    //         HAL::UART(HAL::UART::Config{&Serial}));
-    //     auto prompt = std::make_unique<Prompt>(Prompt::Config{}, std::move(dl));
-    //
-    //     prompt->initialize();
-    // }
-
-    // return;
 
     {
         using namespace kaskas::io;
@@ -378,7 +69,6 @@ void setup() {
         auto sf = HardwareStackFactory(std::move(stack_cfg));
 
         // Initialize and hotload peripherals and providers
-
         {
             const auto cfg = SHT31TempHumidityProbe::Config{.sampling_interval = time_s(1)};
             auto peripheral = std::make_unique<SHT31TempHumidityProbe>(std::move(cfg));
@@ -571,15 +261,15 @@ void setup() {
                         .schedule_cfg =
                             Schedule::Config{
                                 .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(24), .value = 16.0}}},
-                            // Schedule::Config{
-                            //     .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0},
-                            //                Schedule::Block{.start = time_h(7), .duration = time_h(2), .value = 18.0},
-                            //                Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
-                            //                Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
-                            //                Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
-                            //                Schedule::Block{.start = time_h(12), .duration = time_h(8),.value = 27.0},
-                            //                Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0},
-                            //                Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}},
+                        // Schedule::Config{
+                        //     .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0},
+                        //                Schedule::Block{.start = time_h(7), .duration = time_h(2), .value = 18.0},
+                        //                Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
+                        //                Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
+                        //                Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
+                        //                Schedule::Block{.start = time_h(12), .duration = time_h(8),.value = 27.0},
+                        //                Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0},
+                        //                Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}},
                         .check_interval = heating_sample_interval}};
 
         auto ventilation = std::make_unique<ClimateControl>(*hws, cc_cfg);
@@ -689,9 +379,6 @@ void setup() {
         auto ctrl = std::make_unique<DataAcquisition>(*hws, cfg);
         kk->hotload_component(std::move(ctrl));
     }
-
-    // DBG("Memory available: %i", HAL::free_memory());
-
     kk->initialize();
 }
 void loop() {
@@ -700,7 +387,6 @@ void loop() {
         HAL::delay(time_ms(1000));
     } else {
         kk->loop();
-        // DBG("loop");
     }
 }
 

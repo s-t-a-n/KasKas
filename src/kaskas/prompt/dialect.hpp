@@ -16,6 +16,7 @@ struct Dialect {
 
     static constexpr std::string_view REPLY_HEADER = "@";
     static constexpr std::string_view REPLY_FOOTER = ">";
+    static constexpr std::string_view REPLY_CR = "\r\n";
     enum class OP { REQUEST, REPLY, PRINT_USAGE, NOP, SIZE }; // make sure this matches order of OPERANTS
 
     static constexpr char OPERANT_REQUEST[] = ":";

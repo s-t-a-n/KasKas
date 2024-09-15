@@ -27,11 +27,12 @@ public:
                 .chain([](ParseContext& ctx) { return parse_arguments(ctx); })
                 .chain([](ParseContext& ctx) { return parse_finalizer(ctx); });
         };
-        auto parse_result = parse(ParseContext(std::move(result), module));
+
+        auto persistent_result = std::make_unique<RPCResult>(result);
+        auto parse_result = parse(ParseContext(*persistent_result, module));
 
         if (parse_result.is_success()) {
-            // DBG("parse_result.is_success()");
-            return MessageWithStorage<RPCResult>(std::move(parse_result.unwrap()), std::move(result));
+            return MessageWithStorage<RPCResult>(std::move(parse_result.unwrap()), std::move(persistent_result));
         }
 
         if (parse_result.is_failed()) {
