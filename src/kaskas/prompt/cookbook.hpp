@@ -2,8 +2,8 @@
 
 #include "kaskas/prompt/rpc.hpp"
 
-#include <set>
 #include <list>
+#include <set>
 
 namespace kaskas::prompt {
 

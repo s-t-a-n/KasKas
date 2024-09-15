@@ -5,8 +5,8 @@
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/providers/non_volatile_memory.hpp"
 
-#include <Wire.h>
 #include <DS3231-RTC.h>
+#include <Wire.h>
 #include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
