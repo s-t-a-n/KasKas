@@ -1,7 +1,5 @@
 #pragma once
 
-// #include "kaskas/prompt/message_factory.hpp"
-
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -37,33 +35,30 @@ public:
         return *this;
     }
     Message(const std::string_view& module, const std::string_view& operant,
-            const std::optional<std::string_view>& command_or_status = {},
-            const std::optional<std::string_view>& arguments = {})
+            const std::string_view& command_or_status = {}, const std::optional<std::string_view>& arguments = {})
         : module(module), operant(operant), cmd_or_status(command_or_status), arguments(arguments) {}
     ~Message() = default;
 
     std::string_view module;
     std::string_view operant;
-    std::optional<std::string_view> cmd_or_status;
+    std::string_view cmd_or_status;
     std::optional<std::string_view> arguments;
 
     /// Returns the message as a string.
     [[nodiscard]] std::string as_string() const {
         std::string s{};
 
-        auto reserved_length = module.size() + operant.size() + cmd_or_status.value_or("").size()
+        auto reserved_length = module.size() + operant.size() + cmd_or_status.size()
                                + 1 /* kvsep */ + arguments.value_or("").size() + 1 /* nullbyte */;
         s.reserve(reserved_length);
         reserved_length = s.capacity(); // for sanity checks below
 
         s += module;
         s += operant;
-        if (cmd_or_status) {
-            s += *cmd_or_status;
-            if (arguments) {
-                s += Dialect::KV_SEPARATOR;
-                s += *arguments;
-            }
+        s += cmd_or_status;
+        if (arguments) {
+            s += Dialect::KV_SEPARATOR;
+            s += *arguments;
         }
         assert(s.size() <= reserved_length); // single allocation
         assert(s.capacity() == reserved_length);
@@ -72,6 +67,7 @@ public:
 };
 
 template<typename T>
+/// A `Message` with embedded storage to guarantee the lifetime of Message's internal std::string_views.
 class MessageWithStorage : public Message {
 public:
     MessageWithStorage(Message&& message, std::unique_ptr<T> storage)

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "kaskas/prompt/dialect.hpp"
-#include "kaskas/prompt/rpc_result.hpp"
+#include "kaskas/prompt/rpc/result.hpp"
 #include "message.hpp"
 
 #include <spine/core/utils/string.hpp>
@@ -17,9 +17,11 @@ class Message; // Forward declaration of Message
 
 class OutgoingMessageFactory {
 public:
+    enum class Error : uint8_t {};
+
     /// Creates a Message from an RPC result and a buffer.
-    static std::optional<MessageWithStorage<RPCResult>> from_result(RPCResult&& result,
-                                                                    const std::string_view& module) {
+    static spn::structure::Result<MessageWithStorage<RPCResult>, Error>
+    from_rpc_result(RPCResult&& result, const std::string_view& module) {
         const auto parse = [](ParseContext&& context) -> ParseResult {
             return ParseResult::intermediary(std::move(context))
                 .chain([](ParseContext& ctx) { return parse_operant(ctx); })
@@ -36,7 +38,8 @@ public:
         }
 
         if (parse_result.is_failed()) {
-            DBG("Failed creating message from the RPC result");
+            return spn::structure::Result<MessageWithStorage<RPCResult>, Error>::failed(
+                parse_result.unwrap_error_value());
         }
 
         return {};
@@ -49,19 +52,18 @@ private:
         const RPCResult& result;
         std::string_view module;
         std::string_view operant;
-        std::optional<std::string_view> status;
+        std::string_view status;
         std::optional<std::string_view> arguments;
     };
 
-    using ParseResult = spn::structure::Result<Message, std::string_view, ParseContext>;
+    using ParseResult = spn::structure::Result<Message, Error, ParseContext>;
 
     static ParseResult parse_operant(ParseContext& ctx) {
         ctx.operant = Dialect::OPERANT_REPLY;
         return ParseResult::intermediary(ctx);
     }
     static ParseResult parse_status(ParseContext& ctx) {
-        const auto status = kaskas::prompt::detail::numeric_status(ctx.result.status);
-        ctx.status = status;
+        ctx.status = kaskas::prompt::detail::numeric_status(ctx.result.status);
         return ParseResult::intermediary(std::move(ctx));
     }
     static ParseResult parse_arguments(ParseContext& ctx) {

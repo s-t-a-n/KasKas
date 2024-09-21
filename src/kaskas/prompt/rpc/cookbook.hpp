@@ -1,17 +1,20 @@
 #pragma once
 
-#include "kaskas/prompt/rpc.hpp"
+#include "kaskas/prompt/rpc/rpc.hpp"
 
 #include <list>
 #include <set>
 
 namespace kaskas::prompt {
 
+/// A cookbook of RPCRecipes. To be used when directly hotloading RPCRecipes into the prompt is not feasible. For
+/// example when a module must be initialized before the prompt is ready.
 class RPCCookbook {
 public:
-    using CookBook = std::list<std::unique_ptr<RPCRecipe>>;
+    // todo: make a static version that doesnt employ a list as it causes fragmentation of heap.
+    using Recipes = std::list<std::unique_ptr<RPCRecipe>>;
 
-    CookBook&& extract_recipes() {
+    Recipes&& extract_recipes() {
         consolidate_recipes();
         return std::move(_recipes);
     }
@@ -20,9 +23,10 @@ public:
     }
 
 protected:
-    // make sure models in recipes with the same `cmd` name are stored in the same recipe.
+    /// Consolidate recipes by reordering them
+    /// make sure models in recipes with the same `cmd` name are stored in the same recipe.
     void consolidate_recipes() {
-        auto new_cookbook = CookBook();
+        auto new_cookbook = Recipes();
 
         // extract all names
         std::set<std::string_view> names;
@@ -32,11 +36,11 @@ protected:
 
         for (const auto& name : names) {
             const auto name_str = std::string(name);
-            DBG("consolidating %s", name_str.c_str());
+            DBG("RPCCookbook: consolidating %s", name_str.c_str());
             RPCRecipeFactory rf(name_str);
 
             for (auto& r : _recipes) {
-                if (r->module() == name) { // extract this recipe
+                if (r->module() == name) {
                     for (auto& m : r->extract_models()) {
                         DBG("-> %s", std::string(m.name()).c_str());
                         rf.add_model(std::move(m));
@@ -45,13 +49,10 @@ protected:
             }
             new_cookbook.emplace_back(std::move(rf.extract_recipe()));
         }
-
-        // overwrite old cookbook
-        _recipes.clear();
-        _recipes = std::move(new_cookbook);
+        _recipes.swap(new_cookbook); // overwrite old cookbook
     }
 
 private:
-    CookBook _recipes;
+    Recipes _recipes;
 };
 } // namespace kaskas::prompt

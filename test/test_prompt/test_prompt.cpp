@@ -1,5 +1,5 @@
 #include "kaskas/prompt/prompt.hpp"
-#include "kaskas/prompt/rpc.hpp"
+#include "kaskas/prompt/rpc/rpc.hpp"
 
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/io/stream/implementations/mock.hpp>
@@ -71,9 +71,10 @@ const auto g_pts = std::vector<ResponsePattern>{
     {"MOC:foo\n", "MOC<BAD_INPUT", true, true},
     {"MOC:foo\n", "MOC<BAD_INPUT", true, true},
     {":::\n", nullptr, false, false},
-    {"1::\n", "", true, false},
+    {"1::\n", "", false, false},
     {":1:\n", nullptr, false, false},
     {":::1\n", nullptr, false, false},
+    {"1:1:\n", "", true, false},
     {"1:1\n", "", true, false},
 };
 
@@ -120,19 +121,22 @@ void ut_prompt_test_datalink() {
 
         // pull in next transaction from datalink and verify that it has read a correct linelength
         TEST_ASSERT_EQUAL_MESSAGE(test_input.size(), g_dl->pull(), test_input.c_str());
-        auto transaction = g_dl->incoming_transaction();
-        TEST_ASSERT_EQUAL_MESSAGE(true, bool(transaction), test_input.c_str());
+        auto msg = g_dl->read_message();
+        TEST_ASSERT_EQUAL_MESSAGE(expected_to_be_valid, bool(msg), test_input.c_str());
 
         // push out a reply through the transaction
         const auto reply = expected_to_be_valid ? reply_ok : reply_nok;
-        transaction->outgoing(reply);
-        transaction->commit();
-        TEST_ASSERT_EQUAL_MESSAGE(reply.size(), g_dl->push(), test_input.c_str());
+        const auto reply_msg = MessageWithStorage<std::string>(Message("MOD", Dialect::KV_SEPARATOR, reply),
+                                                               std::make_unique<std::string>(reply));
+        g_dl->write_message(reply_msg);
+
+        const auto expected_reply = reply_msg.as_string() + std::string(Dialect::REPLY_CRLF);
+        TEST_ASSERT_EQUAL_MESSAGE(expected_reply.size(), g_dl->push(), test_input.c_str());
 
         // verify that reply was sent
         const auto reply_bytestream = g_ms->extract_bytestream();
         TEST_ASSERT_EQUAL_MESSAGE(true, bool(reply_bytestream), test_input.c_str());
-        TEST_ASSERT_EQUAL_STRING(reply.c_str(),
+        TEST_ASSERT_EQUAL_STRING(expected_reply.c_str(),
                                  std::string(reply_bytestream->begin(), reply_bytestream->end()).c_str());
     };
 
@@ -166,7 +170,7 @@ void ut_prompt_test_outgoing_message_factory() {
     };
 
     auto test_f = [&](const OutgoingResponsePattern& pattern) {
-        auto msg = OutgoingMessageFactory::from_result(RPCResult(pattern.result), module);
+        auto msg = OutgoingMessageFactory::from_rpc_result(RPCResult(pattern.result), module);
         TEST_ASSERT_EQUAL_MESSAGE(true, bool(msg), pattern.expected_response.c_str());
         TEST_ASSERT_EQUAL_STRING(pattern.expected_response.c_str(), msg->as_string().c_str());
     };
@@ -206,7 +210,7 @@ void ut_prompt_test_rpc_factory() {
             std::string expected_response_stripped = rp.expected_response;
             expected_response_stripped.erase(0, expected_response_stripped.find_first_of("<") + 1);
             auto msg = IncomingMessageFactory::from_view(delimiter_stripped_input);
-            TEST_ASSERT(msg.has_value()); // make the IncomingMessageFactory does it's job
+            TEST_ASSERT(msg.is_success()); // make the IncomingMessageFactory does it's job
             test_f(*msg, expected_response_stripped, rp.expected_to_be_valid_mock_request);
         }
     }
@@ -223,7 +227,7 @@ void ut_prompt_test_integration() {
 
         auto reply = g_ms->extract_bytestream();
         if (expected_to_be_valid) {
-            const auto expected_reply = std::string(expected_reply_raw) + std::string(Dialect::REPLY_CR);
+            const auto expected_reply = std::string(expected_reply_raw) + std::string(Dialect::REPLY_CRLF);
             auto reply_as_string = std::string(reply->begin(), reply->end());
             TEST_ASSERT_EQUAL_STRING(expected_reply.c_str(), reply_as_string.c_str());
         }
