@@ -1,9 +1,9 @@
 #pragma once
 
-#include <spine/core/si_units.hpp>
 #include <spine/core/timers.hpp>
 #include <spine/filter/filterstack.hpp>
 #include <spine/structure/array.hpp>
+#include <spine/structure/units/si.hpp>
 
 #include <optional>
 
@@ -41,7 +41,6 @@ class FilteredPeripheral : public Peripheral {
 public:
     using Filter = spn::filter::Filter<double>;
 
-    // using Peripheral::Peripheral;
     explicit FilteredPeripheral(const std::optional<time_ms>& sampling_interval = std::nullopt,
                                 size_t number_of_filters = 0)
         : Peripheral(sampling_interval), _fs(number_of_filters) {}

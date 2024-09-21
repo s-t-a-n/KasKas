@@ -1,11 +1,6 @@
 #pragma once
 
-// #include "Pin.hpp"
-
 #include "kaskas/io/peripherals/digital_output.hpp"
-
-// #include <spine/core/exception.hpp>
-// #include <spine/core/timers.hpp>
 #include "kaskas/io/providers/digital.hpp"
 
 #include <spine/platform/hal.hpp>

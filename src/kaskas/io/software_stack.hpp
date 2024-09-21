@@ -1,12 +1,11 @@
 #pragma once
 
 #include "kaskas/io/peripheral.hpp"
-#include "kaskas/io/peripherals/fan.hpp"
 #include "kaskas/io/provider.hpp"
 #include "kaskas/io/providers/analogue.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/providers/digital.hpp"
-#include "kaskas/prompt/cookbook.hpp"
+#include "kaskas/prompt/rpc/cookbook.hpp"
 
 #include <spine/core/utils/enum.hpp>
 #include <spine/structure/array.hpp>

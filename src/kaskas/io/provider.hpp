@@ -1,7 +1,7 @@
 #pragma once
 
 #include "kaskas/data_providers.hpp"
-#include "kaskas/prompt/rpc.hpp"
+#include "kaskas/prompt/rpc/rpc.hpp"
 
 #include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>

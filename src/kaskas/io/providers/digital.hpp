@@ -7,7 +7,6 @@
 #include <functional>
 
 namespace kaskas::io {
-
 /// a provider for any datasource that provides a single logic level
 class DigitalSensor : public Provider {
 public:
@@ -19,12 +18,11 @@ public:
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name,
                                                   const std::string_view& root) override {
         using namespace prompt;
-        auto model = std::make_unique<RPCRecipe>(
-            RPCRecipe(std::string(recipe_name), //
-                      {
-                          RPCModel(std::string(root),
-                                   [this](const OptStringView&) { return RPCResult(std::to_string(value())); }),
-                      }));
+        auto model = std::make_unique<RPCRecipe>(RPCRecipe(
+            recipe_name, {
+                             RPCModel(std::string(root),
+                                      [this](const OptStringView&) { return RPCResult(std::to_string(value())); }),
+                         }));
         return std::move(model);
     }
 
@@ -53,5 +51,4 @@ public:
 private:
     FunctionMap _map;
 };
-
 } // namespace kaskas::io

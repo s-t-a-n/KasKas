@@ -1,13 +1,13 @@
 #pragma once
 
 #include "kaskas/io/peripheral.hpp"
-#include "kaskas/io/peripherals/fan.hpp"
+// #include "kaskas/io/peripherals/fan.hpp"
 #include "kaskas/io/provider.hpp"
 #include "kaskas/io/providers/analogue.hpp"
 #include "kaskas/io/providers/clock.hpp"
 #include "kaskas/io/providers/digital.hpp"
 #include "kaskas/io/software_stack.hpp"
-#include "kaskas/prompt/cookbook.hpp"
+#include "kaskas/prompt/rpc/cookbook.hpp"
 
 #include <spine/structure/array.hpp>
 
@@ -114,9 +114,6 @@ private:
     const Config _cfg;
 
     Array<std::unique_ptr<Peripheral>> _peripherals;
-    // Array<std::shared_ptr<Provider>> _providers;
-
-    // prompt::RPCCookbook _rpc_cookbook;
 
     friend HardwareStackFactory;
 };

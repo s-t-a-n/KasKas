@@ -18,7 +18,6 @@
 #include <cstdint>
 
 namespace kaskas::component {
-
 using kaskas::Component;
 using kaskas::io::Pump;
 using spn::core::Exception;
@@ -33,7 +32,7 @@ using EventSystem = spn::core::EventSystem;
 class Fluidsystem final : public Component {
 public:
     struct Config {
-        const std::string_view name = "Fluids";
+        static constexpr std::string_view name = "Fluids";
 
         Pump::Config pump_cfg;
         io::HardwareStack::Idx ground_moisture_sensor_idx;
@@ -52,11 +51,13 @@ public:
             bool injection_needs_evaluation : 1;
             uint8_t unused : 7;
         } Flags;
+
         uint8_t status = 0;
     };
 
 public:
     Fluidsystem(io::HardwareStack& hws, Config& cfg) : Fluidsystem(hws, nullptr, cfg) {}
+
     Fluidsystem(io::HardwareStack& hws, EventSystem* evsys, Config& cfg)
         : Component(evsys, hws), //
           _cfg(cfg), //
@@ -241,6 +242,7 @@ public:
             }));
         return std::move(model);
     }
+
     void sideload_providers(io::VirtualStackFactory& ssf) override {
         ssf.hotload_provider( //
             DataProviders::SOIL_MOISTURE_SETPOINT,
@@ -275,5 +277,4 @@ private:
 
 private:
 };
-
 } // namespace kaskas::component

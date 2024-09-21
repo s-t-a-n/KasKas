@@ -6,7 +6,6 @@
 #include "kaskas/io/peripherals/DS18B20_Temp_Probe.hpp"
 #include "kaskas/io/peripherals/DS3231_RTC_EEPROM.hpp"
 #include "kaskas/io/peripherals/SHT31_TempHumidityProbe.hpp"
-#include "kaskas/io/peripherals/fan.hpp"
 #include "kaskas/io/peripherals/relay.hpp"
 #include "kaskas/io/providers/clock.hpp"
 
@@ -47,7 +46,7 @@ inline double inverted(double value, double base = 100.0) { return base - value;
 class ClimateControl final : public kaskas::Component {
 public:
     struct Config {
-        const std::string_view name = "ClimateControl";
+        static constexpr std::string_view name = "ClimateControl";
         io::HardwareStack::Idx hws_power_idx;
         io::HardwareStack::Idx clock_idx;
 
