@@ -3,7 +3,7 @@
 <!-- CI status -->
 [![ci](https://github.com/s-t-a-n/KasKas/actions/workflows/ci.yml/badge.svg)](https://github.com/s-t-a-n/KasKas/actions?query=workflow=ci)
 [![last commit](https://badgen.net/github/last-commit/s-t-a-n/KasKas)](https://GitHub.com/s-t-a-n/KasKas/commit/)
-[![license](https://img.shields.io/github/license/s-t-a-n/KasKas.svg)](https://github.com/s-t-a-n/KasKas/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/s-t-a-n/KasKas.svg)](https://github.com/s-t-a-n/KasKas/blob/main/LICENSE)
 
 
 <!-- short description -->
