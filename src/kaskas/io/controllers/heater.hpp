@@ -5,6 +5,7 @@
 #include <magic_enum/magic_enum.hpp>
 #include <spine/controller/pid.hpp>
 #include <spine/core/debugging.hpp>
+#include <spine/core/logging.hpp>
 #include <spine/core/timers.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
 #include <spine/filter/implementations/ewma.hpp>
@@ -250,8 +251,13 @@ public:
         };
         const auto tunings = _pid.autotune(cfg, process_setter, process_getter, process_loop);
         update_state();
+        _pid.set_tunings(tunings);
+        LOG("Heater: Autotuning complete, results: kp: %f, ki: %f, kd: %f", tunings.Kp, tunings.Ki, tunings.Kd);
         return tunings;
     }
+
+    void set_tunings(const PID::Tunings& tunings) { _pid.set_tunings(tunings); }
+    PID::Tunings tunings() const { return _pid.tunings(); }
 
     void set_target_setpoint(const Value setpoint) {
         _pid.set_target_setpoint(std::min(_cfg.max_heater_setpoint, setpoint));

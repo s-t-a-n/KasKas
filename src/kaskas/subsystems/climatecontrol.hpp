@@ -211,7 +211,7 @@ public:
             adjust_power_state();
             LOG("VentilationAutoTune: Autotuning complete, results: kp: %f, ki: %f, kd: %f", tunings.Kp, tunings.Ki,
                 tunings.Kd);
-            // todo: hotload the new tunings
+            _ventilation_control.set_tunings(tunings);
             break;
         }
         case Events::HeatingAutoTune: {
@@ -244,13 +244,9 @@ public:
                                                   process_loop);
             adjust_power_state();
             adjust_heater_fan_state();
-            LOG("HeatingAutoTune: Autotuning complete, results: kp: %f, ki: %f, kd: %f", tunings.Kp, tunings.Ki,
-                tunings.Kd);
-            // todo: hotload the new tunings
             break;
         }
         case Events::HeatingFollowUp: {
-            // DBG("Heating: FollowUp.");
             heating_control_loop();
             evsys()->schedule(evsys()->event(Events::HeatingFollowUp, _cfg.heating.check_interval));
             break;
@@ -279,7 +275,6 @@ public:
             break;
         }
         case Events::HeatingCycleStart: {
-            // DBG("Heating: Start.");
             _power.set_state(LogicalState::ON);
 
             const auto next_setpoint = _heating_schedule.value_at(now_s());
@@ -289,7 +284,6 @@ public:
             break;
         }
         case Events::HeatingCycleStop: {
-            //
             DBG("Heating: Stop.");
             _heater.set_target_setpoint(LogicalState::OFF);
             _heater.safe_shutdown();
