@@ -1,0 +1,102 @@
+name: release
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'  # Trigger on version tag pushes (e.g., v1.0.0)
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v2
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-platformio-${{ hashFiles('**/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Build firmware (ELF and BIN)
+        run: |
+          for env in nucleo_f429zi nucleo_f429zi-debug; do
+            platformio run --environment $env
+            mkdir -p build_outputs
+            cp .pio/build/$env/firmware.elf build_outputs/firmware_$env.elf
+            cp .pio/build/$env/firmware.bin build_outputs/firmware_$env.bin
+          done
+
+      - name: Create firmware zip
+        run: |
+          mkdir -p release
+          cp -r build_outputs/* release/
+          zip -r release/firmware.zip release/*
+
+      - name: Create project archive
+        run: |
+          git archive --format=zip --output=release/project_release_${{ github.ref_name }}.zip HEAD
+
+      - name: Upload firmware zip
+        uses: actions/upload-artifact@v3
+        with:
+          name: firmware
+          path: release/firmware.zip
+
+      - name: Upload project release zip
+        uses: actions/upload-artifact@v3
+        with:
+          name: project_release_${{ github.ref_name }}
+          path: release/project_release_${{ github.ref_name }}.zip
+
+      - name: Create GitHub Release
+        id: create_release
+        if: github.event_name == 'push' && github.ref_type == 'tag'  # Only run on tag push events
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload firmware zip to release
+        if: github.event_name == 'push' && github.ref_type == 'tag'  # Only run on tag push events
+        uses: softprops/action-gh-release@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/firmware.zip
+          asset_name: firmware.zip
+          asset_content_type: application/zip
+
+      - name: Upload project release zip to release
+        if: github.event_name == 'push' && github.ref_type == 'tag'  # Only run on tag push events
+        uses: softprops/action-gh-release@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/project_release_${{ github.ref_name }}.zip
+          asset_name: project_release_${{ github.ref_name }}.zip
+          asset_content_type: application/zip
