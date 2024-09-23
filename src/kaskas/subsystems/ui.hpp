@@ -70,7 +70,6 @@ public:
         //
         switch (static_cast<Events>(event.id())) {
         case Events::WakeUp: {
-            //
             DBG("UI: WakeUp");
             _signaltower.signal(Signaltower::State::Green);
             break;
@@ -89,20 +88,16 @@ public:
             // _builtin_led_blue.flip();
 #endif
 
-            evsys()->schedule(evsys()->event(Events::UIWatchDog, _cfg.watchdog_interval));
+            evsys()->schedule(Events::UIWatchDog, _cfg.watchdog_interval);
             break;
         }
         case Events::UIPromptFollowUp: {
             assert(_prompt);
             _prompt->update();
-            evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, _cfg.prompt_interval));
-
-            // DBG("%s", evsys()->pipeline_as_string().c_str());
+            evsys()->schedule(Events::UIPromptFollowUp, _cfg.prompt_interval);
             break;
         }
         case Events::OutOfWater: {
-            //
-            DBG("UI: OutOfWater");
             _signaltower.signal(Signaltower::State::Yellow);
             break;
         }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "kaskas/io/peripheral.hpp"
-// #include "kaskas/io/peripherals/fan.hpp"
 #include "kaskas/io/provider.hpp"
 #include "kaskas/io/providers/analogue.hpp"
 #include "kaskas/io/providers/clock.hpp"
@@ -76,13 +75,8 @@ public:
             }
         }
         assert(interval != time_ms(INT32_MAX));
-
-        // DBG("time until next update: %ums", interval.printable());
         return interval;
     }
-
-    // const std::string_view& alias() const { return _cfg.alias; }
-    // prompt::RPCCookbook& cookbook() { return _rpc_cookbook; }
 
 public:
     const AnalogueSensor& analog_sensor(Idx sensor_idx) {

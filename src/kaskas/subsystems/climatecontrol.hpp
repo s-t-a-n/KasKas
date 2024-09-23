@@ -87,7 +87,6 @@ public:
           _power(_hws.digital_actuator(_cfg.hws_power_idx)){};
 
     void initialize() override {
-        //
         _heater.set_temperature_source(Heater::TemperatureSource::CLIMATE);
         _heater.initialize();
         _ventilation_control.initialize();
@@ -103,7 +102,7 @@ public:
         evsys()->attach(Events::HeatingCycleStart, this);
         evsys()->attach(Events::HeatingCycleStop, this);
 
-        // starts autotuning now!
+        // starts autotuning immediately!
         // evsys()->schedule(evsys()->event(Events::HeatingAutoTune, time_s(1)));
         // evsys()->schedule(evsys()->event(Events::VentilationAutoTune, time_s(1)));
 
@@ -135,12 +134,9 @@ public:
             const auto now_dt = _clock.now();
             return time_s(time_h(now_dt.getHour())) + time_m(now_dt.getMinute());
         };
-        // const auto scheduled_next_block = [&]() { return; };
-        // const auto scheduled_value = [&]() { return _heating_schedule.value_at(now_s()); };
 
         switch (static_cast<Events>(event.id())) {
         case Events::VentilationFollowUp: {
-            // DBG("Ventilation: FollowUp.");
             ventilation_loop();
             evsys()->schedule(evsys()->event(Events::VentilationFollowUp, _cfg.ventilation.check_interval));
             break;
@@ -236,12 +232,12 @@ public:
             const auto process_loop = [&]() { _hws.update_all(); };
 
             _heating_element_fan.fade_to(LogicalState::ON);
-            const auto tunings = _heater.autotune(PID::TuneConfig{.setpoint = autotune_setpoint,
-                                                                  .startpoint = autotune_startpoint,
-                                                                  .hysteresis = 0.03,
-                                                                  .satured_at_start = true,
-                                                                  .cycles = 10},
-                                                  process_loop);
+            _heater.autotune(PID::TuneConfig{.setpoint = autotune_setpoint,
+                                             .startpoint = autotune_startpoint,
+                                             .hysteresis = 0.03,
+                                             .satured_at_start = true,
+                                             .cycles = 10},
+                             process_loop);
             adjust_power_state();
             adjust_heater_fan_state();
             break;
@@ -338,13 +334,6 @@ private:
             return;
         }
 
-        // if (_print_interval.expired()) {
-        //     const auto state_str = std::string(Heater::as_stringview(_heater.state())).c_str();
-        //     DBG("Heating: ambientT %.2fC, surfaceT %.2f, climateT %.2fC, sp T %.2f C, throttle: %i/255 state: %s",
-        //          _ambient_temp_sensor.value(), _heating_element_sensor.value(), _climate_temperature.value(),
-        //          _heater.setpoint(), int(_heater.throttle() * 255), state_str);
-        // }
-
         _heater.update();
 
         if (_heater.state() != Heater::State::IDLE) {
@@ -357,10 +346,6 @@ private:
         const auto climate_humidity = _climate_humidity.value();
         _ventilation_control.new_reading(detail::inverted(climate_humidity));
         const auto normalized_response = _ventilation_control.response() / 100;
-        // DBG("Ventilation: current humidity %.2f %%, fan: %.2f%% (raw: %.2f)",
-        // climate_humidity,
-        // normalized_response * 100,
-        // _ventilation_control.response());
 
         if (normalized_response > _cfg.ventilation.minimal_duty_cycle) {
             _climate_fan.creep_to(normalized_response, _cfg.ventilation.check_interval);

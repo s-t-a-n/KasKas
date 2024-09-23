@@ -2,7 +2,7 @@
 
 namespace kaskas::io {
 namespace {
-// when the case arrises, make this a scalable solution
+// when the case arrises, make this a proper ISR implementation
 volatile uint32_t s_counter = 0;
 } // namespace
 

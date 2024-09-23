@@ -10,7 +10,7 @@ namespace kaskas::component {
 
 using spn::core::Event;
 using spn::eventsystem::EventHandler;
-// Responsible for maintaining hardware
+/// Responsible for maintaining hardware
 class Hardware : public Component {
 public:
     struct Config {};

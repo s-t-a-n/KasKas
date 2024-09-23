@@ -7,12 +7,8 @@
 #include <spine/core/debugging.hpp>
 #include <spine/core/logging.hpp>
 #include <spine/core/timers.hpp>
-#include <spine/filter/implementations/bandpass.hpp>
 #include <spine/filter/implementations/ewma.hpp>
-#include <spine/io/sensor.hpp>
 #include <spine/platform/hal.hpp>
-
-#include <set>
 
 namespace kaskas::io {
 
@@ -20,27 +16,13 @@ using spn::controller::PID;
 using spn::core::time::AlarmTimer;
 using spn::core::time::IntervalTimer;
 using spn::core::time::Timer;
-// using spn::filter::EWMA;
 
 // todo: put this in a configuration file
-
-constexpr double MIN_AMBIENT_TEMPERATURE = 12.0;
-constexpr double MAX_AMBIENT_TEMPERATURE = 40.0;
-
 constexpr double MIN_INSIDE_TEMPERATURE = 12.0;
 constexpr double MAX_INSIDE_TEMPERATURE = 40.0;
 
 constexpr double MIN_SURFACE_TEMPERATURE = 12.0;
 constexpr double MAX_SURFACE_TEMPERATURE = 50.0;
-
-// maximal error from setpoint in degrees that is allowed to happen for timewindow TRP_STABLE_TIMEWINDOW until thermal
-// runaway is considered
-constexpr double TRP_STABLE_HYSTERESIS_C = 4.0;
-constexpr int TRP_STABLE_TIMEWINDOW = 40;
-
-// minimal change in degrees within timewindow TRP_CHANGING_TIMEWINDOW
-constexpr double TRP_CHANGING_MINIMAL_DELTA_C = 4.0;
-constexpr double TRP_CHANGING_TIMEWINDOW = 40;
 
 class Heater {
 public:
@@ -85,10 +67,10 @@ public:
                 if (_cfg.guard_stable_state and _last_state == State::STEADY_STATE) { // heater came out of steady state
                     if (time_s(_current_state_duration.time_since_last(false))
                         > _cfg.stable_timewindow) { // heater went outside of steady state for too long
-                        LOG("Heater went outside of steady state for too long, triggering run away! (time expired: "
-                            "%is, timewindow: %is, current temperature %.2fC)",
-                            time_s(_current_state_duration.time_since_last(false)).printable(),
-                            time_s(_cfg.stable_timewindow).printable(), temperature)
+                        WARN("Heater went outside of steady state for too long, triggering run away! (time expired: "
+                             "%is, timewindow: %is, current temperature %.2fC)",
+                             time_s(_current_state_duration.time_since_last(false)).printable(),
+                             time_s(_cfg.stable_timewindow).printable(), temperature)
                         _is_runaway = true;
                     }
                     return;
@@ -98,9 +80,9 @@ public:
                     if (temperature < _setpoint) { // heater is trying to rise temperature
                         const auto error = temperature - _temperature_time_window;
                         if (error < _cfg.heating_minimal_rising_c) { // temperature didnt rise fast enough
-                            LOG("Temperature didnt rise fast enough, triggering run away! (delta:%.2fC, temperature: "
-                                "%.2fC)",
-                                error, temperature);
+                            WARN("Temperature didnt rise fast enough, triggering run away! (delta:%.2fC, temperature: "
+                                 "%.2fC)",
+                                 error, temperature);
                             _is_runaway = true;
                         }
                         _temperature_time_window = temperature;
@@ -109,9 +91,9 @@ public:
                     if (temperature > _setpoint) { // heater should be dropping temperature
                         const auto error = _temperature_time_window - temperature;
                         if (error < _cfg.heating_minimal_dropping_c) { // temperature didn't drop fast enough
-                            LOG("Temperature didnt drop fast enough, triggering run away! (delta:%.2fC, temperature: "
-                                "%.2fC)",
-                                error, temperature);
+                            WARN("Temperature didnt drop fast enough, triggering run away! (delta:%.2fC, temperature: "
+                                 "%.2fC)",
+                                 error, temperature);
                             _is_runaway = true;
                         }
                         _temperature_time_window = temperature;
@@ -186,14 +168,12 @@ public:
         if (_update_interval.expired()) {
             guard_temperature_limits();
 
-            const auto current_temp = temperature();
-            _pid.new_reading(current_temp);
+            _pid.new_reading(temperature());
             const auto response = _pid.response();
             const auto normalized_response = _pid.setpoint() > 0 ? response / _cfg.pid_cfg.output_upper_limit : 0;
-            // DBG("Heater update: current temp: %f, response %f, normalized response %f for sp %f", current_temp,
-            // response, normalized_response, _pid.setpoint());
             assert(normalized_response >= 0.0 && normalized_response <= 1.0);
             _heating_element.fade_to(guarded_setpoint(normalized_response));
+
             update_state();
 
             _climate_trp.update(state(), _climate_temperature.value());
@@ -304,9 +284,9 @@ private:
         }
 
         if (_climate_trp.is_runaway()) {
-            HAL::printf("Runaway detected: surfaceT %.2f, climateT %.2f, throttle: %i/255, state: %s",
-                        _surface_temperature.value(), _climate_temperature.value(), int(throttle() * 255),
-                        std::string(as_stringview(state())).c_str());
+            ERR("Runaway detected: surfaceT %.2f, climateT %.2f, throttle: %i/255, state: %s",
+                _surface_temperature.value(), _climate_temperature.value(), int(throttle() * 255),
+                std::string(as_stringview(state())).c_str());
             spn::throw_exception(spn::assertion_exception("Heater: Run away detected"));
         }
     }
@@ -336,8 +316,6 @@ private:
     const Config _cfg;
     HardwareStack& _hws;
 
-    // double _lowest_reading = 0;
-    // double _highest_reading = 0;
     State _state = State::IDLE;
 
     PID _pid;

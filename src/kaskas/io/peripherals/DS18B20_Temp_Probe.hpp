@@ -1,7 +1,6 @@
 #pragma once
 
 #include "kaskas/io/peripheral.hpp"
-#include "kaskas/io/provider.hpp"
 #include "kaskas/io/providers/analogue.hpp"
 
 #include <DallasTemperature.h>

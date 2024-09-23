@@ -1,12 +1,9 @@
 #pragma once
 #include "kaskas/io/peripheral.hpp"
-#include "kaskas/io/provider.hpp"
 #include "kaskas/io/providers/analogue.hpp"
 
 #include <spine/core/debugging.hpp>
-#include <spine/core/exception.hpp>
 #include <spine/filter/filterstack.hpp>
-#include <spine/filter/implementations/bandpass.hpp>
 #include <spine/structure/units/si.hpp>
 
 namespace kaskas::io {
@@ -18,16 +15,7 @@ public:
     struct Config {
         AnalogueInput::Config input_cfg;
         time_ms sampling_interval = time_s(1);
-
         size_t number_of_filters = 0;
-
-        // std::initializer_list<std::unique_ptr<Filter>> filters = {
-        //     BandPass::make(BandPass::Config{.mode = BandPass::Mode::RELATIVE,
-        //                                     .mantissa = 1,
-        //                                     .decades = 0.01,
-        //                                     .offset = 0,
-        //                                     .rejection_limit = 10,
-        //                                     .throw_on_rejection_limit = true})};
     };
 
 public:

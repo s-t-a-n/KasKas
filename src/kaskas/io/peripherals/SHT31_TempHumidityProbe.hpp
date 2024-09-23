@@ -34,8 +34,7 @@ public:
     }
 
     void initialize() override {
-        // DBG("initializing SHT31TempHumidityProbe");
-        TwoWire* wire = &Wire;
+        TwoWire* wire = &Wire; // not using Spine::HAL since it's I2C implementation must be carefully drafted first
         assert(wire != nullptr);
         Wire.begin();
         Wire.setClock(100000);
@@ -49,8 +48,7 @@ public:
         DBG("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C", read_humidity(),
             read_temperature());
 
-        // make sure that heater is off
-        _sht31.heatOff();
+        _sht31.heatOff(); // make sure that heater is off
         assert(!_sht31.isHeaterOn());
     }
 
@@ -67,11 +65,9 @@ public:
             }
         }
 
+        assert(!timeout.expired()); // todo: handle this through hardware stack
         if (timeout.expired()) {
-            DBG("SHT31TempHumidityProbe: request expired. is the connection okay?");
-
-            // todo: handle this through hardware stack
-            assert(!"SHT31TempHumidityProbe: request expired. is the connection okay?");
+            WARN("SHT31TempHumidityProbe: request expired. is the connection okay?");
         }
 
         _temperature_fs.new_sample(_sht31.getTemperature());
@@ -102,12 +98,12 @@ public:
 
     bool is_ready() {
         if (!_sht31.isConnected()) {
-            DBG("SHT31 reports not connected with status: %04X and errorcode: %04X", _sht31.readStatus(),
-                _sht31.getError());
+            WARN("SHT31 reports not connected with status: %04X and errorcode: %04X", _sht31.readStatus(),
+                 _sht31.getError());
             return false;
         }
         if (const auto error = _sht31.getError(); error != SHT31_OK) {
-            DBG("SHT31 reports errorcode: %04X with status: %04X", error, _sht31.readStatus());
+            WARN("SHT31 reports errorcode: %04X with status: %04X", error, _sht31.readStatus());
             return false;
         }
         return true;

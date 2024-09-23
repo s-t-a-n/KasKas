@@ -14,14 +14,12 @@ namespace kaskas::io {
 using spn::core::Exception;
 using spn::core::time::Timer;
 
-// simple Pump
 struct Pump {
 private:
     using Flowrate = spn::filter::EWMA<double>;
 
 public:
     struct Config {
-        // Relay::Config pump_relay_cfg;
         io::HardwareStack::Idx pump_actuator_idx;
         Interrupt::Config interrupt_cfg;
         double ml_pulse_calibration; // experimentally found flow sensor calibration factor
@@ -51,8 +49,6 @@ public:
         HAL::delay(time_ms(100));
         stop_injection();
     }
-
-    //    time_ms time_since_last_injection() { return _last_reading.timeSinceLast(false); }
 
     bool is_out_of_fluid() const { return _status.flags.out_of_fluid; }
     bool is_injecting() const { return _pump.state() == LogicalState::ON; }
@@ -106,7 +102,6 @@ public:
     }
 
 private:
-    // interrupt
     void attach_interrupt();
     void detach_interrupt();
     static uint32_t interrupt_counter();

@@ -77,12 +77,6 @@ public:
             {
                 auto recipes = _hws->cookbook().extract_recipes();
                 for (auto& r : recipes) {
-                    // const auto cmdstr = std::string(r->command());
-                    // DBG("Recipe has command: %s", cmdstr.c_str());
-                    // for (const auto& m : r->models()) {
-                    //     const auto recipe_name = std::string(m.name());
-                    //     DBG("-> has: %s", recipe_name.c_str());
-                    // }
                     hotload_rpc_recipe(std::move(r));
                 }
             }
@@ -114,7 +108,6 @@ public:
         _prompt->hotload_rpc_recipe(std::move(recipe));
     }
 
-    EventSystem& evsys() { return _evsys; };
     std::shared_ptr<Prompt> prompt() { return _prompt; }
 
     int loop() {

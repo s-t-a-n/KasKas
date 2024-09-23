@@ -82,9 +82,6 @@ public:
         DBG("Fluidsystem: scheduling WaterInjectCheck event in %u hours (%u minutes).",
             time_h(time_until_next_dosis).printable(), time_m(time_until_next_dosis).printable());
         evsys()->schedule(Events::WaterInjectCheck, time_until_next_dosis);
-
-        // evsys()->schedule(Events::WaterInjectStart, time_s(5));
-        // evsys()->schedule(Events::WaterInjectCheck, time_s(30));
     }
 
     void safe_shutdown(State state) override { _pump.stop_injection(); }
@@ -92,13 +89,10 @@ public:
     void handle_event(const Event& event) override {
         switch (static_cast<Events>(event.id())) {
         case Events::OutOfWater: {
-            //
             LOG("Fluidsystem: Events::OutOfWater: Pump reports it is out of water");
             return;
         }
-        case Events::WaterInjectCheck: {
-            // should injection take place?
-            // DBG("Fluidsystem: WaterInjectCheck");
+        case Events::WaterInjectCheck: { // should injection take place?
             DBG("Fluidsystem: WaterInjectCheck: Moisture level at %.2f (threshold at %.2f, time since last injection: "
                 "%u s)",
                 _ground_moisture_sensor.value(), _cfg.ground_moisture_target,

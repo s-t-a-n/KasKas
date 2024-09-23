@@ -18,15 +18,6 @@ public:
         std::initializer_list<DataProviders> active_dataproviders; // dataproviders for which to print timeseries
     };
 
-    // union Status {
-    //     struct BitFlags {
-    //         bool metrics_ready : 1;
-    //         bool metrics_tainted : 1;
-    //         bool metrics_lagging : 1;
-    //         uint8_t unused : 6;
-    //     } Flags;
-    //     uint8_t status;
-    // };
     union Status {
         struct BitFlags {
             bool warmed_up : 1;
@@ -96,18 +87,12 @@ public:
             fields += name.data();
             if (std::next(it) != _cfg.active_dataproviders.end()) fields += prompt::Dialect::VALUE_SEPARATOR;
         }
-        // for (auto datasource : _cfg.active_dataproviders) {
-        //     const auto name = magic_enum::enum_name(datasource);
-        //     fields += name.data();
-        //     fields += prompt::Dialect::VALUE_SEPARATOR;
-        // }
 
         assert(fields.capacity() == reserved_size); // no reallocation
         return std::move(fields);
     }
 
     std::string timeseries_as_string() {
-        // Lambda to handle both calculating the length and constructing the string
         auto timeseries_repr = [&](std::string* s, bool length_only) -> size_t {
             size_t len = 0;
             auto put = [&](std::string_view i) {
@@ -118,8 +103,6 @@ public:
             };
 
             std::array<char, 32> buffer{};
-
-            // Using iterator to access elements of std::initializer_list
             for (auto it = _cfg.active_dataproviders.begin(); it != _cfg.active_dataproviders.end(); ++it) {
                 const auto value = _hws.analog_sensor(ENUM_IDX(*it)).value();
                 int written = std::snprintf(buffer.data(), buffer.size(), "%.3f", value);
