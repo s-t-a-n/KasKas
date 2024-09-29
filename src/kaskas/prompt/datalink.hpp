@@ -47,15 +47,16 @@ public:
         if (auto message = IncomingMessageFactory::from_view(transaction->incoming())) {
             return MessageWithStorage<BufferedStream::Transaction>(
                 message.unwrap(), std::make_unique<BufferedStream::Transaction>(std::move(*transaction)));
+        } else if (message.is_failed()) {
+            return message.error_value();
         }
         return {};
     }
 
     using OError = OutgoingMessageFactory::Error;
 
-    template<typename StorageType>
     /// Write a message into the `Transaction` buffer. Returns the bytes written if succesful, or an errorcode if not.
-    spn::structure::Result<size_t, OError> write_message(const MessageWithStorage<StorageType>& msg) {
+    spn::structure::Result<size_t, OError> write_message(const Message& msg) {
         size_t bytes_written = 0;
         //    bytes_written += _stream.buffered_write(Dialect::REPLY_HEADER);
 
