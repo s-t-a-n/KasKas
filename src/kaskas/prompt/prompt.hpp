@@ -43,20 +43,36 @@ public:
     void update() {
         assert(_dl);
 
-        _dl->pull(); // pull messages from the Datalink stream (such as UART) into it's.
+        _dl->pull(); // pull messages from the Datalink's stream (such as UART) into its buffer
 
-        if (auto message = _dl->read_message()) {
-            if (auto rpc = _rpc_factory.from_message(*message)) {
-                auto rpc_result = rpc->invoke(); // do the remote procedure call
+        auto reply_error = [&](const auto& error_source) {
+            _dl->write_message(
+                Message("BAD_MESSAGE", Dialect::OPERANT_REPLY, magic_enum::enum_name(error_source.error_value())));
+        };
 
-                if (const auto reply = OutgoingMessageFactory::from_rpc_result(std::move(rpc_result), message->module);
-                    reply) {
-                    _dl->write_message(*reply);
-                }
-            }
+        // process incoming message
+        auto message = _dl->read_message();
+        if (!message) {
+            if (message.is_failed()) reply_error(message);
+            _dl->push();
+            return;
         }
 
-        _dl->push(); // push out messages queued up in the
+        // process RPC
+        auto rpc = _rpc_factory.from_message(*message);
+        if (!rpc) {
+            if (rpc.is_failed()) reply_error(rpc);
+            _dl->push();
+            return;
+        }
+
+        // do the remote procedure call
+        auto rpc_result = rpc->invoke();
+        if (const auto reply = OutgoingMessageFactory::from_rpc_result(std::move(rpc_result), message->module); reply) {
+            _dl->write_message(*reply);
+        }
+
+        _dl->push(); // push out messages queued up in the buffer
     }
 
     /// Set the active datalink used by the prompt

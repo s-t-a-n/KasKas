@@ -15,11 +15,11 @@ namespace kaskas::prompt {
 
 class IncomingMessageFactory {
 public:
-    enum class Error : uint8_t { Empty, MalformedModule, MalformedCommand, MalformedOperant };
+    enum class Error : uint8_t { EMPTY, MALFORMED_MODULE, MALFORMED_COMMAND, MALFORMED_OPERANT };
 
     /// Create a Message from the provided string_view.
     static spn::structure::Result<Message, Error> from_view(const std::string_view& view) {
-        if (view.empty()) return spn::structure::Result<Message, Error>::failed(Error::Empty);
+        if (view.empty()) return spn::structure::Result<Message, Error>::failed(Error::EMPTY);
 
         const auto parse = [](ParseContext& context) -> ParseResult {
             return ParseResult::intermediary(context)
@@ -58,7 +58,7 @@ private:
 
     static ParseResult throw_out_empty_messages(ParseContext& ctx) {
         // if an incoming string is empty, do not parse any further
-        if (ctx.view.size() == 0) return ParseResult::failed(Error::Empty);
+        if (ctx.view.size() == 0) return ParseResult::failed(Error::EMPTY);
         return ParseResult::intermediary(ctx);
     }
 
@@ -71,7 +71,7 @@ private:
 
     static ParseResult throw_out_malformed_messages(ParseContext& ctx) {
         // if an incoming string is empty, do not parse any further
-        if (ctx.view.size() == 0) return ParseResult::failed(Error::Empty);
+        if (ctx.view.size() == 0) return ParseResult::failed(Error::EMPTY);
         return ParseResult::intermediary(ctx);
     }
 
@@ -80,25 +80,25 @@ private:
 
         if (auto op = spn::core::utils::find_first_of({ctx.head, ctx.remaining()}, Dialect::OPERANT_REQUEST);
             op != std::string::npos) {
-            if (op == 0) return ParseResult::failed(Error::MalformedModule); // illegal: empty module
+            if (op == 0) return ParseResult::failed(Error::MALFORMED_MODULE); // illegal: empty module
             ctx.module = std::string_view(ctx.head, op);
             ctx.head += op;
             ctx.operant = std::string_view(ctx.head, 1);
             ctx.head += 1;
             return ParseResult::intermediary(ctx);
         }
-        return ParseResult::failed(Error::MalformedOperant);
+        return ParseResult::failed(Error::MALFORMED_OPERANT);
     }
 
     static ParseResult parse_command(ParseContext& ctx) {
         if (auto delim = spn::core::utils::find_first_of({ctx.head, ctx.remaining()}, Dialect::KV_SEPARATOR);
             delim != std::string::npos) {
-            if (delim == 0) return ParseResult::failed(Error::MalformedCommand); // illegal: empty command
+            if (delim == 0) return ParseResult::failed(Error::MALFORMED_COMMAND); // illegal: empty command
             ctx.command = std::string_view(ctx.head, delim);
             ctx.head += delim + 1; // +1 to remove the delim itself as well
             return ParseResult::intermediary(ctx);
         }
-        if (ctx.remaining() == 0) return ParseResult::failed(Error::MalformedCommand); // illegal: empty command
+        if (ctx.remaining() == 0) return ParseResult::failed(Error::MALFORMED_COMMAND); // illegal: empty command
         ctx.command = std::string_view(ctx.head, ctx.remaining());
         return ParseResult(Message(ctx.module, ctx.operant, ctx.command));
     }

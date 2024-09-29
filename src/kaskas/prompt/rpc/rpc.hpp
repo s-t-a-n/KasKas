@@ -56,13 +56,13 @@ public:
 
         switch (optype) {
         case Dialect::OP::NOP: {
-            WARN("RPCFactory: invalid operant {%c} found for message: {%s}", msg.operant[0], msg.as_string().c_str());
+            DBG("RPCFactory: invalid operant {%c} found for message: {%s}", msg.operant[0], msg.as_string().c_str());
             return spn::structure::Result<RPC, Error>::failed(Error::INVALID_OPERANT);
         }
         case Dialect::OP::REQUEST: {
             const auto recipe = recipe_for_command(msg.module);
             if (!recipe) {
-                WARN("RPCFactory: no recipe found for message: {%s}", msg.as_string().c_str());
+                DBG("RPCFactory: no recipe found for message: {%s}", msg.as_string().c_str());
                 return spn::structure::Result<RPC, Error>::failed(Error::UNKNOWN_RECIPE);
             }
             assert(*recipe != nullptr);
@@ -72,7 +72,7 @@ public:
             return build_rpc_for_usage(msg);
         }
         default:
-            WARN("RPCFactory: no optype found for message: {%s}", msg.as_string().c_str());
+            DBG("RPCFactory: no optype found for message: {%s}", msg.as_string().c_str());
             return spn::structure::Result<RPC, Error>::failed(Error::INVALID_OPERANT);
         }
     }
