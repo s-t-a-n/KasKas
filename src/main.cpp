@@ -93,7 +93,7 @@ void setup() {
 
         {
             // constexpr double moisture_sensor_limits[] = {0.4, 0.6}; // experimentally obtained, low = wet, high = dry
-            constexpr double moisture_sensor_limits[] = {0.3, 0.7}; // experimentally obtained, low = wet, high = dry
+            constexpr double moisture_sensor_limits[] = {0.2, 0.7}; // experimentally obtained, low = wet, high = dry
             // constexpr double moisture_sensor_limits[] = {0.0, 1.0}; // experimentally obtained, low = wet, high = dry
             const auto cfg =
                 AnalogueInputPeripheral::Config{.input_cfg = HAL::AnalogueInput::Config{.pin = A1, .pull_up = false},
