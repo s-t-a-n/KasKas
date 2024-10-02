@@ -209,7 +209,7 @@ void setup() {
 
         const auto ventilation_sample_interval = time_s(3);
         const auto heating_sample_interval = time_ms(1000);
-        const auto max_heater_setpoint = 40.0; // maximum allowed heater setpoint
+        const auto max_heater_setpoint = 45.0; // maximum allowed heater setpoint
 
         auto cc_cfg =
             ClimateControl::Config{
