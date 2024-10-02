@@ -260,17 +260,18 @@ void setup() {
                                                                                   .heating_minimal_dropping_c = 0.01,
                                                                                   .heating_timewindow = time_m(45)}},
                         .schedule_cfg =
-                            Schedule::Config{
-                                .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(24), .value = 16.0}}},
-                        // Schedule::Config{
-                        //     .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0},
-                        //                Schedule::Block{.start = time_h(7), .duration = time_h(2), .value = 18.0},
-                        //                Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
-                        //                Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
-                        //                Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
-                        //                Schedule::Block{.start = time_h(12), .duration = time_h(8),.value = 27.0},
-                        //                Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0},
-                        //                Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}},
+                            //                            Schedule::Config{
+                        //                                .blocks = {Schedule::Block{.start = time_h(0), .duration =
+                        //                                time_h(24), .value = 16.0}}},
+                        Schedule::Config{
+                            .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0},
+                                       Schedule::Block{.start = time_h(7), .duration = time_h(2), .value = 18.0},
+                                       Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
+                                       Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
+                                       Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
+                                       Schedule::Block{.start = time_h(12), .duration = time_h(8), .value = 27.0},
+                                       Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0},
+                                       Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}},
                         .check_interval = heating_sample_interval}};
 
         auto ventilation = std::make_unique<ClimateControl>(*hws, cc_cfg);
