@@ -16,12 +16,12 @@ namespace kaskas::io {
 
 using spn::core::time::AlarmTimer;
 
+constexpr bool SHT31_USE_CRC = false; // false, means 'not fast' for Tillaart's SHT31 library; i.e. read with CRC
+
 class SHT31TempHumidityProbe : public Peripheral {
 public:
     struct Config {
         uint8_t i2c_address = SHT_DEFAULT_ADDRESS;
-        time_ms request_timeout = time_ms(100);
-
         time_ms sampling_interval = time_s(1);
     };
 
@@ -34,41 +34,35 @@ public:
     }
 
     void initialize() override {
-        TwoWire* wire = &Wire; // not using Spine::HAL since it's I2C implementation must be carefully drafted first
-        assert(wire != nullptr);
         Wire.begin();
-        Wire.setClock(100000);
+        Wire.setClock(100000); // per example
+
         _sht31.begin();
 
-        update();
-
-        if (!is_ready()) {
+        if (!_sht31.read(SHT31_USE_CRC) || !is_ready()) {
+            WARN("SHT31: Probe reports errorcode: %04X with status: %04X", _sht31.getError(), _sht31.readStatus())
             spn::throw_exception(spn::assertion_exception("SHT31TempHumidityProbe could not be initialized"));
         }
         DBG("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C", read_humidity(),
             read_temperature());
 
-        _sht31.heatOff(); // make sure that heater is off
+        _sht31.heatOff(); // make sure that probe's internal heating element is turned off
         assert(!_sht31.isHeaterOn());
     }
 
     void update() override {
-        _sht31.readData();
-        _sht31.requestData();
-        auto timeout = AlarmTimer(_cfg.request_timeout);
-        while (!timeout.expired()) {
-            delay(1);
-            if (_sht31.dataReady()) {
-                bool success = _sht31.readData();
-                _sht31.requestData();
-                if (success) break;
-            }
+        bool has_data = _sht31.dataReady() && _sht31.readData(SHT31_USE_CRC);
+        if (!has_data) {
+            WARN("SHT31: request was not ready in time.");
+            if (!is_ready())
+                WARN("SHT31: Probe reports errorcode: %04X with status: %04X", _sht31.getError(), _sht31.readStatus());
+        }
+        if (!_sht31.requestData()) {
+            WARN("SHT31: couldnt request data. Probe reports errorcode: %04X with status: %04X", _sht31.getError(),
+                 _sht31.readStatus());
         }
 
-        assert(!timeout.expired()); // todo: handle this through hardware stack
-        if (timeout.expired()) {
-            WARN("SHT31TempHumidityProbe: request expired. is the connection okay?");
-        }
+        if (!has_data) return;
 
         _temperature_fs.new_sample(_sht31.getTemperature());
         _humidity_fs.new_sample(_sht31.getHumidity());
@@ -96,18 +90,7 @@ public:
         return {[this]() { return this->humidity(); }};
     }
 
-    bool is_ready() {
-        if (!_sht31.isConnected()) {
-            WARN("SHT31 reports not connected with status: %04X and errorcode: %04X", _sht31.readStatus(),
-                 _sht31.getError());
-            return false;
-        }
-        if (const auto error = _sht31.getError(); error != SHT31_OK) {
-            WARN("SHT31 reports errorcode: %04X with status: %04X", error, _sht31.readStatus());
-            return false;
-        }
-        return true;
-    }
+    bool is_ready() { return _sht31.isConnected() && _sht31.getError() == SHT31_OK; }
 
 private:
     const Config _cfg;
