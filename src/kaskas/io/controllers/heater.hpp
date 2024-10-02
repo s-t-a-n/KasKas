@@ -260,7 +260,8 @@ private:
     double guarded_setpoint(double setpoint) {
         const auto surface_temperature = _surface_temperature.value();
         auto excess = surface_temperature - _cfg.max_heater_setpoint;
-        auto feedback = excess / 10.0;
+        auto feedback =
+            excess / 10.0; // clamp the controller to an absolute maximum of 10 degrees above the max heater setpoint
 
         const auto adjusted_setpoint = std::clamp(excess > 0.0 ? setpoint - feedback : setpoint, 0.0, 1.0);
 
