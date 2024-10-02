@@ -55,7 +55,10 @@ public:
             io::HardwareStack::Idx climate_humidity_idx;
 
             PID::Config climate_fan_pid;
-            double minimal_duty_cycle = 0; // value between 0 and 1 where 0.5 means 50% dutycycle
+            double minimal_duty_cycle = 0; // normalized value where 0.5 means 50% dutycycle
+            double heating_penality_weight; // normalized value where 0.1 dampens ventilation by 10% for every degree of
+                                            // error between heating setpoint and actual temperature. This is a to
+                                            // alleviate the negative effect of ventilation on heating
             Schedule::Config schedule_cfg;
             time_s check_interval;
         } ventilation;
@@ -137,7 +140,7 @@ public:
 
         switch (static_cast<Events>(event.id())) {
         case Events::VentilationFollowUp: {
-            ventilation_loop();
+            ventilation_control_loop();
             evsys()->schedule(evsys()->event(Events::VentilationFollowUp, _cfg.ventilation.check_interval));
             break;
         }
@@ -330,25 +333,25 @@ private:
     void heating_control_loop() {
         adjust_heater_fan_state();
 
-        if (_heater.setpoint() == 0.0) {
-            return;
-        }
-
+        if (_heater.setpoint() == 0.0) return;
         _heater.update();
-
-        if (_heater.state() != Heater::State::IDLE) {
-            _power.set_state(LogicalState::ON);
-        }
+        if (_heater.state() != Heater::State::IDLE) _power.set_state(LogicalState::ON);
     }
 
     /// continuous checking of ventilation status
-    void ventilation_loop() {
+    void ventilation_control_loop() {
         const auto climate_humidity = _climate_humidity.value();
         _ventilation_control.new_reading(detail::inverted(climate_humidity));
         const auto normalized_response = _ventilation_control.response() / 100;
+        auto adjusted_normalized_response = normalized_response;
 
-        if (normalized_response > _cfg.ventilation.minimal_duty_cycle) {
-            _climate_fan.creep_to(normalized_response, _cfg.ventilation.check_interval);
+        if (_heater.state()
+            == io::Heater::State::HEATING) { // for every C of error in heat, lower the response with a penalty
+            adjusted_normalized_response -= _heater.error() * _cfg.ventilation.heating_penality_weight;
+        }
+
+        if (adjusted_normalized_response > _cfg.ventilation.minimal_duty_cycle) {
+            _climate_fan.creep_to(adjusted_normalized_response, _cfg.ventilation.check_interval);
         } else {
             _climate_fan.creep_to(LogicalState::OFF, _cfg.ventilation.check_interval);
         }
