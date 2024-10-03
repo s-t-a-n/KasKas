@@ -7,14 +7,16 @@
 #include "kaskas/io/providers/digital.hpp"
 #include "kaskas/prompt/rpc/cookbook.hpp"
 
-#include <spine/core/utils/enum.hpp>
+#include <spine/core/meta/enum.hpp>
 #include <spine/structure/array.hpp>
 
 #include <memory>
 #include <utility>
 
 namespace kaskas::io {
-using ::spn::structure::Array;
+
+namespace su = spn::structure;
+namespace meta = spn::core::meta;
 
 // todo: swap alias with base, make ContinuesValue the base, etc
 using ContinuousValue = AnalogueSensor;
@@ -45,7 +47,7 @@ public:
     }
 
 protected:
-    Array<std::shared_ptr<Provider>> _providers;
+    su::Array<std::shared_ptr<Provider>> _providers;
     prompt::RPCCookbook _rpc_cookbook;
 
 private:
@@ -61,11 +63,11 @@ public:
 
     void hotload_provider(DataProviders provider_id, std::shared_ptr<Provider> provider,
                           const std::optional<std::string_view>& module_name = {}) {
-        assert(ENUM_IDX(provider_id) < _stack->_cfg.max_providers);
-        assert(_stack->_providers[ENUM_IDX(provider_id)] == nullptr);
+        assert(meta::ENUM_IDX(provider_id) < _stack->_cfg.max_providers);
+        assert(_stack->_providers[meta::ENUM_IDX(provider_id)] == nullptr);
         stack()->cookbook().add_recipe(std::move(
             provider->rpc_recipe(module_name.value_or(stack()->alias()), magic_enum::enum_name(provider_id))));
-        _stack->_providers[ENUM_IDX(provider_id)] = std::move(provider);
+        _stack->_providers[meta::ENUM_IDX(provider_id)] = std::move(provider);
     }
 
     std::shared_ptr<VirtualStack> stack() { return _stack; }

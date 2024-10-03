@@ -9,6 +9,7 @@
 
 #    include <spine/controller/pid.hpp>
 #    include <spine/core/debugging.hpp>
+#    include <spine/core/meta/enum.hpp>
 #    include <spine/filter/implementations/bandpass.hpp>
 #    include <spine/filter/implementations/ewma.hpp>
 #    include <spine/filter/implementations/invert.hpp>
@@ -29,6 +30,8 @@ using spn::controller::PID;
 using spn::controller::SRLatch;
 using spn::core::time::Schedule;
 using spn::eventsystem::EventSystem;
+
+namespace meta = spn::core::meta;
 
 using BandPass = spn::filter::BandPass<double>;
 using EWMA = spn::filter::EWMA<double>;
@@ -64,7 +67,7 @@ void setup() {
         using namespace kaskas::io;
 
         auto stack_cfg = HardwareStack::Config{
-            .alias = "IO", .max_providers = ENUM_IDX(DataProviders::SIZE), .max_peripherals = Peripherals::SIZE};
+            .alias = "IO", .max_providers = meta::ENUM_IDX(DataProviders::SIZE), .max_peripherals = Peripherals::SIZE};
 
         auto sf = HardwareStackFactory(std::move(stack_cfg));
 
@@ -213,13 +216,13 @@ void setup() {
 
         auto cc_cfg =
             ClimateControl::Config{
-                .hws_power_idx = ENUM_IDX(DataProviders::HEATING_POWER),
-                .clock_idx = ENUM_IDX(DataProviders::CLOCK),
+                .hws_power_idx = meta::ENUM_IDX(DataProviders::HEATING_POWER),
+                .clock_idx = meta::ENUM_IDX(DataProviders::CLOCK),
 
                 .ventilation =
                     ClimateControl::Config::Ventilation{
-                        .hws_climate_fan_idx = ENUM_IDX(DataProviders::CLIMATE_FAN),
-                        .climate_humidity_idx = ENUM_IDX(DataProviders::CLIMATE_HUMIDITY),
+                        .hws_climate_fan_idx = meta::ENUM_IDX(DataProviders::CLIMATE_FAN),
+                        .climate_humidity_idx = meta::ENUM_IDX(DataProviders::CLIMATE_HUMIDITY),
                         // .climate_fan_pid = PID::Config{.tunings = PID::Tunings{.Kp = 34.57, .Ki = 2.71, .Kd = 0},
                         .climate_fan_pid =
                             // PID::Config{.tunings = PID::Tunings{.Kp = 37.13, .Ki = 0.217, .Kd = 0}, // 2.17
@@ -233,16 +236,16 @@ void setup() {
                         .heating_penality_weight = 1.0, // no ventilation until target heat has been reached
                         .schedule_cfg =
                             Schedule::Config{
-                                .blocks = {Schedule::Block{.start = time_h(22), .duration = time_h(10), .value = 65.0},
-                                           Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 75.0}}},
+                                .blocks = {Schedule::Block{.start = time_h(22), .duration = time_h(10), .value = 75.0},
+                                           Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 70.0}}},
                         .check_interval = ventilation_sample_interval},
 
                 .heating =
                     ClimateControl::Config::Heating{
-                        .heating_element_fan_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_FAN),
-                        .heating_element_temp_sensor_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
-                        .climate_temp_sensor_idx = ENUM_IDX(DataProviders::CLIMATE_TEMP),
-                        .ambient_temp_idx = ENUM_IDX(DataProviders::AMBIENT_TEMP),
+                        .heating_element_fan_idx = meta::ENUM_IDX(DataProviders::HEATING_SURFACE_FAN),
+                        .heating_element_temp_sensor_idx = meta::ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
+                        .climate_temp_sensor_idx = meta::ENUM_IDX(DataProviders::CLIMATE_TEMP),
+                        .ambient_temp_idx = meta::ENUM_IDX(DataProviders::AMBIENT_TEMP),
                         .heater_cfg =
                             Heater::Config{
                                 .pid_cfg =
@@ -253,8 +256,8 @@ void setup() {
                                                 .output_upper_limit = 255,
                                                 .sample_interval = heating_sample_interval},
                                 .max_heater_setpoint = max_heater_setpoint,
-                                .heating_surface_temperature_idx = ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
-                                .heating_element_idx = ENUM_IDX(DataProviders::HEATING_ELEMENT),
+                                .heating_surface_temperature_idx = meta::ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
+                                .heating_element_idx = meta::ENUM_IDX(DataProviders::HEATING_ELEMENT),
                                 .climate_trp_cfg = Heater::ThermalRunAway::Config{.stable_timewindow = time_m(30),
                                                                                   .heating_minimal_rising_c = 0.1,
                                                                                   .heating_minimal_dropping_c = 0.01,
@@ -282,7 +285,7 @@ void setup() {
         using kaskas::component::Growlights;
         auto growlights_cfg =
             Growlights::Config{
-                .redblue_spectrum_actuator_idx = ENUM_IDX(DataProviders::REDBLUE_SPECTRUM),
+                .redblue_spectrum_actuator_idx = meta::ENUM_IDX(DataProviders::REDBLUE_SPECTRUM),
                 .redblue_spectrum_schedule =
                     Schedule::Config{
                         .blocks =
@@ -292,7 +295,7 @@ void setup() {
                                     .start = time_h(20), .duration = time_h(12), .value = LogicalState::OFF},
                             }},
 
-                .full_spectrum_actuator_idx = ENUM_IDX(DataProviders::FULL_SPECTRUM),
+                .full_spectrum_actuator_idx = meta::ENUM_IDX(DataProviders::FULL_SPECTRUM),
                 .full_spectrum_schedule =
                     Schedule::Config{
                         .blocks =
@@ -300,7 +303,7 @@ void setup() {
                                 Schedule::Block{.start = time_h(6), .duration = time_h(16), .value = LogicalState::ON},
                                 Schedule::Block{.start = time_h(22), .duration = time_h(8), .value = LogicalState::OFF},
                             }},
-                .clock_idx = ENUM_IDX(DataProviders::CLOCK)};
+                .clock_idx = meta::ENUM_IDX(DataProviders::CLOCK)};
 
         auto growlights = std::make_unique<Growlights>(*hws, growlights_cfg);
         kk->hotload_component(std::move(growlights));
@@ -309,7 +312,7 @@ void setup() {
     {
         auto pump_cfg = Pump::Config{
             //
-            .pump_actuator_idx = ENUM_IDX(DataProviders::PUMP),
+            .pump_actuator_idx = meta::ENUM_IDX(DataProviders::PUMP),
             .interrupt_cfg =
                 Interrupt::Config{
                     .pin = 2,
@@ -322,14 +325,15 @@ void setup() {
         };
 
         using kaskas::component::Fluidsystem;
-        auto fluidsystem_cfg = Fluidsystem::Config{.pump_cfg = pump_cfg, //
-                                                   .ground_moisture_sensor_idx = ENUM_IDX(DataProviders::SOIL_MOISTURE),
-                                                   .clock_idx = ENUM_IDX(DataProviders::CLOCK),
-                                                   .ground_moisture_target = 55, // target moisture percentage
-                                                   .calibration_dosis_ml = 250,
-                                                   .max_dosis_ml = 500,
-                                                   .time_of_injection = time_h(6),
-                                                   .delay_before_effect_evaluation = time_h(2)};
+        auto fluidsystem_cfg =
+            Fluidsystem::Config{.pump_cfg = pump_cfg, //
+                                .ground_moisture_sensor_idx = meta::ENUM_IDX(DataProviders::SOIL_MOISTURE),
+                                .clock_idx = meta::ENUM_IDX(DataProviders::CLOCK),
+                                .ground_moisture_target = 55, // target moisture percentage
+                                .calibration_dosis_ml = 250,
+                                .max_dosis_ml = 500,
+                                .time_of_injection = time_h(6),
+                                .delay_before_effect_evaluation = time_h(2)};
         auto fluidsystem = std::make_unique<Fluidsystem>(*hws, fluidsystem_cfg);
         kk->hotload_component(std::move(fluidsystem));
     }

@@ -4,13 +4,17 @@
 #include "kaskas/prompt/prompt.hpp"
 #include "kaskas/subsystems/climatecontrol.hpp"
 
-#include <stdint.h>
+#include <spine/core/meta/enum.hpp>
 
 #include <charconv>
+#include <cstdint>
 #include <iterator>
 #include <numeric>
 
 namespace kaskas::component {
+
+namespace meta = spn::core::meta;
+
 class DataAcquisition : public Component {
 public:
     struct Config {
@@ -104,7 +108,7 @@ public:
 
             std::array<char, 32> buffer{};
             for (auto it = _cfg.active_dataproviders.begin(); it != _cfg.active_dataproviders.end(); ++it) {
-                const auto value = _hws.analog_sensor(ENUM_IDX(*it)).value();
+                const auto value = _hws.analog_sensor(meta::ENUM_IDX(*it)).value();
                 int written = std::snprintf(buffer.data(), buffer.size(), "%.3f", value);
                 assert(written > 0 && written < buffer.size());
                 if (written > 0 && written < buffer.size()) put(std::string_view(buffer.data(), written));
