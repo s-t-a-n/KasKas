@@ -95,9 +95,7 @@ void setup() {
         }
 
         {
-            // constexpr double moisture_sensor_limits[] = {0.4, 0.6}; // experimentally obtained, low = wet, high = dry
             constexpr double moisture_sensor_limits[] = {0.2, 0.7}; // experimentally obtained, low = wet, high = dry
-            // constexpr double moisture_sensor_limits[] = {0.0, 1.0}; // experimentally obtained, low = wet, high = dry
             const auto cfg =
                 AnalogueInputPeripheral::Config{.input_cfg = HAL::AnalogueInput::Config{.pin = A1, .pull_up = false},
                                                 .sampling_interval = time_s(60),
@@ -206,7 +204,6 @@ void setup() {
         kk = std::make_unique<KasKas>(hws, kk_cfg);
     }
 
-    // todo: fully offload this to yaml file which is loaded in through pyserial API
     {
         using kaskas::component::ClimateControl;
 
@@ -223,23 +220,19 @@ void setup() {
                     ClimateControl::Config::Ventilation{
                         .hws_climate_fan_idx = meta::ENUM_IDX(DataProviders::CLIMATE_FAN),
                         .climate_humidity_idx = meta::ENUM_IDX(DataProviders::CLIMATE_HUMIDITY),
-                        // .climate_fan_pid = PID::Config{.tunings = PID::Tunings{.Kp = 34.57, .Ki = 2.71, .Kd = 0},
-                        .climate_fan_pid =
-                            // PID::Config{.tunings = PID::Tunings{.Kp = 37.13, .Ki = 0.217, .Kd = 0}, // 2.17
-                        // PID::Config{.tunings = PID::Tunings{.Kp = 30.00, .Ki = 2.71, .Kd = 0.1}, // 2.17
-                        PID::Config{.tunings = PID::Tunings{.Kp = 18.53, .Ki = 0.82, .Kd = 0.0}, // 2.17
-                                    .output_lower_limit = 20,
-                                    .output_upper_limit = 90,
-                                    .sample_interval = ventilation_sample_interval,
-                                    .direction = PID::Direction::FORWARD},
+                        .climate_fan_pid = PID::Config{.tunings = PID::Tunings{.Kp = 18.53, .Ki = 0.82, .Kd = 0.0},
+                                                       .output_lower_limit = 20,
+                                                       .output_upper_limit = 90,
+                                                       .sample_interval = ventilation_sample_interval,
+                                                       .direction = PID::Direction::FORWARD},
                         .minimal_duty_cycle = 0.21,
-                        .heating_penality_weight = 1.0, // no ventilation until target heat has been reached
+                        .heating_penality_weight = 0.3, // 1.0: no ventilation until heating sp error is < 1.0 C
                         .schedule_cfg =
                             Schedule::Config{
-                                .blocks = {Schedule::Block{.start = time_h(22), .duration = time_h(10), .value = 75.0},
-                                           Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 70.0}}},
+                                .blocks = {Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 65.0},
+                                           Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 60.0},
+                                           Schedule::Block{.start = time_h(0), .duration = time_h(8), .value = 75.0}}},
                         .check_interval = ventilation_sample_interval},
-
                 .heating =
                     ClimateControl::Config::Heating{
                         .heating_element_fan_idx = meta::ENUM_IDX(DataProviders::HEATING_SURFACE_FAN),
@@ -263,18 +256,12 @@ void setup() {
                                                                                   .heating_minimal_dropping_c = 0.01,
                                                                                   .heating_timewindow = time_m(45)}},
                         .schedule_cfg =
-                            //                            Schedule::Config{
-                        //                                .blocks = {Schedule::Block{.start = time_h(0), .duration =
-                        //                                time_h(24), .value = 16.0}}},
-                        Schedule::Config{
-                            .blocks = {Schedule::Block{.start = time_h(0), .duration = time_h(7), .value = 16.0},
-                                       Schedule::Block{.start = time_h(7), .duration = time_h(2), .value = 18.0},
-                                       Schedule::Block{.start = time_h(9), .duration = time_h(1), .value = 20.0},
-                                       Schedule::Block{.start = time_h(10), .duration = time_h(1), .value = 22.0},
-                                       Schedule::Block{.start = time_h(11), .duration = time_h(1), .value = 24.0},
-                                       Schedule::Block{.start = time_h(12), .duration = time_h(8), .value = 27.0},
-                                       Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 24.0},
-                                       Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 16.0}}},
+                            Schedule::Config{
+                                .blocks = {Schedule::Block{.start = time_h(10), .duration = time_h(2), .value = 20.0},
+                                           Schedule::Block{.start = time_h(12), .duration = time_h(8), .value = 24.0},
+                                           Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 20.0},
+                                           Schedule::Block{
+                                               .start = time_h(22), .duration = time_h(12), .value = 16.0}}},
                         .check_interval = heating_sample_interval}};
 
         auto ventilation = std::make_unique<ClimateControl>(*hws, cc_cfg);
@@ -311,7 +298,6 @@ void setup() {
 
     {
         auto pump_cfg = Pump::Config{
-            //
             .pump_actuator_idx = meta::ENUM_IDX(DataProviders::PUMP),
             .interrupt_cfg =
                 Interrupt::Config{
@@ -341,8 +327,7 @@ void setup() {
     {
         using kaskas::component::UI;
         auto ui_cfg =
-            UI::Config{//
-                       .signaltower_cfg =
+            UI::Config{.signaltower_cfg =
                            Signaltower::Config{
                                .pin_red = DigitalOutput(DigitalOutput::Config{.pin = 10, .active_on_low = false}),
                                .pin_yellow = DigitalOutput(DigitalOutput::Config{.pin = 9, .active_on_low = false}),
