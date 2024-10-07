@@ -7,10 +7,10 @@
 
 #include <kaskas/component.hpp>
 #include <spine/core/exception.hpp>
-#include <spine/core/schedule.hpp>
-#include <spine/core/timers.hpp>
 #include <spine/core/utils/time_repr.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
+#include <spine/structure/time/schedule.hpp>
+#include <spine/structure/time/timers.hpp>
 
 #include <cstdint>
 

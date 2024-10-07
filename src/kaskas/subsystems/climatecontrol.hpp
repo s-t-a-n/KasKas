@@ -12,13 +12,13 @@
 #include <spine/controller/pid.hpp>
 #include <spine/controller/sr_latch.hpp>
 #include <spine/core/debugging.hpp>
-#include <spine/core/schedule.hpp>
 #include <spine/core/utils/string.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
 #include <spine/filter/implementations/ewma.hpp>
 #include <spine/io/sensor.hpp>
 #include <spine/platform/hal.hpp>
+#include <spine/structure/time/schedule.hpp>
 
 namespace kaskas::component {
 

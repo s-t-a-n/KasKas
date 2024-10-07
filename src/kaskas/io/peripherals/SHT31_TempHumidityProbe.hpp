@@ -6,9 +6,9 @@
 #include <SHT31.h>
 #include <spine/core/debugging.hpp>
 #include <spine/core/exception.hpp>
-#include <spine/core/timers.hpp>
 #include <spine/filter/filterstack.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
+#include <spine/structure/time/timers.hpp>
 
 #include <cstdint>
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <spine/core/timers.hpp>
 #include <spine/filter/filterstack.hpp>
 #include <spine/structure/array.hpp>
+#include <spine/structure/time/timers.hpp>
 #include <spine/structure/units/si.hpp>
 
 #include <optional>

@@ -8,12 +8,12 @@
 
 #include <spine/core/exception.hpp>
 #include <spine/core/logging.hpp>
-#include <spine/core/timers.hpp>
 #include <spine/core/utils/string.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/filter/implementations/ewma.hpp>
 #include <spine/io/sensor.hpp>
 #include <spine/platform/hal.hpp>
+#include <spine/structure/time/timers.hpp>
 
 #include <cstdint>
 
