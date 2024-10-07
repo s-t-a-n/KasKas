@@ -164,7 +164,7 @@ void setup() {
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
-            sf.hotload_provider(DataProviders::REDBLUE_SPECTRUM, std::move(state_provider));
+            sf.hotload_provider(DataProviders::VIOLET_SPECTRUM, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::VIOLET_SPECTRUM_RELAY, std::move(peripheral));
         }
 
@@ -174,7 +174,7 @@ void setup() {
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
-            sf.hotload_provider(DataProviders::FULL_SPECTRUM, std::move(state_provider));
+            sf.hotload_provider(DataProviders::BROAD_SPECTRUM, std::move(state_provider));
             sf.hotload_peripheral(Peripherals::BROAD_SPECTRUM_RELAY, std::move(peripheral));
         }
 
@@ -272,7 +272,7 @@ void setup() {
         using kaskas::component::Growlights;
         auto growlights_cfg =
             Growlights::Config{
-                .redblue_spectrum_actuator_idx = meta::ENUM_IDX(DataProviders::REDBLUE_SPECTRUM),
+                .redblue_spectrum_actuator_idx = meta::ENUM_IDX(DataProviders::VIOLET_SPECTRUM),
                 .redblue_spectrum_schedule =
                     Schedule::Config{
                         .blocks =
@@ -282,7 +282,7 @@ void setup() {
                                     .start = time_h(20), .duration = time_h(12), .value = LogicalState::OFF},
                             }},
 
-                .full_spectrum_actuator_idx = meta::ENUM_IDX(DataProviders::FULL_SPECTRUM),
+                .full_spectrum_actuator_idx = meta::ENUM_IDX(DataProviders::BROAD_SPECTRUM),
                 .full_spectrum_schedule =
                     Schedule::Config{
                         .blocks =
