@@ -51,7 +51,7 @@ public:
     RPCFactory(const Config& cfg) : RPCFactory(Config(cfg)) {}
 
     spn::structure::Result<RPC, Error> from_message(const Message& msg) {
-        assert(msg.operant.length() == 1);
+        spn_assert(msg.operant.length() == 1);
         const auto optype = Dialect::optype_for_operant(msg.operant[0]);
 
         switch (optype) {
@@ -65,7 +65,7 @@ public:
                 DBG("RPCFactory: no recipe found for message: {%s}", msg.as_string().c_str());
                 return spn::structure::Result<RPC, Error>::failed(Error::UNKNOWN_RECIPE);
             }
-            assert(*recipe != nullptr);
+            spn_assert(*recipe != nullptr);
             return build_rpc_for_request(**recipe, optype, msg);
         }
         case Dialect::OP::PRINT_USAGE: {
@@ -78,7 +78,7 @@ public:
     }
 
     void hotload_rpc_recipe(std::unique_ptr<RPCRecipe> recipe) {
-        assert(recipe);
+        spn_assert(recipe);
         _rpcs.push_back(std::move(recipe));
     }
 
@@ -122,8 +122,8 @@ protected:
                                      // Second pass to build the string
                                      write_to_string(&s, false);
 
-                                     assert(s.size() <= reserved_length); // no reallocation
-                                     assert(s.capacity() == reserved_length); // no reallocation
+                                     spn_assert(s.size() <= reserved_length); // no reallocation
+                                     spn_assert(s.capacity() == reserved_length); // no reallocation
                                      return RPCResult(s);
                                  }};
         return RPC(Dialect::OP::PRINT_USAGE, model, std::nullopt);
@@ -148,7 +148,7 @@ protected:
 
     std::optional<const RPCRecipe*> recipe_for_command(const std::string_view& cmd) {
         for (const auto& recipe : _rpcs) {
-            assert(recipe->module() != std::string_view{});
+            spn_assert(recipe->module() != std::string_view{});
             if (std::string_view(recipe->module()) == cmd) {
                 const auto cmd_str = std::string(cmd);
                 const auto recipe_cmd_str = std::string(cmd);

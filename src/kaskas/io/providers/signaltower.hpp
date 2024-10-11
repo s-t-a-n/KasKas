@@ -1,5 +1,6 @@
 #pragma once
 
+#include <spine/core/types.hpp>
 #include <spine/platform/hal.hpp>
 
 class Signaltower {
@@ -25,20 +26,20 @@ public:
     void signal(State state) {
         switch (state) {
         case State::Red:
-            _cfg.pin_red.set_state(ON);
-            _cfg.pin_yellow.set_state(OFF);
-            _cfg.pin_green.set_state(OFF);
+            _cfg.pin_red.set_state(LogicalState::ON);
+            _cfg.pin_yellow.set_state(LogicalState::OFF);
+            _cfg.pin_green.set_state(LogicalState::OFF);
             break;
 
         case State::Yellow:
-            _cfg.pin_red.set_state(OFF);
-            _cfg.pin_yellow.set_state(ON);
-            _cfg.pin_green.set_state(OFF);
+            _cfg.pin_red.set_state(LogicalState::OFF);
+            _cfg.pin_yellow.set_state(LogicalState::ON);
+            _cfg.pin_green.set_state(LogicalState::OFF);
             break;
         case State::Green:
-            _cfg.pin_red.set_state(OFF);
-            _cfg.pin_yellow.set_state(OFF);
-            _cfg.pin_green.set_state(ON);
+            _cfg.pin_red.set_state(LogicalState::OFF);
+            _cfg.pin_yellow.set_state(LogicalState::OFF);
+            _cfg.pin_green.set_state(LogicalState::ON);
             break;
         default: break;
         }
@@ -52,5 +53,7 @@ public:
     }
 
 private:
+    using LogicalState = spn::core::LogicalState;
+
     Config _cfg;
 };

@@ -97,7 +97,7 @@ public:
 
         if (_cfg.prompt_cfg) {
             if (auto recipe = component->rpc_recipe()) {
-                assert(recipe != nullptr);
+                spn_assert(recipe != nullptr);
                 hotload_rpc_recipe(std::move(recipe));
             }
         }
@@ -133,6 +133,7 @@ private:
             for (auto& sf : _kk._components) {
                 sf->safe_shutdown(Component::State::CRITICAL);
             }
+            HAL::halt("KasKas shutdown after exception");
         }
 
     private:

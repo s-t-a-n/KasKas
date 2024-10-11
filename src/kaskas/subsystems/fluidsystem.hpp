@@ -69,7 +69,7 @@ public:
         _pump.initialize();
         _ml_per_percent_of_moisture.reset_to(0);
 
-        assert(evsys());
+        spn_assert(evsys());
         evsys()->attach(Events::OutOfWater, this);
         evsys()->attach(Events::WaterInjectCheck, this);
         evsys()->attach(Events::WaterInjectEvaluateEffect, this);
@@ -124,7 +124,7 @@ public:
             return;
         }
         case Events::WaterInjectEvaluateEffect: {
-            assert(_status.Flags.injection_needs_evaluation);
+            spn_assert(_status.Flags.injection_needs_evaluation);
             const auto new_moisture_level = _ground_moisture_sensor.value();
             const auto effect = new_moisture_level - _moisture_level_before_injection;
 
@@ -148,7 +148,7 @@ public:
         case Events::WaterInjectStart: {
             if (_status.Flags.injection_needs_evaluation)
                 throw_exception(spn::runtime_exception("Tried to start injection before last injection was evaluated"));
-            assert(event.data().value() > 0);
+            spn_assert(event.data().value() > 0);
             LOG("Fluidsystem: Events::WaterInjectStart: injecting %.2f mL", event.data().value());
             _moisture_level_before_injection = _ground_moisture_sensor.value();
             _pump.start_injection(std::floor(event.data().value()));
@@ -181,7 +181,7 @@ public:
             evsys()->schedule(Events::WaterInjectEvaluateEffect, _cfg.delay_before_effect_evaluation);
             return;
         }
-        default: assert(!"event not handled"); return;
+        default: spn_assert(!"event not handled"); return;
         }
     }
 

@@ -11,6 +11,8 @@ using spn::core::time::Timer;
 
 class Relay : public Peripheral {
 public:
+    using LogicalState = spn::core::LogicalState;
+
     struct Config {
         HAL::DigitalOutput::Config pin_cfg;
         time_ms backoff_time;
@@ -27,8 +29,8 @@ public:
     void set_state(LogicalState state) {
         // hard protect against flipping relay back on within backoff threshold
         const auto time_since_last_flip = _backoff_timer->time_since_last();
-        if (_backoff_timer && _cfg.backoff_time > time_ms(0) && time_since_last_flip < _cfg.backoff_time && state == ON
-            && _pin.state() == OFF) {
+        if (_backoff_timer && _cfg.backoff_time > time_ms(0) && time_since_last_flip < _cfg.backoff_time
+            && state == LogicalState::ON && _pin.state() == LogicalState::OFF) {
             if (_cfg.throw_on_early_flip) {
                 spn::throw_exception(spn::runtime_exception("Tried to flip relay within backoff threshold"));
             } else {

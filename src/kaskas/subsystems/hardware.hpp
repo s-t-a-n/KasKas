@@ -20,7 +20,7 @@ public:
     Hardware(io::HardwareStack& hws, EventSystem* evsys, const Config& cfg) : Component(evsys, hws), _cfg(cfg){};
 
     void initialize() override {
-        assert(evsys());
+        spn_assert(evsys());
         evsys()->attach(Events::SensorFollowUp, this);
         evsys()->attach(Events::ShutDown, this);
 
@@ -39,7 +39,7 @@ public:
             evsys()->schedule(evsys()->event(Events::SensorFollowUp, _hws.time_until_next_update()));
             break;
         case Events::ShutDown: spn::throw_exception(spn::runtime_exception("Scheduled shutdown.")); break;
-        default: assert(!"Event was not handled!"); break;
+        default: spn_assert(!"Event was not handled!"); break;
         };
     }
 

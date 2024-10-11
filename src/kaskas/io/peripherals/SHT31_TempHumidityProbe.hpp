@@ -47,7 +47,7 @@ public:
             read_temperature());
 
         _sht31.heatOff(); // make sure that probe's internal heating element is turned off
-        assert(!_sht31.isHeaterOn());
+        spn_assert(!_sht31.isHeaterOn());
     }
 
     void update() override {

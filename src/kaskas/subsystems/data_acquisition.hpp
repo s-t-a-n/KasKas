@@ -47,7 +47,7 @@ public:
         switch (static_cast<Events>(event.id())) {
         case Events::DAQWarmedUp: _status.Flags.warmed_up = true; break;
         case Events::DAQTainted: _status.Flags.tainted = true; break;
-        default: assert(!"Event was not handled!"); break;
+        default: spn_assert(!"Event was not handled!"); break;
         }
     }
 
@@ -92,7 +92,7 @@ public:
             if (std::next(it) != _cfg.active_dataproviders.end()) fields += prompt::Dialect::VALUE_SEPARATOR;
         }
 
-        assert(fields.capacity() == reserved_size); // no reallocation
+        spn_assert(fields.capacity() == reserved_size); // no reallocation
         return std::move(fields);
     }
 
@@ -110,7 +110,7 @@ public:
             for (auto it = _cfg.active_dataproviders.begin(); it != _cfg.active_dataproviders.end(); ++it) {
                 const auto value = _hws.analog_sensor(meta::ENUM_IDX(*it)).value();
                 int written = std::snprintf(buffer.data(), buffer.size(), "%.3f", value);
-                assert(written > 0 && written < buffer.size());
+                spn_expect(written > 0 && written < buffer.size());
                 if (written > 0 && written < buffer.size()) put(std::string_view(buffer.data(), written));
                 if (std::next(it) != _cfg.active_dataproviders.end()) put(prompt::Dialect::VALUE_SEPARATOR);
             }
@@ -128,8 +128,8 @@ public:
         // Second pass to build the string
         timeseries_repr(&timeseries, false);
 
-        assert(timeseries.size() <= reserved_length); // no reallocation
-        assert(timeseries.capacity() == reserved_length); // no reallocation
+        spn_assert(timeseries.size() <= reserved_length); // no reallocation
+        spn_assert(timeseries.capacity() == reserved_length); // no reallocation
 
         return timeseries;
     }

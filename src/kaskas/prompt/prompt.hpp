@@ -35,13 +35,13 @@ public:
 public:
     /// Initialize the prompt
     void initialize() {
-        assert(_dl);
+        spn_assert(_dl);
         _dl->initialize();
     }
 
     /// Pulls messages from the datalink, extracts RPC information, invokes the RPC and writes back a returnstatus
     void update() {
-        assert(_dl);
+        spn_assert(_dl);
 
         _dl->pull(); // pull messages from the Datalink's stream (such as UART) into its buffer
 

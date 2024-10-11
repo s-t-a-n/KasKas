@@ -10,6 +10,7 @@
 #    include <spine/controller/pid.hpp>
 #    include <spine/core/debugging.hpp>
 #    include <spine/core/meta/enum.hpp>
+#    include <spine/core/types.hpp>
 #    include <spine/filter/implementations/bandpass.hpp>
 #    include <spine/filter/implementations/ewma.hpp>
 #    include <spine/filter/implementations/invert.hpp>
@@ -33,6 +34,7 @@ using spn::eventsystem::EventSystem;
 
 namespace meta = spn::core::meta;
 
+using LogicalState = spn::core::LogicalState;
 using BandPass = spn::filter::BandPass<double>;
 using EWMA = spn::filter::EWMA<double>;
 using MappedRange = spn::filter::MappedRange<double>;
