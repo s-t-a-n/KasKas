@@ -57,9 +57,6 @@ public:
 
             PID::Config climate_fan_pid;
             double minimal_duty_cycle = 0; // normalized value where 0.5 means 50% dutycycle
-            double heating_penality_weight; // normalized value where 0.1 dampens ventilation by 10% for every degree of
-                                            // error between heating setpoint and actual temperature. This is a to
-                                            // alleviate the negative effect of ventilation on heating
             Schedule::Config schedule_cfg;
             time_s check_interval;
         } ventilation;
@@ -88,7 +85,7 @@ public:
           _heating_element_fan(_hws.analogue_actuator(_cfg.heating.heating_element_fan_idx)),
           _heating_element_sensor(_hws.analog_sensor(_cfg.heating.heating_element_temp_sensor_idx)),
           _heater(std::move(cfg.heating.heater_cfg), _hws), _heating_schedule(std::move(_cfg.heating.schedule_cfg)),
-          _power(_hws.digital_actuator(_cfg.hws_power_idx)){};
+          _power(_hws.digital_actuator(_cfg.hws_power_idx)) {};
 
     void initialize() override {
         _heater.set_temperature_source(Heater::TemperatureSource::CLIMATE);
@@ -348,9 +345,10 @@ private:
         const auto normalized_response = _ventilation_control.response() / 100;
         auto adjusted_normalized_response = normalized_response;
 
-        if (_heater.state()
-            == io::Heater::State::HEATING) { // for every C of error in heat, lower the response with a penalty
-            adjusted_normalized_response -= _heater.error() * _cfg.ventilation.heating_penality_weight;
+        if (_heater.state() == io::Heater::State::HEATING) { // no ventilation during heating
+            adjusted_normalized_response = 0;
+        } else if (_heater.state() == io::Heater::State::STEADY_STATE) { // reduce ventilation in proportion to error
+            adjusted_normalized_response -= _heater.error() / _cfg.heating.heater_cfg.steady_state_hysteresis;
         }
 
         if (adjusted_normalized_response > _cfg.ventilation.minimal_duty_cycle) {
