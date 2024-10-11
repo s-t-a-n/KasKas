@@ -76,7 +76,7 @@ private:
     }
 
     static ParseResult parse_operant(ParseContext& ctx) {
-        assert(ctx.head);
+        spn_assert(ctx.head);
 
         if (auto op = spn::core::utils::find_first_of({ctx.head, ctx.remaining()}, Dialect::OPERANT_REQUEST);
             op != std::string::npos) {

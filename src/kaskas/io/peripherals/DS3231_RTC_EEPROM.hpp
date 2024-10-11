@@ -41,7 +41,7 @@ public:
     }
 
     void update() override {
-        assert(is_ready());
+        spn_assert(is_ready());
         _now = DateTime(DS3231::RTClib::now().getUnixTime());
     }
     void safe_shutdown(bool critical) override {}

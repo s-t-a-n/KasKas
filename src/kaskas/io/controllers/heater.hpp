@@ -6,6 +6,7 @@
 #include <spine/controller/pid.hpp>
 #include <spine/core/debugging.hpp>
 #include <spine/core/logging.hpp>
+#include <spine/core/types.hpp>
 #include <spine/filter/implementations/ewma.hpp>
 #include <spine/platform/hal.hpp>
 #include <spine/structure/time/timers.hpp>
@@ -171,7 +172,7 @@ public:
             _pid.new_reading(temperature());
             const auto response = _pid.response();
             const auto normalized_response = _pid.setpoint() > 0 ? response / _cfg.pid_cfg.output_upper_limit : 0;
-            assert(normalized_response >= 0.0 && normalized_response <= 1.0);
+            spn_assert(normalized_response >= 0.0 && normalized_response <= 1.0);
             _heating_element.fade_to(guarded_setpoint(normalized_response));
 
             update_state();
@@ -190,7 +191,7 @@ public:
         switch (source) {
         case TemperatureSource::SURFACE: _temperature_source = &_surface_temperature; break;
         case TemperatureSource::CLIMATE: _temperature_source = &_climate_temperature; break;
-        default: assert(!"Unhandled TemperatureSource");
+        default: spn_assert(!"Unhandled TemperatureSource");
         }
     }
 
@@ -246,7 +247,7 @@ public:
     Value setpoint() const { return _pid.setpoint(); }
 
     Value temperature() const {
-        assert(_temperature_source != nullptr);
+        spn_assert(_temperature_source != nullptr);
         return _temperature_source->value();
     }
     Value error() const { return std::fabs(temperature() - setpoint()); }
@@ -256,6 +257,8 @@ public:
     State state() const { return _state; }
 
 private:
+    using LogicalState = spn::core::LogicalState;
+
     /// makes sure that when the surface temperature is exceeding the limit, that the power is decreased
     double guarded_setpoint(double setpoint) {
         const auto surface_temperature = _surface_temperature.value();

@@ -60,8 +60,8 @@ public:
             s += Dialect::KV_SEPARATOR;
             s += *arguments;
         }
-        assert(s.size() <= reserved_length); // single allocation
-        assert(s.capacity() == reserved_length);
+        spn_assert(s.size() <= reserved_length); // single allocation
+        spn_assert(s.capacity() == reserved_length);
         return s;
     }
 };
@@ -74,7 +74,7 @@ public:
         : Message(std::move(message)), _storage(std::move(storage)) {}
 
     const T& storage() const {
-        assert(_storage);
+        spn_assert(_storage);
         return *_storage;
     }
 

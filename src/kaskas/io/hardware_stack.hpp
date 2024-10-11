@@ -71,36 +71,36 @@ public:
         for (auto& p : _peripherals) {
             if (p && p->is_updateable() && p->time_until_next_update() < interval) {
                 interval = std::max(p->time_until_next_update(), time_ms(1));
-                assert(interval > time_ms(0));
+                spn_assert(interval > time_ms(0));
             }
         }
-        assert(interval != time_ms(INT32_MAX));
+        spn_assert(interval != time_ms(INT32_MAX));
         return interval;
     }
 
 public:
     const AnalogueSensor& analog_sensor(Idx sensor_idx) {
-        assert(_providers[sensor_idx]);
+        spn_assert(_providers[sensor_idx]);
         return *reinterpret_cast<AnalogueSensor*>(_providers[sensor_idx].get());
     }
 
     const DigitalSensor& digital_sensor(Idx sensor_idx) {
-        assert(_providers[sensor_idx]);
+        spn_assert(_providers[sensor_idx]);
         return *reinterpret_cast<DigitalSensor*>(_providers[sensor_idx].get());
     }
 
     AnalogueActuator& analogue_actuator(Idx output_idx) {
-        assert(_providers[output_idx]);
+        spn_assert(_providers[output_idx]);
         return *reinterpret_cast<AnalogueActuator*>(_providers[output_idx].get());
     }
 
     DigitalActuator& digital_actuator(Idx output_idx) {
-        assert(_providers[output_idx]);
+        spn_assert(_providers[output_idx]);
         return *reinterpret_cast<DigitalActuator*>(_providers[output_idx].get());
     }
 
     const Clock& clock(Idx clock_idx) {
-        assert(_providers[clock_idx]);
+        spn_assert(_providers[clock_idx]);
         return *reinterpret_cast<Clock*>(_providers[clock_idx].get());
     }
 
@@ -118,8 +118,8 @@ public:
         : VirtualStackFactory(std::make_shared<HardwareStack>(std::move(cfg))) {}
 
     void hotload_peripheral(uint8_t peripheral_id, std::unique_ptr<Peripheral> peripheral) {
-        assert(peripheral_id < hardware_stack()->_cfg.max_peripherals);
-        assert(hardware_stack()->_peripherals[peripheral_id] == nullptr);
+        spn_assert(peripheral_id < hardware_stack()->_cfg.max_peripherals);
+        spn_assert(hardware_stack()->_peripherals[peripheral_id] == nullptr);
         hardware_stack()->_peripherals[peripheral_id] = std::move(peripheral);
     }
 

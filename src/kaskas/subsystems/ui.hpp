@@ -5,6 +5,7 @@
 #include "kaskas/io/providers/signaltower.hpp"
 
 #include <spine/core/exception.hpp>
+#include <spine/core/types.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 
 namespace kaskas::component {
@@ -38,7 +39,7 @@ public:
         _builtin_led_green.set_state(LogicalState::ON);
 #endif
 
-        assert(evsys());
+        spn_assert(evsys());
         evsys()->attach(Events::WakeUp, this);
         evsys()->attach(Events::UIButtonCheck, this);
         evsys()->attach(Events::UIWatchDog, this);
@@ -92,7 +93,7 @@ public:
             break;
         }
         case Events::UIPromptFollowUp: {
-            assert(_prompt);
+            spn_assert(_prompt);
             _prompt->update();
             evsys()->schedule(Events::UIPromptFollowUp, _cfg.prompt_interval);
             break;
@@ -101,7 +102,7 @@ public:
             _signaltower.signal(Signaltower::State::Yellow);
             break;
         }
-        default: assert(!"Event was not handled!"); break;
+        default: spn_assert(!"Event was not handled!"); break;
         };
     }
 
@@ -112,6 +113,8 @@ public:
     void hotload_prompt(std::shared_ptr<Prompt> prompt) { _prompt = std::move(prompt); }
 
 private:
+    using LogicalState = spn::core::LogicalState;
+
     const Config _cfg;
 
     Signaltower _signaltower;

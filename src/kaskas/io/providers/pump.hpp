@@ -3,6 +3,7 @@
 #include "kaskas/io/peripherals/relay.hpp"
 
 #include <spine/core/exception.hpp>
+#include <spine/core/types.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/filter/implementations/ewma.hpp>
 #include <spine/platform/hal.hpp>
@@ -17,6 +18,7 @@ using spn::core::time::Timer;
 struct Pump {
 private:
     using Flowrate = spn::filter::EWMA<double>;
+    using LogicalState = spn::core::LogicalState;
 
 public:
     struct Config {

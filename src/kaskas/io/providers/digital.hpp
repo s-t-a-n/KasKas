@@ -3,6 +3,7 @@
 #include "kaskas/io/provider.hpp"
 
 #include <magic_enum/magic_enum.hpp>
+#include <spine/core/types.hpp>
 
 #include <functional>
 
@@ -10,6 +11,8 @@ namespace kaskas::io {
 /// a provider for any datasource that provides a single logic level
 class DigitalSensor : public Provider {
 public:
+    using LogicalState = spn::core::LogicalState;
+
     DigitalSensor(const std::function<LogicalState()>& value_f) : _value_f(value_f){};
 
     LogicalState state() const { return _value_f(); }
@@ -33,6 +36,8 @@ private:
 /// a provider for any actuator that needs a single logic level
 class DigitalActuator : public Provider {
 public:
+    using LogicalState = spn::core::LogicalState;
+
     struct FunctionMap {
         const std::function<LogicalState()> state_f;
         const std::function<void(LogicalState)> set_state_f;

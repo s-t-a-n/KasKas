@@ -12,6 +12,7 @@
 #include <spine/controller/pid.hpp>
 #include <spine/controller/sr_latch.hpp>
 #include <spine/core/debugging.hpp>
+#include <spine/core/types.hpp>
 #include <spine/core/utils/string.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
@@ -133,7 +134,7 @@ public:
 
     void handle_event(const Event& event) override {
         const auto now_s = [&]() {
-            assert(_clock.is_ready());
+            spn_assert(_clock.is_ready());
             const auto now_dt = _clock.now();
             return time_s(time_h(now_dt.getHour())) + time_m(now_dt.getMinute());
         };
@@ -162,10 +163,10 @@ public:
             }
 
             const auto time_until_next_check = _ventilation_schedule.start_of_next_block(now) - now;
-            assert(_ventilation_schedule.start_of_next_block(now) > now);
+            spn_assert(_ventilation_schedule.start_of_next_block(now) > now);
 
             DBG("Ventilation: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
-            assert(time_until_next_check.raw<>() > 0);
+            spn_assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(evsys()->event(Events::VentilationCycleCheck, time_until_next_check));
             break;
         }
@@ -266,10 +267,10 @@ public:
             }
 
             const auto time_until_next_check = _heating_schedule.start_of_next_block(now) - now;
-            assert(_heating_schedule.start_of_next_block(now) > now);
+            spn_assert(_heating_schedule.start_of_next_block(now) > now);
 
             DBG("Heating: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
-            assert(time_until_next_check.raw<>() > 0);
+            spn_assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(evsys()->event(Events::HeatingCycleCheck, time_until_next_check));
             break;
         }
@@ -289,7 +290,7 @@ public:
             adjust_power_state();
             break;
         }
-        default: assert(!"Event was not handled!"); break;
+        default: spn_assert(!"Event was not handled!"); break;
         };
     }
 
@@ -329,6 +330,8 @@ public:
     }
 
 private:
+    using LogicalState = spn::core::LogicalState;
+
     /// continuous checking of heating status
     void heating_control_loop() {
         adjust_heater_fan_state();

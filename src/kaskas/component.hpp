@@ -20,14 +20,14 @@ public:
     explicit Component(io::HardwareStack& hws) : Component(nullptr, hws) {}
     explicit Component(EventSystem* event_system, io::HardwareStack& hws) : EventHandler(event_system), _hws(hws) {}
 
-    virtual void initialize() { assert(!"Virtual base function called"); }
-    virtual void safe_shutdown(State state = State::SAFE) { assert(!"Virtual base function called"); }
+    virtual void initialize() { spn_assert(!"Virtual base function called"); }
+    virtual void safe_shutdown(State state = State::SAFE) { spn_assert(!"Virtual base function called"); }
 
     virtual std::unique_ptr<prompt::RPCRecipe> rpc_recipe() {
-        assert(!"Virtual base function called");
+        spn_assert(!"Virtual base function called");
         return {};
     }
-    virtual void sideload_providers(io::VirtualStackFactory& ssf) { assert(!"Virtual base function called"); }
+    virtual void sideload_providers(io::VirtualStackFactory& ssf) { spn_assert(!"Virtual base function called"); }
 
 protected:
     io::HardwareStack& _hws;

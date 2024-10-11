@@ -42,7 +42,7 @@ public:
 
 public:
     const ContinuousValue& continuous_value(Idx provider_idx) {
-        assert(_providers[provider_idx]);
+        spn_assert(_providers[provider_idx]);
         return *reinterpret_cast<ContinuousValue*>(_providers[provider_idx].get());
     }
 
@@ -63,8 +63,8 @@ public:
 
     void hotload_provider(DataProviders provider_id, std::shared_ptr<Provider> provider,
                           const std::optional<std::string_view>& module_name = {}) {
-        assert(meta::ENUM_IDX(provider_id) < _stack->_cfg.max_providers);
-        assert(_stack->_providers[meta::ENUM_IDX(provider_id)] == nullptr);
+        spn_assert(meta::ENUM_IDX(provider_id) < _stack->_cfg.max_providers);
+        spn_assert(_stack->_providers[meta::ENUM_IDX(provider_id)] == nullptr);
         stack()->cookbook().add_recipe(std::move(
             provider->rpc_recipe(module_name.value_or(stack()->alias()), magic_enum::enum_name(provider_id))));
         _stack->_providers[meta::ENUM_IDX(provider_id)] = std::move(provider);

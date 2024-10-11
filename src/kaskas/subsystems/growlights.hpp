@@ -7,6 +7,7 @@
 
 #include <kaskas/component.hpp>
 #include <spine/core/exception.hpp>
+#include <spine/core/types.hpp>
 #include <spine/core/utils/time_repr.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/structure/time/schedule.hpp>
@@ -46,7 +47,7 @@ public:
           _full_spectrum_schedule(std::move(_cfg.full_spectrum_schedule)), _clock(_hws.clock(_cfg.clock_idx)){};
 
     void initialize() override {
-        assert(evsys());
+        spn_assert(evsys());
         evsys()->attach(Events::LightFullSpectrumCycleCheck, this);
         evsys()->attach(Events::LightFullSpectrumTurnOn, this);
         evsys()->attach(Events::LightFullSpectrumTurnOff, this);
@@ -71,7 +72,7 @@ public:
 
     void handle_event(const Event& event) override {
         const auto now_s = [&]() {
-            assert(_clock.is_ready());
+            spn_assert(_clock.is_ready());
             const auto now_dt = _clock.now();
             return time_s(time_h(now_dt.getHour())) + time_m(now_dt.getMinute());
         };
@@ -89,10 +90,10 @@ public:
             }
 
             const auto time_until_next_check = _full_spectrum_schedule.start_of_next_block(now) - now;
-            assert(_full_spectrum_schedule.start_of_next_block(now) > now);
+            spn_assert(_full_spectrum_schedule.start_of_next_block(now) > now);
 
             DBG("Growlights: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
-            assert(time_until_next_check.raw<>() > 0);
+            spn_assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(Events::LightFullSpectrumCycleCheck, time_until_next_check);
             break;
         }
@@ -120,10 +121,10 @@ public:
             }
 
             const auto time_until_next_check = _redblue_spectrum_schedule.start_of_next_block(now) - now;
-            assert(_redblue_spectrum_schedule.start_of_next_block(now) > now);
+            spn_assert(_redblue_spectrum_schedule.start_of_next_block(now) > now);
 
             DBG("Growlights: Checked. Scheduling next check in %u m", time_m(time_until_next_check).printable());
-            assert(time_until_next_check.raw<>() > 0);
+            spn_assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(Events::LightRedBlueSpectrumCycleCheck, time_until_next_check);
             break;
         }
@@ -138,7 +139,7 @@ public:
             break;
         }
 
-        default: assert(!"Event was not handled!"); break;
+        default: spn_assert(!"Event was not handled!"); break;
         }
     }
 
@@ -213,6 +214,8 @@ public:
     void sideload_providers(io::VirtualStackFactory& ssf) override {}
 
 private:
+    using LogicalState = spn::core::LogicalState;
+
     const Config _cfg;
 
     io::DigitalActuator _redblue_spectrum;
