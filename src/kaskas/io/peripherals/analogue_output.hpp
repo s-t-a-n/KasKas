@@ -23,7 +23,7 @@ public:
         const auto creep_delta = _creep_target_value - value();
         if (std::fabs(creep_delta) < std::fabs(_creep_target_increment)) { // on target
             if (value() != _creep_target_value) { // finalize
-                _is_creeping = false;
+                creep_stop();
                 AnalogueOutput::set_value(_creep_target_value);
             }
             return;
@@ -34,7 +34,7 @@ public:
 
         if (_creep_time_on_target.expired()) { // move directly if out of time
             fade_to(_creep_target_value);
-            _is_creeping = false;
+            creep_stop();
         }
     }
 
@@ -46,10 +46,11 @@ public:
                 [this](double setpoint, double increment = 0.1, time_ms increment_interval = time_ms(100)) {
                     HAL::AnalogueOutput::fade_to(setpoint, increment, increment_interval);
                 },
-            .creep_to_f = [this](double setpoint, time_ms travel_time) { this->creep_to(setpoint, travel_time); }}};
+            .creep_to_f = [this](double setpoint, time_ms travel_time) { this->creep_to(setpoint, travel_time); },
+            .creep_stop_f = [this]() { this->creep_stop(); }}};
     }
 
-    /// set a target value and let the updater approach the value with a single increment per sample
+    /// Set a creeping target value and let the updater approach the value with a single increment per sample
     void creep_to(const double setpoint, const time_ms travel_time = time_s(1000)) {
         if (value() == setpoint) return;
 
@@ -58,6 +59,9 @@ public:
         _creep_time_on_target = spn::core::time::AlarmTimer(travel_time);
         _creep_target_increment = (setpoint - value()) / (travel_time / update_interval()).raw<double>();
     }
+
+    /// Stop creeping to target.
+    void creep_stop() { _is_creeping = false; }
 
 private:
     bool _is_creeping = false;

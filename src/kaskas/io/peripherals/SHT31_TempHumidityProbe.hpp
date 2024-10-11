@@ -23,6 +23,7 @@ public:
     struct Config {
         uint8_t i2c_address = SHT_DEFAULT_ADDRESS;
         time_ms sampling_interval = time_s(1);
+        int sensor_lockout_threshold = 5;
     };
 
 public:
@@ -37,25 +38,37 @@ public:
         Wire.begin();
         Wire.setClock(100000); // per example
 
-        _sht31.begin();
+        const bool initial_contact = _sht31.begin();
 
-        if (!_sht31.read(SHT31_USE_CRC) || !is_ready()) {
-            WARN("SHT31: Probe reports errorcode: %04X with status: %04X", _sht31.getError(), _sht31.readStatus())
+        HAL::delay(time_ms(20)); // give the probe some time to initialize
+
+        if (!initial_contact || !_sht31.read(SHT31_USE_CRC) || !is_ready()) {
+            ERR("SHT31: Probe failed to initialize with errorcode: %04X and status: %04X", _sht31.getError(),
+                _sht31.readStatus())
             spn::throw_exception(spn::assertion_exception("SHT31TempHumidityProbe could not be initialized"));
         }
-        DBG("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C", read_humidity(),
-            read_temperature());
 
         _sht31.heatOff(); // make sure that probe's internal heating element is turned off
-        spn_assert(!_sht31.isHeaterOn());
+        if (_sht31.isHeaterOn())
+            spn::throw_exception(spn::runtime_exception("SHT31: internal heater failed to turn off"));
+
+        LOG("SHT31TempHumidityProbe initialized. Humidity: %.2f %%, temperature: %.2f °C", _sht31.getHumidity(),
+            _sht31.getTemperature());
+
+        _sht31.requestData();
     }
 
     void update() override {
         bool has_data = _sht31.dataReady() && _sht31.readData(SHT31_USE_CRC);
         if (!has_data) {
             WARN("SHT31: request was not ready in time.");
-            if (!is_ready())
+            if (!is_ready()) {
                 WARN("SHT31: Probe reports errorcode: %04X with status: %04X", _sht31.getError(), _sht31.readStatus());
+                if (++_sensor_lockout > _cfg.sensor_lockout_threshold)
+                    spn::throw_exception(spn::runtime_exception("SHT31: Maximum number of failed updates reached"));
+            } else {
+                _sensor_lockout = 0;
+            }
         }
         if (!_sht31.requestData()) {
             WARN("SHT31: couldnt request data. Probe reports errorcode: %04X with status: %04X", _sht31.getError(),
@@ -70,6 +83,7 @@ public:
 
     void safe_shutdown(bool critical) override {
         _sht31.heatOff(); // make sure that heater is off
+        HAL::delay(time_ms(15)); // give I2C time to write data
     }
 
     double read_temperature() {
@@ -98,5 +112,6 @@ private:
 
     spn::filter::Stack<double> _temperature_fs;
     spn::filter::Stack<double> _humidity_fs;
+    int _sensor_lockout = 0;
 };
 } // namespace kaskas::io

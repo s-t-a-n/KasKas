@@ -25,11 +25,11 @@ public:
     bool needs_update() { return is_updateable() && _timer->expired(); }
     bool is_updateable() const { return _timer != std::nullopt; }
     time_ms update_interval() const {
-        spn_assert(is_updateable());
+        spn_expect(is_updateable());
         return is_updateable() ? _timer->interval() : time_ms(0);
     }
     time_ms time_until_next_update() const {
-        spn_assert(is_updateable());
+        spn_expect(is_updateable());
         return is_updateable() ? _timer->time_until_next() : time_ms(0);
     }
 
@@ -46,7 +46,7 @@ public:
         : Peripheral(sampling_interval), _fs(number_of_filters) {}
 
     void attach_filter(std::unique_ptr<Filter> filter) {
-        spn_assert(_fs.filter_slots() > 0);
+        spn_expect(_fs.filter_slots_occupied() < _fs.filter_slots());
         _fs.attach_filter(std::move(filter));
     }
 

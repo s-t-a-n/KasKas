@@ -28,7 +28,6 @@ public:
           _userbutton(std::move(_cfg.userbutton_cfg)){};
 
     void initialize() override {
-        //
         _signaltower.initialize();
         _userbutton.initialize();
 
@@ -54,7 +53,7 @@ public:
     }
 
     void safe_shutdown(State state) override {
-        DBG("UI: Safeshutdown");
+        DBG("UI: Shutting down");
         switch (state) {
         case State::SAFE: _signaltower.signal(Signaltower::State::Yellow); break;
         case State::CRITICAL: _signaltower.signal(Signaltower::State::Red); break;
@@ -68,7 +67,6 @@ public:
     }
 
     void handle_event(const Event& event) override {
-        //
         switch (static_cast<Events>(event.id())) {
         case Events::WakeUp: {
             DBG("UI: WakeUp");

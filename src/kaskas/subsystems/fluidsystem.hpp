@@ -84,7 +84,10 @@ public:
         evsys()->schedule(Events::WaterInjectCheck, time_until_next_dosis);
     }
 
-    void safe_shutdown(State state) override { _pump.stop_injection(); }
+    void safe_shutdown(State state) override {
+        DBG("Fluidsystem: Shutting down");
+        _pump.stop_injection();
+    }
 
     void handle_event(const Event& event) override {
         switch (static_cast<Events>(event.id())) {
@@ -124,12 +127,15 @@ public:
             return;
         }
         case Events::WaterInjectEvaluateEffect: {
-            spn_assert(_status.Flags.injection_needs_evaluation);
+            spn_expect(_status.Flags.injection_needs_evaluation);
+            if (_status.Flags.injection_needs_evaluation) return;
+
             const auto new_moisture_level = _ground_moisture_sensor.value();
             const auto effect = new_moisture_level - _moisture_level_before_injection;
 
             if (effect <= 0) {
-                LOG("Fluidsystem: WaterInjectEvaluateEffect: injection of %u mL has negligible effect %.2f, discarding "
+                WARN(
+                    "Fluidsystem: WaterInjectEvaluateEffect: injection of %u mL has negligible effect %.2f, discarding "
                     "result for evaluation.",
                     _pump.ml_since_injection_start(), effect)
                 _status.Flags.injection_needs_evaluation = false;
@@ -146,9 +152,14 @@ public:
             return;
         }
         case Events::WaterInjectStart: {
-            if (_status.Flags.injection_needs_evaluation)
-                throw_exception(spn::runtime_exception("Tried to start injection before last injection was evaluated"));
-            spn_assert(event.data().value() > 0);
+            if (_status.Flags.injection_needs_evaluation) {
+                ERR("Fluidsystem: Tried to start injection before last injection was evaluated");
+                return;
+            }
+            if (event.data().value() <= 0) {
+                ERR("Fluidsystem: Tried to start injection with a target amount of 0 mL");
+                return;
+            }
             LOG("Fluidsystem: Events::WaterInjectStart: injecting %.2f mL", event.data().value());
             _moisture_level_before_injection = _ground_moisture_sensor.value();
             _pump.start_injection(std::floor(event.data().value()));
@@ -164,7 +175,7 @@ public:
                 evsys()->trigger(Events::WaterInjectStop);
             }
             if (_pump.is_out_of_fluid()) {
-                DBG("Fluidsystem: WaterInjectFollowUp: not enough pumped within space of time: out of fluid.");
+                WARN("Fluidsystem: WaterInjectFollowUp: not enough pumped within space of time: out of fluid.");
                 evsys()->schedule(Events::OutOfWater, time_ms(100));
             }
             return;
@@ -172,8 +183,7 @@ public:
         case Events::WaterInjectStop: {
             if (_pump.is_injecting()) _pump.stop_injection();
             _injected += _pump.ml_since_injection_start();
-            DBG("Fluidsystem: WaterInjectStop: Pumped %i ml in %i ms (pumped in total: %u ml), evaluating effect in "
-                "%u min",
+            LOG("Fluidsystem: Pumped %i ml in %i ms (pumped in total: %u ml), evaluating effect in %u min",
                 _pump.ml_since_injection_start(), _pump.time_since_injection_start().printable(),
                 _pump.lifetime_pumped_ml(), time_m(_cfg.delay_before_effect_evaluation).printable());
 

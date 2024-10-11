@@ -20,6 +20,7 @@ public:
     struct Config {
         uint8_t pin;
         time_ms sampling_interval = time_s(1);
+        int sensor_lockout_threshold = 5;
     };
 
 public:
@@ -40,15 +41,19 @@ public:
         update();
         _ds18b20.setWaitForConversion(false);
 
-        DBG("DS18B20TempProbe initialized. Temperature: %.2f °C", temperature());
+        LOG("DS18B20TempProbe initialized. Temperature: %.2f °C", temperature());
     }
 
     void update() override {
         if (_ds18b20.isConversionComplete()) {
             _fs.new_sample(_ds18b20.getTempC(_ds18b20_address));
             _ds18b20.requestTemperatures();
-        } else
-            DBG("DS18B20: update called before conversion is complete");
+            _sensor_lockout = 0;
+        } else {
+            WARN("DS18B20: update called before conversion completed");
+            if (++_sensor_lockout > _cfg.sensor_lockout_threshold)
+                spn::throw_exception(spn::runtime_exception("DS18B20: Maximum number of failed updates reached"));
+        }
     }
 
     void safe_shutdown(bool critical) override {}
@@ -65,5 +70,6 @@ private:
     OneWire _onewire;
     DallasTemperature _ds18b20;
     DeviceAddress _ds18b20_address{};
+    int _sensor_lockout = 0;
 };
 } // namespace kaskas::io

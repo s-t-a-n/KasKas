@@ -48,6 +48,7 @@ public:
     void initialize() { _interrupt.initialize(); }
 
     void safe_shutdown() {
+        DBG("Pump: Shutting down");
         HAL::delay(time_ms(100));
         stop_injection();
     }

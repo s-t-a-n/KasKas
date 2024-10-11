@@ -57,6 +57,7 @@ public:
 
     /// Safely shutdown all peripherals
     void safe_shutdown(bool critical = false) {
+        DBG("Hardware stack: shutting down all components");
         for (auto& p : _peripherals) {
             if (p) {
                 HAL::delay(time_ms(100));

@@ -28,7 +28,7 @@ public:
     }
 
     void safe_shutdown(State state) override {
-        DBG("Hardware: Safeshutdown");
+        DBG("Hardware: Shutting down");
         _hws.safe_shutdown(state == State::CRITICAL);
     }
 
@@ -38,7 +38,10 @@ public:
             _hws.update_all();
             evsys()->schedule(evsys()->event(Events::SensorFollowUp, _hws.time_until_next_update()));
             break;
-        case Events::ShutDown: spn::throw_exception(spn::runtime_exception("Scheduled shutdown.")); break;
+        case Events::ShutDown:
+            LOG("Shutdown requested.")
+            spn::throw_exception(spn::runtime_exception("Scheduled shutdown."));
+            break;
         default: spn_assert(!"Event was not handled!"); break;
         };
     }

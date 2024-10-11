@@ -18,6 +18,7 @@ class DS3231Clock final : public Peripheral {
 public:
     struct Config {
         time_ms update_interval = time_s(1);
+        int sensor_lockout_threshold = 5;
     };
 
     explicit DS3231Clock(const Config&& cfg) : Peripheral(cfg.update_interval), _cfg(cfg) {}
@@ -33,15 +34,23 @@ public:
 
         if (is_ready()) {
             const auto n = now();
-            DBG("DS3231Clock initialized. The reported time is %u:%u @ %u:%u:%u", n.getHour(), n.getMinute(),
+            LOG("DS3231Clock initialized. The reported time is %u:%u @ %u:%u:%u", n.getHour(), n.getMinute(),
                 n.getDay(), n.getMonth(), n.getYear());
         } else {
-            ::spn::throw_exception(::spn::assertion_exception("DS3231Clock failed to initialize. Maybe set the time?"));
+            spn::throw_exception(::spn::assertion_exception("DS3231Clock failed to initialize. Maybe set the time?"));
         }
     }
 
     void update() override {
-        spn_assert(is_ready());
+        if (!is_ready()) {
+            WARN("DS3231: failed to update.");
+            if (++_sensor_lockout > _cfg.sensor_lockout_threshold)
+                spn::throw_exception(spn::runtime_exception("DS3231: Maximum number of failed updates reached"));
+            return;
+        } else {
+            _sensor_lockout = 0;
+        }
+
         _now = DateTime(DS3231::RTClib::now().getUnixTime());
     }
     void safe_shutdown(bool critical) override {}
@@ -69,8 +78,9 @@ private:
     const Config _cfg;
 
     DS3231::DS3231 _ds3231;
-
     DateTime _now;
+
+    int _sensor_lockout = 0;
 };
 
 } // namespace kaskas::io::clock

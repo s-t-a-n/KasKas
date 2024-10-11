@@ -269,8 +269,8 @@ private:
         const auto adjusted_setpoint = std::clamp(excess > 0.0 ? setpoint - feedback : setpoint, 0.0, 1.0);
 
         if (adjusted_setpoint != setpoint) {
-            DBG("Heater: T %.2f C is above limit of T %.2f C, clamping response from %.2f to %.2f", surface_temperature,
-                _cfg.max_heater_setpoint, setpoint, adjusted_setpoint);
+            WARN("Heater: T %.2f C is above limit of T %.2f C, clamping response from %.2f to %.2f",
+                 surface_temperature, _cfg.max_heater_setpoint, setpoint, adjusted_setpoint);
         }
         return adjusted_setpoint;
     }

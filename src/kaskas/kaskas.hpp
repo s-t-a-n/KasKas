@@ -82,10 +82,10 @@ public:
             }
 
             _prompt->initialize();
-            LOG("Initialized prompt");
         }
 
         _evsys.trigger(_evsys.event(Events::WakeUp, time_s(0), Event::Data()));
+        LOG("Kaskas: Startup complete");
         return 0;
     }
 
@@ -119,7 +119,7 @@ public:
 private:
     void platform_sanity_checks() {
         if (HAL::free_memory() < 1024) { // it is good to have no leaks, it is better to be safe
-            spn::throw_exception(spn::runtime_exception("Memory is below a kilobyte. Halting."));
+            spn::throw_exception(spn::runtime_exception("Less than a kilobyte of free memory. Halting."));
         }
     }
 
@@ -133,7 +133,7 @@ private:
             for (auto& sf : _kk._components) {
                 sf->safe_shutdown(Component::State::CRITICAL);
             }
-            HAL::halt("KasKas shutdown after exception");
+            HAL::halt("KasKas: halting after exception");
         }
 
     private:

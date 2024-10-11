@@ -17,6 +17,7 @@ public:
     struct Config {
         DigitalInput::Config input_cfg;
         time_ms sampling_interval = time_s(1);
+        const char* id = nullptr;
     };
 
 public:
@@ -27,7 +28,7 @@ public:
     void initialize() override {
         _input.initialize();
         update();
-        DBG("Analog Sensor initialized. Value: %.2f V", value());
+        DBG("Digital sensor {%s} initialized. Value: %.2f V", _cfg.id, value());
     }
 
     void update() override { _value = _input.state() ? LogicalState::ON : LogicalState::OFF; }

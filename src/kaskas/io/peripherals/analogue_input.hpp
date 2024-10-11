@@ -16,6 +16,7 @@ public:
         AnalogueInput::Config input_cfg;
         time_ms sampling_interval = time_s(1);
         size_t number_of_filters = 0;
+        const char* id = nullptr;
     };
 
 public:
@@ -27,7 +28,7 @@ public:
     void initialize() override {
         _input.initialize();
         update();
-        DBG("Analog Sensor initialized. Raw value: %.2f, Filtered value: %.2f", raw_value(), value());
+        LOG("Analog sensor {%s} initialized. Raw value: %.2f, Filtered value: %.2f", _cfg.id, raw_value(), value());
     }
 
     void update() override { _fs.new_sample(raw_value()); }

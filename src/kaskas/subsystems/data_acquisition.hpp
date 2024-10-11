@@ -41,7 +41,10 @@ public:
         evsys()->schedule(evsys()->event(Events::DAQWarmedUp, time_s(_cfg.initial_warm_up_time)));
     }
 
-    void safe_shutdown(State state) override {}
+    void safe_shutdown(State state) override {
+        DBG("DAQ: Shutting down");
+        _status.Flags.warmed_up = false;
+    }
 
     void handle_event(const Event& event) override {
         switch (static_cast<Events>(event.id())) {

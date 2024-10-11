@@ -35,6 +35,7 @@ public:
 public:
     /// Initialize the prompt
     void initialize() {
+        LOG("Prompt initialized")
         spn_assert(_dl);
         _dl->initialize();
     }
