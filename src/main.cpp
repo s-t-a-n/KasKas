@@ -101,7 +101,8 @@ void setup() {
             const auto cfg =
                 AnalogueInputPeripheral::Config{.input_cfg = HAL::AnalogueInput::Config{.pin = A1, .pull_up = false},
                                                 .sampling_interval = time_s(60),
-                                                .number_of_filters = 4};
+                                                .number_of_filters = 4,
+                                                .id = "SOIL_MOISTURE"};
             auto peripheral = std::make_unique<AnalogueInputPeripheral>(std::move(cfg));
             peripheral->attach_filter(BandPass::Broad());
             peripheral->attach_filter(EWMA::Long());
@@ -230,7 +231,7 @@ void setup() {
                         .minimal_duty_cycle = 0.21,
                         .schedule_cfg =
                             Schedule::Config{
-                                .blocks = {Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 65.0},
+                                .blocks = {Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 60.0},
                                            Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 60.0},
                                            Schedule::Block{.start = time_h(0), .duration = time_h(8), .value = 75.0}}},
                         .check_interval = ventilation_sample_interval},

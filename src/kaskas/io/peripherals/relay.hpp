@@ -34,10 +34,10 @@ public:
             if (_cfg.throw_on_early_flip) {
                 spn::throw_exception(spn::runtime_exception("Tried to flip relay within backoff threshold"));
             } else {
-                DBG("--------------------------------------------------------------------------");
-                DBG("Tried to flip relay within backoff threshold: %ims since last flip",
-                    time_ms(time_since_last_flip).printable());
-                DBG("--------------------------------------------------------------------------");
+                WARN("--------------------------------------------------------------------------");
+                WARN("Tried to flip relay within backoff threshold: %ims since last flip",
+                     time_ms(time_since_last_flip).printable());
+                WARN("--------------------------------------------------------------------------");
             }
         }
 
