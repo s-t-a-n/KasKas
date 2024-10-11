@@ -228,7 +228,6 @@ void setup() {
                                                        .sample_interval = ventilation_sample_interval,
                                                        .direction = PID::Direction::FORWARD},
                         .minimal_duty_cycle = 0.21,
-                        .heating_penality_weight = 0.3, // 1.0: no ventilation until heating sp error is < 1.0 C
                         .schedule_cfg =
                             Schedule::Config{
                                 .blocks = {Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 65.0},
