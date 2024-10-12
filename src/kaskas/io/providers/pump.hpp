@@ -12,8 +12,6 @@
 #include <cstdint>
 
 namespace kaskas::io {
-using spn::core::Exception;
-using spn::core::time::Timer;
 
 struct Pump {
 private:
@@ -105,6 +103,9 @@ public:
     }
 
 private:
+    using Exception = spn::core::Exception;
+    using Timer = spn::structure::time::Timer;
+
     void attach_interrupt();
     void detach_interrupt();
     static uint32_t interrupt_counter();

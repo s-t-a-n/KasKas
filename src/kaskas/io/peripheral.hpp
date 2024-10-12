@@ -9,8 +9,6 @@
 
 namespace kaskas::io {
 
-using spn::core::time::IntervalTimer;
-
 /// Encapsalates a single hardware peripheral
 class Peripheral {
 public:
@@ -34,6 +32,8 @@ public:
     }
 
 private:
+    using IntervalTimer = spn::structure::time::IntervalTimer;
+
     std::optional<IntervalTimer> _timer;
 };
 

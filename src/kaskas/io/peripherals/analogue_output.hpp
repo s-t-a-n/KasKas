@@ -56,7 +56,7 @@ public:
 
         _is_creeping = true;
         _creep_target_value = setpoint;
-        _creep_time_on_target = spn::core::time::AlarmTimer(travel_time);
+        _creep_time_on_target = AlarmTimer(travel_time);
         _creep_target_increment = (setpoint - value()) / (travel_time / update_interval()).raw<double>();
     }
 
@@ -64,10 +64,12 @@ public:
     void creep_stop() { _is_creeping = false; }
 
 private:
+    using AlarmTimer = spn::structure::time::AlarmTimer;
+
     bool _is_creeping = false;
     double _creep_target_value = 0;
     double _creep_target_increment = 0;
-    spn::core::time::AlarmTimer _creep_time_on_target;
+    AlarmTimer _creep_time_on_target;
 };
 
 } // namespace kaskas::io

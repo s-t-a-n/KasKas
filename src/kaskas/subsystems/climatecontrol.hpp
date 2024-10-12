@@ -17,28 +17,10 @@
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/filter/implementations/bandpass.hpp>
 #include <spine/filter/implementations/ewma.hpp>
-#include <spine/io/sensor.hpp>
 #include <spine/platform/hal.hpp>
 #include <spine/structure/time/schedule.hpp>
 
 namespace kaskas::component {
-
-using kaskas::Component;
-using spn::controller::PID;
-using spn::core::Exception;
-using spn::core::time::Schedule;
-using spn::core::time::Timer;
-using Events = kaskas::Events;
-using spn::eventsystem::Event;
-using spn::eventsystem::EventHandler;
-using EventSystem = spn::core::EventSystem;
-using spn::core::time::AlarmTimer;
-
-using kaskas::io::DS18B20TempProbe;
-using Heater = kaskas::io::Heater;
-using kaskas::io::SHT31TempHumidityProbe;
-using spn::controller::SRLatch;
-using spn::core::time::IntervalTimer;
 
 namespace detail {
 inline double inverted(double value, double base = 100.0) { return base - value; }
@@ -46,6 +28,11 @@ inline double inverted(double value, double base = 100.0) { return base - value;
 
 class ClimateControl final : public kaskas::Component {
 public:
+    using PID = spn::controller::PID;
+    using Schedule = spn::structure::time::Schedule;
+    using Heater = kaskas::io::Heater;
+    using Event = spn::eventsystem::Event;
+
     struct Config {
         static constexpr std::string_view name = "ClimateControl";
         io::HardwareStack::Idx hws_power_idx;
@@ -384,6 +371,15 @@ private:
     }
 
 private:
+    using Component = kaskas::Component;
+    using Events = kaskas::Events;
+    using EventSystem = spn::core::EventSystem;
+    using IntervalTimer = spn::structure::time::IntervalTimer;
+
+    using DS18B20TempProbe = kaskas::io::DS18B20TempProbe;
+    using SHT31TempHumidityProbe = kaskas::io::SHT31TempHumidityProbe;
+    using SRLatch = spn::controller::SRLatch;
+
     const Config _cfg;
 
     const io::Clock& _clock;

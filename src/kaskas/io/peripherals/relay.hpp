@@ -6,8 +6,6 @@
 #include <spine/platform/hal.hpp>
 
 namespace kaskas::io {
-using spn::core::Exception;
-using spn::core::time::Timer;
 
 class Relay : public Peripheral {
 public:
@@ -57,6 +55,9 @@ public:
     }
 
 private:
+    using Timer = spn::structure::time::Timer;
+    using Exception = spn::core::Exception;
+
     const Config _cfg;
     DigitalOutput _pin;
     std::optional<Timer> _backoff_timer = std::nullopt;

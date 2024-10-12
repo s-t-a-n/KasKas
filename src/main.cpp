@@ -29,8 +29,8 @@ using kaskas::io::SHT31TempHumidityProbe;
 using kaskas::io::clock::DS3231Clock;
 using spn::controller::PID;
 using spn::controller::SRLatch;
-using spn::core::time::Schedule;
 using spn::eventsystem::EventSystem;
+using spn::structure::time::Schedule;
 
 namespace meta = spn::core::meta;
 

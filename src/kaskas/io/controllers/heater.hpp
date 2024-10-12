@@ -13,11 +13,6 @@
 
 namespace kaskas::io {
 
-using spn::controller::PID;
-using spn::core::time::AlarmTimer;
-using spn::core::time::IntervalTimer;
-using spn::core::time::Timer;
-
 // todo: put this in a configuration file
 constexpr double MIN_INSIDE_TEMPERATURE = 12.0;
 constexpr double MAX_INSIDE_TEMPERATURE = 40.0;
@@ -116,6 +111,9 @@ public:
         }
 
     private:
+        using IntervalTimer = spn::structure::time::IntervalTimer;
+        using Timer = spn::structure::time::Timer;
+
         const Config _cfg;
 
         Timer _current_state_duration;
@@ -130,6 +128,8 @@ public:
     };
 
 public:
+    using PID = spn::controller::PID;
+
     struct Config {
         PID::Config pid_cfg;
         double max_heater_setpoint = 40.0;
@@ -337,6 +337,10 @@ private:
     }
 
 private:
+    using AlarmTimer = spn::structure::time::AlarmTimer;
+    using IntervalTimer = spn::structure::time::IntervalTimer;
+    using Timer = spn::structure::time::Timer;
+
     const Config _cfg;
     HardwareStack& _hws;
 

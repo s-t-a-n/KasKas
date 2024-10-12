@@ -14,8 +14,6 @@
 
 namespace kaskas::io {
 
-using spn::core::time::AlarmTimer;
-
 constexpr bool SHT31_USE_CRC = false; // false, means 'not fast' for Tillaart's SHT31 library; i.e. read with CRC
 
 class SHT31TempHumidityProbe : public Peripheral {
@@ -107,6 +105,8 @@ public:
     bool is_ready() { return _sht31.isConnected() && _sht31.getError() == SHT31_OK; }
 
 private:
+    using AlarmTimer = spn::structure::time::AlarmTimer;
+
     const Config _cfg;
     SHT31 _sht31;
 

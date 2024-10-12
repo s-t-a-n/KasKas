@@ -17,6 +17,8 @@ namespace meta = spn::core::meta;
 
 class DataAcquisition : public Component {
 public:
+    using Event = spn::eventsystem::Event;
+
     struct Config {
         time_s initial_warm_up_time = time_s(30); // don't allow timeseries access immediately after startup
         std::initializer_list<DataProviders> active_dataproviders; // dataproviders for which to print timeseries

@@ -16,17 +16,12 @@
 #include <cstdint>
 
 namespace kaskas::component {
-using spn::core::Exception;
-using spn::core::time::Timer;
-using spn::eventsystem::Event;
-using spn::eventsystem::EventHandler;
-
-using Events = kaskas::Events;
-using EventSystem = spn::core::EventSystem;
-using kaskas::Component;
 
 class Growlights final : public Component {
 public:
+    using Event = spn::eventsystem::Event;
+    using Schedule = spn::structure::time::Schedule;
+
     struct Config {
         io::HardwareStack::Idx redblue_spectrum_actuator_idx;
         Schedule::Config redblue_spectrum_schedule;
@@ -219,6 +214,10 @@ public:
     void sideload_providers(io::VirtualStackFactory& ssf) override {}
 
 private:
+    using Events = kaskas::Events;
+    using EventSystem = spn::core::EventSystem;
+    using Component = kaskas::Component;
+
     using LogicalState = spn::core::LogicalState;
 
     const Config _cfg;

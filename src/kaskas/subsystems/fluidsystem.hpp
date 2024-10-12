@@ -11,26 +11,18 @@
 #include <spine/core/utils/string.hpp>
 #include <spine/eventsystem/eventsystem.hpp>
 #include <spine/filter/implementations/ewma.hpp>
-#include <spine/io/sensor.hpp>
 #include <spine/platform/hal.hpp>
 #include <spine/structure/time/timers.hpp>
 
 #include <cstdint>
 
 namespace kaskas::component {
-using kaskas::Component;
-using kaskas::io::Pump;
-using spn::core::Exception;
-using spn::core::time::Timer;
-using spn::eventsystem::Event;
-using spn::eventsystem::EventHandler;
-using EWMA = spn::filter::EWMA<double>;
-
-using Events = kaskas::Events;
-using EventSystem = spn::core::EventSystem;
 
 class Fluidsystem final : public Component {
 public:
+    using Pump = kaskas::io::Pump;
+    using Event = spn::eventsystem::Event;
+
     struct Config {
         static constexpr std::string_view name = "Fluids";
 
@@ -266,6 +258,12 @@ public:
     }
 
 private:
+    using Component = kaskas::Component;
+    using EWMA = spn::filter::EWMA<double>;
+
+    using Events = kaskas::Events;
+    using EventSystem = spn::core::EventSystem;
+
     const Config _cfg;
     Status _status;
 
