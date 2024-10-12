@@ -38,9 +38,6 @@ public:
     public:
         // todo: make an autotuner to find limits of normal usage experimentally
         struct Config {
-            // maximal error from setpoint in degrees that is allowed to happen for timewindow stable_timewindow until
-            // thermal runaway is considered
-            // double stable_hysteresis_c = 1.0;
             time_s stable_timewindow = time_m(10);
 
             // minimal change in degrees within timewindow changing_timewindow
@@ -139,6 +136,9 @@ public:
         double steady_state_hysteresis = 0.3;
         time_s cooldown_min_length = time_s(180);
 
+        double dynamic_gain_factor = 0; // for every degree of error from sp, adds `dynamic gain` to Kp
+        time_s dynamic_gain_interval = time_s(60); // update gain every n seconds
+
         HardwareStack::Idx climate_temperature_idx;
         HardwareStack::Idx heating_surface_temperature_idx;
         HardwareStack::Idx heating_element_idx;
@@ -153,6 +153,7 @@ public:
           _surface_temperature(_hws.analog_sensor(_cfg.heating_surface_temperature_idx)),
           _climate_temperature(_hws.analog_sensor(_cfg.climate_temperature_idx)),
           _temperature_source(&_surface_temperature), _update_interval(IntervalTimer(_cfg.pid_cfg.sample_interval)),
+          _dynamic_gain_interval(IntervalTimer(_cfg.dynamic_gain_interval)),
           _climate_trp(std::move(_cfg.climate_trp_cfg)) {}
 
     void initialize() {
@@ -171,13 +172,31 @@ public:
 
             _pid.new_reading(temperature());
             const auto response = _pid.response();
-            const auto normalized_response = _pid.setpoint() > 0 ? response / _cfg.pid_cfg.output_upper_limit : 0;
-            spn_assert(normalized_response >= 0.0 && normalized_response <= 1.0);
+            spn_assert(_cfg.pid_cfg.output_upper_limit > 0);
+            auto normalized_response = _pid.setpoint() > 0 ? response / _cfg.pid_cfg.output_upper_limit : 0;
+            spn_expect(normalized_response >= 0.0 && normalized_response <= 1.0);
+            normalized_response = std::clamp(normalized_response, 0.0, 1.0);
             _heating_element.fade_to(guarded_setpoint(normalized_response));
 
             update_state();
 
             _climate_trp.update(state(), _climate_temperature.value());
+
+            if (_cfg.dynamic_gain_factor > 0 && _dynamic_gain_interval.expired()) {
+                auto tunings = _pid.tunings();
+                auto proportionality = PID::Proportionality::ON_MEASUREMENT;
+                if (state() == State::HEATING && temperature() < setpoint()) {
+                    tunings.Kp = _cfg.pid_cfg.tunings.Kp * (1 + _cfg.dynamic_gain_factor * error());
+                    tunings.Ki = _cfg.pid_cfg.tunings.Ki / (1 + _cfg.dynamic_gain_factor * error());
+                    proportionality = PID::Proportionality::ON_ERROR;
+                } else {
+                    if (tunings == _cfg.pid_cfg.tunings) return;
+                    tunings = _cfg.pid_cfg.tunings;
+                }
+                DBG("Heater: setting new tunings: {%.2f:%.2f:%.2f} over original {%.2f:%.2f:%.2f}", tunings.Kp,
+                    tunings.Ki, tunings.Kd, _cfg.pid_cfg.tunings.Kp, _cfg.pid_cfg.tunings.Ki, _cfg.pid_cfg.tunings.Kd);
+                _pid.set_tunings(tunings, proportionality);
+            }
         }
     }
 
@@ -219,6 +238,7 @@ public:
         block_until_setpoint(cfg.startpoint);
         set_target_setpoint(cfg.setpoint);
         const auto process_setter = [&](double pwm_value) {
+            spn_assert(_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit > 0);
             const auto normalized_response = (pwm_value - _cfg.pid_cfg.output_lower_limit)
                                              / (_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit);
             const auto guarded_normalized_response = guarded_setpoint(normalized_response);
@@ -241,8 +261,9 @@ public:
     PID::Tunings tunings() const { return _pid.tunings(); }
 
     void set_target_setpoint(const Value setpoint) {
-        _pid.set_target_setpoint(std::min(_cfg.max_heater_setpoint, setpoint));
-        _climate_trp.adjust_setpoint(setpoint);
+        auto clamped_setpoint = std::min(_cfg.max_heater_setpoint, setpoint);
+        _pid.set_target_setpoint(clamped_setpoint);
+        _climate_trp.adjust_setpoint(clamped_setpoint);
     }
     Value setpoint() const { return _pid.setpoint(); }
 
@@ -277,7 +298,6 @@ private:
 
     /// When any temperature readings are out of limits, shutdown the system
     void guard_temperature_limits() {
-        //
         if (_surface_temperature.value() < MIN_SURFACE_TEMPERATURE
             || _surface_temperature.value() > MAX_SURFACE_TEMPERATURE) {
             spn::throw_exception(spn::assertion_exception("Heater: Heater element temperature out of limits"));
@@ -334,6 +354,7 @@ private:
     Timer _cooled_down_for = Timer{};
 
     IntervalTimer _update_interval;
+    IntervalTimer _dynamic_gain_interval;
 
     ThermalRunAway _climate_trp;
 };

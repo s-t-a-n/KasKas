@@ -227,7 +227,7 @@ void setup() {
                                                        .output_lower_limit = 20,
                                                        .output_upper_limit = 90,
                                                        .sample_interval = ventilation_sample_interval,
-                                                       .direction = PID::Direction::FORWARD},
+                                                       .proportionality = PID::Proportionality::ON_MEASUREMENT},
                         .minimal_duty_cycle = 0.21,
                         .schedule_cfg =
                             Schedule::Config{
@@ -244,13 +244,14 @@ void setup() {
                         .heater_cfg =
                             Heater::Config{
                                 .pid_cfg =
-                                    PID::Config{//
-                                                .tunings =
-                                                    PID::Tunings{.Kp = 62.590051, .Ki = 0.152824, .Kd = 0},
+                                    PID::Config{.tunings = PID::Tunings{.Kp = 62.590051, .Ki = 0.152824, .Kd = 0},
                                                 .output_lower_limit = 0,
                                                 .output_upper_limit = 255,
-                                                .sample_interval = heating_sample_interval},
+                                                .sample_interval = heating_sample_interval,
+                                                .proportionality = PID::Proportionality::ON_MEASUREMENT},
                                 .max_heater_setpoint = max_heater_setpoint,
+                                .dynamic_gain_factor = 0.8,
+                                .climate_temperature_idx = meta::ENUM_IDX(DataProviders::CLIMATE_TEMP),
                                 .heating_surface_temperature_idx = meta::ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
                                 .heating_element_idx = meta::ENUM_IDX(DataProviders::HEATING_ELEMENT),
                                 .climate_trp_cfg = Heater::ThermalRunAway::Config{.stable_timewindow = time_m(30),
