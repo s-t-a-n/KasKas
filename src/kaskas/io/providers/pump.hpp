@@ -23,8 +23,8 @@ public:
         io::HardwareStack::Idx pump_actuator_idx;
         Interrupt::Config interrupt_cfg;
         double ml_pulse_calibration; // experimentally found flow sensor calibration factor
-        time_ms reading_interval;
-        time_s pump_timeout;
+        k_time_ms reading_interval;
+        k_time_ms pump_timeout;
         double minimal_pump_flowrate = 0.1;
     };
 
@@ -47,18 +47,18 @@ public:
 
     void safe_shutdown() {
         DBG("Pump: Shutting down");
-        HAL::delay(time_ms(100));
+        HAL::delay(k_time_ms(100));
         stop_injection();
     }
 
     bool is_out_of_fluid() const { return _status.flags.out_of_fluid; }
     bool is_injecting() const { return _pump.state() == LogicalState::ON; }
     uint32_t ml_since_injection_start() const { return _ml; }
-    time_ms time_since_injection_start() {
-        return _status.flags.has_injected_since_start ? _pump_timer.time_since_last(false) : time_ms(0);
+    k_time_ms time_since_injection_start() {
+        return _status.flags.has_injected_since_start ? _pump_timer.time_since_last(false) : k_time_ms(0);
     }
-    time_ms time_since_last_injection() {
-        return _status.flags.has_injected_since_start ? _last_injection.time_since_last(false) : time_ms(0);
+    k_time_ms time_since_last_injection() {
+        return _status.flags.has_injected_since_start ? _last_injection.time_since_last(false) : k_time_ms(0);
     }
     uint32_t lifetime_pumped_ml() const { return _lifetime_ml; }
     double flowrate_lm() const { return _flowrate.value(); }
@@ -128,9 +128,10 @@ private:
     uint32_t track_injection() {
         const auto time_since_last_reading = _last_reading.time_since_last(true);
         const auto pulse_count = read_pulsecount();
+        spn_assert(time_since_last_reading.raw() != 0);
+        spn_assert(_cfg.ml_pulse_calibration != 0);
         const auto flowrate_lm =
-            ((_cfg.reading_interval.raw<double>() / time_since_last_reading.raw<double>()) * pulse_count)
-            / _cfg.ml_pulse_calibration;
+            ((_cfg.reading_interval / time_since_last_reading) * pulse_count).raw() / _cfg.ml_pulse_calibration;
         _flowrate.new_sample(flowrate_lm);
         // Divide the flow rate in litres/minute by 60 to determine how many litres have
         // passed through the sensor in this interval, then multiply by the milliseconds passed to

@@ -13,7 +13,7 @@ public:
 
     struct Config {
         HAL::DigitalOutput::Config pin_cfg;
-        time_ms backoff_time;
+        k_time_ms backoff_time;
         bool throw_on_early_flip = true;
     };
 
@@ -27,19 +27,19 @@ public:
     void set_state(LogicalState state) {
         // hard protect against flipping relay back on within backoff threshold
         const auto time_since_last_flip = _backoff_timer->time_since_last();
-        if (_backoff_timer && _cfg.backoff_time > time_ms(0) && time_since_last_flip < _cfg.backoff_time
+        if (_backoff_timer && _cfg.backoff_time > k_time_ms(0) && time_since_last_flip < _cfg.backoff_time
             && state == LogicalState::ON && _pin.state() == LogicalState::OFF) {
             if (_cfg.throw_on_early_flip) {
                 spn::throw_exception(spn::runtime_exception("Tried to flip relay within backoff threshold"));
             } else {
                 WARN("--------------------------------------------------------------------------");
-                WARN("Tried to flip relay within backoff threshold: %ims since last flip",
-                     time_ms(time_since_last_flip).printable());
+                WARN("Tried to flip relay within backoff threshold: %lims since last flip",
+                     k_time_ms(time_since_last_flip).raw());
                 WARN("--------------------------------------------------------------------------");
             }
         }
 
-        if (!_backoff_timer && _cfg.backoff_time > time_s(0)) _backoff_timer = std::make_optional(Timer());
+        if (!_backoff_timer && _cfg.backoff_time > k_time_s(0)) _backoff_timer = std::make_optional(Timer());
 
         _pin.set_state(state);
     }

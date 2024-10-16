@@ -49,19 +49,19 @@ public:
         evsys()->attach(Events::LightVioletSpectrumTurnOn, this);
         evsys()->attach(Events::LightVioletSpectrumTurnOff, this);
 
-        auto time_from_now = time_s(5);
-        DBG("Growlights: Scheduling check for broad spectrum lights in %u seconds.", time_from_now.printable());
+        auto time_from_now = k_time_s(5);
+        DBG("Growlights: Scheduling check for broad spectrum lights in %li seconds.", time_from_now.raw());
         evsys()->schedule(Events::LightBroadSpectrumCycleCheck, time_from_now);
-        time_from_now += time_s(5);
-        DBG("Growlights: Scheduling check for violet specturm lights in %u seconds.", time_from_now.printable());
+        time_from_now += k_time_s(5);
+        DBG("Growlights: Scheduling check for violet specturm lights in %li seconds.", time_from_now.raw());
         evsys()->schedule(Events::LightVioletSpectrumCycleCheck, time_from_now);
     }
 
     void safe_shutdown(State state) override {
         DBG("Growlights: Safeshutdown");
-        HAL::delay(time_ms(300));
+        HAL::delay(k_time_ms(300));
         _violet_spectrum.set_state(LogicalState::OFF);
-        HAL::delay(time_ms(300));
+        HAL::delay(k_time_ms(300));
         _broad_spectrum.set_state(LogicalState::OFF);
     }
 
@@ -72,7 +72,7 @@ public:
                     spn::runtime_exception("ClimateControl: Cannot schedule because of clock failure"));
             }
             const auto now_dt = _clock.now();
-            return time_s(time_h(now_dt.getHour())) + time_m(now_dt.getMinute());
+            return k_time_s(k_time_h(now_dt.getHour())) + k_time_m(now_dt.getMinute());
         };
         switch (static_cast<Events>(event.id())) {
         case Events::LightBroadSpectrumCycleCheck: {
@@ -90,8 +90,8 @@ public:
             const auto time_until_next_check = _broad_spectrum_schedule.start_of_next_block(now) - now;
             spn_assert(_broad_spectrum_schedule.start_of_next_block(now) > now);
 
-            DBG("Growlights: Scheduling next check for broad spectrum lights in %u m",
-                time_m(time_until_next_check).printable());
+            DBG("Growlights: Scheduling next check for broad spectrum lights in %li m",
+                k_time_m(time_until_next_check).raw());
             spn_assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(Events::LightBroadSpectrumCycleCheck, time_until_next_check);
             break;
@@ -122,8 +122,8 @@ public:
             const auto time_until_next_check = _violet_spectrum_schedule.start_of_next_block(now) - now;
             spn_assert(_violet_spectrum_schedule.start_of_next_block(now) > now);
 
-            DBG("Growlights: Scheduling next check for violet spectrum lights in %u m",
-                time_m(time_until_next_check).printable());
+            DBG("Growlights: Scheduling next check for violet spectrum lights in %li m",
+                k_time_m(time_until_next_check).raw());
             spn_assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(Events::LightVioletSpectrumCycleCheck, time_until_next_check);
             break;

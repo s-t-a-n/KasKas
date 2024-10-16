@@ -14,7 +14,7 @@ public:
 
     struct Config {
         AnalogueInput::Config input_cfg;
-        time_ms sampling_interval = time_s(1);
+        k_time_ms sampling_interval = k_time_s(1);
         size_t number_of_filters = 0;
         const char* id = nullptr;
     };

@@ -36,8 +36,8 @@ public:
     struct FunctionMap {
         const std::function<double()> value_f;
         const std::function<void(double)> set_value_f;
-        const std::function<void(double, double, time_ms)> fade_to_f;
-        const std::function<void(double, time_ms)> creep_to_f;
+        const std::function<void(double, double, k_time_ms)> fade_to_f;
+        const std::function<void(double, k_time_ms)> creep_to_f;
         const std::function<void()> creep_stop_f;
     };
 
@@ -46,11 +46,11 @@ public:
     double value() const { return _map.value_f(); }
     void set_value(double value) { _map.set_value_f(value); }
 
-    void fade_to(double setpoint, double increment = 0.1, time_ms increment_interval = time_ms(150)) {
+    void fade_to(double setpoint, double increment = 0.1, k_time_ms increment_interval = k_time_ms(150)) {
         _map.fade_to_f(setpoint, increment, increment_interval);
     }
 
-    void creep_to(double setpoint, time_ms travel_time) { _map.creep_to_f(setpoint, travel_time); }
+    void creep_to(double setpoint, k_time_ms travel_time) { _map.creep_to_f(setpoint, travel_time); }
     void creep_stop() { _map.creep_stop_f(); }
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name, const std::string_view& root) {
         return {};

@@ -45,7 +45,7 @@ public:
             PID::Config climate_fan_pid;
             double minimal_duty_cycle = 0; // normalized value where 0.5 means 50% dutycycle
             Schedule::Config schedule_cfg;
-            time_s check_interval;
+            k_time_s check_interval;
         } ventilation;
         struct Heating {
             io::HardwareStack::Idx heating_element_fan_idx;
@@ -55,7 +55,7 @@ public:
 
             Heater::Config heater_cfg;
             Schedule::Config schedule_cfg;
-            time_s check_interval;
+            k_time_s check_interval;
         } heating;
     };
 
@@ -91,16 +91,16 @@ public:
         evsys()->attach(Events::HeatingCycleStop, this);
 
         // starts autotuning immediately!
-        //        evsys()->schedule(evsys()->event(Events::HeatingAutoTune, time_s(1), Event::Data(20.0)));
-        //        evsys()->schedule(evsys()->event(Events::VentilationAutoTune, time_s(1), Event::Data(70.0)));
+        //        evsys()->schedule(evsys()->event(Events::HeatingAutoTune, k_time_s(1), Event::Data(20.0)));
+        //        evsys()->schedule(evsys()->event(Events::VentilationAutoTune, k_time_s(1), Event::Data(70.0)));
 
-        auto time_from_now = time_s(15);
-        DBG("ClimateControl: Scheduling ventilation check in %u seconds.", time_from_now.printable());
+        auto time_from_now = k_time_s(15);
+        DBG("ClimateControl: Scheduling ventilation check in %li seconds.", time_from_now.raw());
         evsys()->schedule(evsys()->event(Events::VentilationCycleCheck, time_from_now));
         evsys()->schedule(evsys()->event(Events::VentilationFollowUp, time_from_now));
 
-        time_from_now += time_s(5);
-        DBG("ClimateControl: Scheduling heating check in %u seconds.", time_from_now.printable());
+        time_from_now += k_time_s(5);
+        DBG("ClimateControl: Scheduling heating check in %li seconds.", time_from_now.raw());
         evsys()->schedule(evsys()->event(Events::HeatingCycleCheck, time_from_now));
         evsys()->schedule(evsys()->event(Events::HeatingFollowUp, time_from_now));
     }
@@ -120,7 +120,7 @@ public:
         const auto now_s = [&]() {
             spn_assert(_clock.is_ready());
             const auto now_dt = _clock.now();
-            return time_s(time_h(now_dt.getHour())) + time_m(now_dt.getMinute());
+            return k_time_s(k_time_h(now_dt.getHour())) + k_time_m(now_dt.getMinute());
         };
 
         switch (static_cast<Events>(event.id())) {
@@ -140,16 +140,16 @@ public:
             } else if (next_setpoint > 0 && _ventilation_control.setpoint() == 0) {
                 LOG("ClimateControl: Ventilation is currently off, turn ON and set humidity setpoint to: %.2f",
                     next_setpoint);
-                evsys()->trigger(evsys()->event(Events::VentilationCycleStart, time_s(1)));
+                evsys()->trigger(evsys()->event(Events::VentilationCycleStart, k_time_s(1)));
             } else if (next_setpoint == 0 && _heater.setpoint() > 0) {
                 LOG("ClimateControl: Ventilation is currently on, turn OFF");
-                evsys()->trigger(evsys()->event(Events::VentilationCycleStop, time_s(1)));
+                evsys()->trigger(evsys()->event(Events::VentilationCycleStop, k_time_s(1)));
             }
 
             const auto time_until_next_check = _ventilation_schedule.start_of_next_block(now) - now;
             spn_assert(_ventilation_schedule.start_of_next_block(now) > now);
 
-            DBG("ClimateControl: Scheduling next ventilation check in %u m", time_m(time_until_next_check).printable());
+            DBG("ClimateControl: Scheduling next ventilation check in %li m", k_time_m(time_until_next_check).raw());
             spn_assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(evsys()->event(Events::VentilationCycleCheck, time_until_next_check));
             break;
@@ -220,7 +220,7 @@ public:
                     "autotune start",
                     t, autotune_startpoint);
                 _hws.update_all();
-                HAL::delay(time_s(1));
+                HAL::delay(k_time_s(1));
             }
             _climate_fan.fade_to(LogicalState::OFF);
 
@@ -251,16 +251,16 @@ public:
                 _heater.set_target_setpoint(next_setpoint);
             } else if (next_setpoint > 0 && _heater.setpoint() == 0) {
                 LOG("ClimateControl: Heater is currently off, turn ON and set setpoint to: %.2f", next_setpoint);
-                evsys()->trigger(evsys()->event(Events::HeatingCycleStart, time_s(1)));
+                evsys()->trigger(evsys()->event(Events::HeatingCycleStart, k_time_s(1)));
             } else if (next_setpoint == 0 && _heater.setpoint() > 0) {
                 LOG("ClimateControl: Heater is currently on, turn OFF");
-                evsys()->trigger(evsys()->event(Events::HeatingCycleStop, time_s(1)));
+                evsys()->trigger(evsys()->event(Events::HeatingCycleStop, k_time_s(1)));
             }
 
             const auto time_until_next_check = _heating_schedule.start_of_next_block(now) - now;
             spn_assert(_heating_schedule.start_of_next_block(now) > now);
 
-            DBG("ClimateControl: Scheduling next heating check in %u m", time_m(time_until_next_check).printable());
+            DBG("ClimateControl: Scheduling next heating check in %li m", k_time_m(time_until_next_check).raw());
             spn_assert(time_until_next_check.raw<>() > 0);
             evsys()->schedule(evsys()->event(Events::HeatingCycleCheck, time_until_next_check));
             break;
@@ -344,6 +344,7 @@ private:
         if (_heater.state() == io::Heater::State::HEATING) { // no ventilation during heating
             adjusted_normalized_response = 0;
         } else if (_heater.state() == io::Heater::State::STEADY_STATE) { // reduce ventilation in proportion to error
+            spn_assert(_cfg.heating.heater_cfg.steady_state_hysteresis != 0);
             if (_heater.temperature() < _heater.setpoint())
                 adjusted_normalized_response -= _heater.error() / _cfg.heating.heater_cfg.steady_state_hysteresis;
         }
@@ -400,7 +401,7 @@ private:
 
     io::DigitalActuator& _power;
 
-    IntervalTimer _print_interval = IntervalTimer(time_s(10));
+    IntervalTimer _print_interval = IntervalTimer(k_time_s(10));
 };
 
 } // namespace kaskas::component
