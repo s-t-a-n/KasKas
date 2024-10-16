@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 -->
 
+## [0.1.1] - 2024-10-16
+
+### Changed
+
+- Use `k_time` instead of `time`. Only a change of name. `time` will be
+  reserved in the future for real time instead of integer kernel time
+
+### Fixed
+
+- Fixed FPE in construction of `Pump`-class
+
 ## [0.1.0] - 2024-10-12
 
 ### Added
