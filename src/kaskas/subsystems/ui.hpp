@@ -17,8 +17,8 @@ public:
     struct Config {
         Signaltower::Config signaltower_cfg;
         DigitalInput::Config userbutton_cfg;
-        time_ms watchdog_interval = time_s(1);
-        time_ms prompt_interval = time_ms(50);
+        k_time_ms watchdog_interval = k_time_s(1);
+        k_time_ms prompt_interval = k_time_ms(50);
     };
 
 public:
@@ -45,11 +45,11 @@ public:
         evsys()->attach(Events::UIPromptFollowUp, this);
         evsys()->attach(Events::OutOfWater, this);
 
-        evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1)));
+        evsys()->schedule(evsys()->event(Events::UIButtonCheck, k_time_s(1)));
         evsys()->schedule(evsys()->event(Events::UIWatchDog, _cfg.watchdog_interval));
-        evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, time_s(1)));
+        evsys()->schedule(evsys()->event(Events::UIPromptFollowUp, k_time_s(1)));
 
-        DBG("UI: Initialized. Prompt interval: %ums", time_ms(_cfg.prompt_interval).printable())
+        DBG("UI: Initialized. Prompt interval: %lims", k_time_ms(_cfg.prompt_interval).raw())
     }
 
     void safe_shutdown(State state) override {
@@ -77,7 +77,7 @@ public:
             if (_userbutton.state() == LogicalState::ON) {
                 spn::throw_exception(spn::runtime_exception("Monkey pressed button. Shut down gracefully."));
             }
-            evsys()->schedule(evsys()->event(Events::UIButtonCheck, time_s(1)));
+            evsys()->schedule(evsys()->event(Events::UIButtonCheck, k_time_s(1)));
             break;
         }
         case Events::UIWatchDog: {

@@ -20,7 +20,7 @@ class SHT31TempHumidityProbe : public Peripheral {
 public:
     struct Config {
         uint8_t i2c_address = SHT_DEFAULT_ADDRESS;
-        time_ms sampling_interval = time_s(1);
+        k_time_ms sampling_interval = k_time_s(1);
         int sensor_lockout_threshold = 5;
     };
 
@@ -38,7 +38,7 @@ public:
 
         const bool initial_contact = _sht31.begin();
 
-        HAL::delay(time_ms(20)); // give the probe some time to initialize
+        HAL::delay(k_time_ms(20)); // give the probe some time to initialize
 
         if (!initial_contact || !_sht31.read(SHT31_USE_CRC) || !is_ready()) {
             ERR("SHT31: Probe failed to initialize with errorcode: %04X and status: %04X", _sht31.getError(),
@@ -81,7 +81,7 @@ public:
 
     void safe_shutdown(bool critical) override {
         _sht31.heatOff(); // make sure that heater is off
-        HAL::delay(time_ms(15)); // give I2C time to write data
+        HAL::delay(k_time_ms(15)); // give I2C time to write data
     }
 
     double read_temperature() {

@@ -61,7 +61,7 @@ enum PeripheralsEnum {
 using namespace kaskas;
 
 void setup() {
-    HAL::delay(time_s(2)); // give time for console to attach before first output
+    HAL::delay(k_time_s(2)); // give time for console to attach before first output
     HAL::initialize(HAL::Config{.baudrate = 115200});
     LOG("Wake up");
 
@@ -75,7 +75,7 @@ void setup() {
 
         // Initialize and hotload peripherals and providers
         {
-            const auto cfg = SHT31TempHumidityProbe::Config{.sampling_interval = time_s(1)};
+            const auto cfg = SHT31TempHumidityProbe::Config{.sampling_interval = k_time_s(1)};
             auto peripheral = std::make_unique<SHT31TempHumidityProbe>(std::move(cfg));
             auto temperature_provider = std::make_shared<AnalogueSensor>(peripheral->temperature_provider());
             auto humidity_provider = std::make_shared<AnalogueSensor>(peripheral->humidity_provider());
@@ -86,7 +86,7 @@ void setup() {
         }
 
         {
-            const auto cfg = DS3231Clock::Config{.update_interval = time_s(1)};
+            const auto cfg = DS3231Clock::Config{.update_interval = k_time_s(1)};
             auto peripheral = std::make_unique<DS3231Clock>(std::move(cfg));
             auto clock_provider = std::make_shared<Clock>(peripheral->clock_provider());
             auto temperature_provider = std::make_shared<AnalogueSensor>(peripheral->temperature_provider());
@@ -100,7 +100,7 @@ void setup() {
             constexpr double moisture_sensor_limits[] = {0.2, 0.7}; // experimentally obtained, low = wet, high = dry
             const auto cfg =
                 AnalogueInputPeripheral::Config{.input_cfg = HAL::AnalogueInput::Config{.pin = A1, .pull_up = false},
-                                                .sampling_interval = time_s(60),
+                                                .sampling_interval = k_time_s(60),
                                                 .number_of_filters = 4,
                                                 .id = "SOIL_MOISTURE"};
             auto peripheral = std::make_unique<AnalogueInputPeripheral>(std::move(cfg));
@@ -115,7 +115,7 @@ void setup() {
         }
 
         {
-            const auto sample_speed = time_ms(50);
+            const auto sample_speed = k_time_ms(50);
             const auto cfg = AnalogueOutputPeripheral::Config{.pin = 5, .active_on_low = true};
             auto peripheral = std::make_unique<AnalogueOutputPeripheral>(std::move(cfg), sample_speed);
             auto state_provider = std::make_shared<AnalogueActuator>(peripheral->analogue_output_provider());
@@ -125,7 +125,7 @@ void setup() {
         }
 
         {
-            const auto cfg = DS18B20TempProbe::Config{.pin = 3, .sampling_interval = time_ms(1000)};
+            const auto cfg = DS18B20TempProbe::Config{.pin = 3, .sampling_interval = k_time_ms(1000)};
             auto peripheral = std::make_unique<DS18B20TempProbe>(std::move(cfg));
             auto provider = std::make_shared<AnalogueSensor>(peripheral->temperature_provider());
 
@@ -153,7 +153,7 @@ void setup() {
 
         {
             const auto cfg = Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = 4, .active_on_low = true},
-                                           .backoff_time = time_s(10)};
+                                           .backoff_time = k_time_s(10)};
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
@@ -163,7 +163,7 @@ void setup() {
 
         {
             const auto cfg = Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = A5, .active_on_low = true},
-                                           .backoff_time = time_ms(1000)};
+                                           .backoff_time = k_time_ms(1000)};
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
@@ -173,7 +173,7 @@ void setup() {
 
         {
             const auto cfg = Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = 12, .active_on_low = true},
-                                           .backoff_time = time_ms(1000)};
+                                           .backoff_time = k_time_ms(1000)};
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
@@ -183,7 +183,7 @@ void setup() {
 
         {
             const auto cfg = Relay::Config{.pin_cfg = DigitalOutput::Config{.pin = 13, .active_on_low = true},
-                                           .backoff_time = time_ms(1000)};
+                                           .backoff_time = k_time_ms(1000)};
             auto peripheral = std::make_unique<Relay>(std::move(cfg));
             auto state_provider = std::make_shared<DigitalActuator>(peripheral->state_provider());
 
@@ -200,8 +200,8 @@ void setup() {
                                            .events_cap = 128,
                                            .handler_cap = 2,
                                            .delay_between_ticks = true,
-                                           .min_delay_between_ticks = time_us{1},
-                                           .max_delay_between_ticks = time_ms{1000}};
+                                           .min_delay_between_ticks = k_time_us{1},
+                                           .max_delay_between_ticks = k_time_ms{1000}};
         auto prompt_cfg = kaskas::Prompt::Config{.io_buffer_size = 1024, .line_delimiters = "\r\n"};
         auto kk_cfg = KasKas::Config{.es_cfg = esc_cfg, .component_cap = 16, .prompt_cfg = prompt_cfg};
         kk = std::make_unique<KasKas>(hws, kk_cfg);
@@ -210,8 +210,8 @@ void setup() {
     {
         using kaskas::component::ClimateControl;
 
-        const auto ventilation_sample_interval = time_s(3);
-        const auto heating_sample_interval = time_ms(1000);
+        const auto ventilation_sample_interval = k_time_s(3);
+        const auto heating_sample_interval = k_time_ms(1000);
         const auto max_heater_setpoint = 45.0; // maximum allowed heater setpoint
 
         auto cc_cfg =
@@ -231,9 +231,10 @@ void setup() {
                         .minimal_duty_cycle = 0.21,
                         .schedule_cfg =
                             Schedule::Config{
-                                .blocks = {Schedule::Block{.start = time_h(8), .duration = time_h(14), .value = 60.0},
-                                           Schedule::Block{.start = time_h(22), .duration = time_h(2), .value = 60.0},
-                                           Schedule::Block{.start = time_h(0), .duration = time_h(8), .value = 75.0}}},
+                                .blocks =
+                                    {Schedule::Block{.start = k_time_h(8), .duration = k_time_h(14), .value = 60.0},
+                                     Schedule::Block{.start = k_time_h(22), .duration = k_time_h(2), .value = 60.0},
+                                     Schedule::Block{.start = k_time_h(0), .duration = k_time_h(8), .value = 75.0}}},
                         .check_interval = ventilation_sample_interval},
                 .heating =
                     ClimateControl::Config::Heating{
@@ -254,17 +255,15 @@ void setup() {
                                 .climate_temperature_idx = meta::ENUM_IDX(DataProviders::CLIMATE_TEMP),
                                 .heating_surface_temperature_idx = meta::ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
                                 .heating_element_idx = meta::ENUM_IDX(DataProviders::HEATING_ELEMENT),
-                                .climate_trp_cfg = Heater::ThermalRunAway::Config{.stable_timewindow = time_m(30),
+                                .climate_trp_cfg = Heater::ThermalRunAway::Config{.stable_timewindow = k_time_m(30),
                                                                                   .heating_minimal_rising_c = 0.1,
                                                                                   .heating_minimal_dropping_c = 0.01,
-                                                                                  .heating_timewindow = time_m(45)}},
+                                                                                  .heating_timewindow = k_time_m(45)}},
                         .schedule_cfg =
                             Schedule::Config{
-                                .blocks = {Schedule::Block{.start = time_h(10), .duration = time_h(2), .value = 20.0},
-                                           Schedule::Block{.start = time_h(12), .duration = time_h(8), .value = 24.0},
-                                           Schedule::Block{.start = time_h(20), .duration = time_h(2), .value = 20.0},
-                                           Schedule::Block{
-                                               .start = time_h(22), .duration = time_h(12), .value = 16.0}}},
+                                .blocks =
+                                    {Schedule::Block{.start = k_time_h(10), .duration = k_time_h(12), .value = 21.5},
+                                     Schedule::Block{.start = k_time_h(22), .duration = k_time_h(12), .value = 16.0}}},
                         .check_interval = heating_sample_interval}};
 
         auto ventilation = std::make_unique<ClimateControl>(*hws, cc_cfg);
@@ -273,27 +272,34 @@ void setup() {
 
     {
         using kaskas::component::Growlights;
-        auto growlights_cfg =
-            Growlights::Config{
-                .redblue_spectrum_actuator_idx = meta::ENUM_IDX(DataProviders::VIOLET_SPECTRUM),
-                .redblue_spectrum_schedule =
-                    Schedule::Config{
-                        .blocks =
-                            {
-                                Schedule::Block{.start = time_h(8), .duration = time_h(12), .value = LogicalState::ON},
-                                Schedule::Block{
-                                    .start = time_h(20), .duration = time_h(12), .value = LogicalState::OFF},
-                            }},
+        auto growlights_cfg = Growlights::Config{.redblue_spectrum_actuator_idx =
+                                                     meta::ENUM_IDX(DataProviders::VIOLET_SPECTRUM),
+                                                 .redblue_spectrum_schedule =
+                                                     Schedule::Config{
+                                                         .blocks =
+                                                             {
+                                                                 Schedule::Block{.start = k_time_h(8),
+                                                                                 .duration = k_time_h(12),
+                                                                                 .value = LogicalState::ON},
+                                                                 Schedule::Block{.start = k_time_h(20),
+                                                                                 .duration = k_time_h(12),
+                                                                                 .value = LogicalState::OFF},
+                                                             }},
 
-                .full_spectrum_actuator_idx = meta::ENUM_IDX(DataProviders::BROAD_SPECTRUM),
-                .full_spectrum_schedule =
-                    Schedule::Config{
-                        .blocks =
-                            {
-                                Schedule::Block{.start = time_h(6), .duration = time_h(16), .value = LogicalState::ON},
-                                Schedule::Block{.start = time_h(22), .duration = time_h(8), .value = LogicalState::OFF},
-                            }},
-                .clock_idx = meta::ENUM_IDX(DataProviders::CLOCK)};
+                                                 .full_spectrum_actuator_idx =
+                                                     meta::ENUM_IDX(DataProviders::BROAD_SPECTRUM),
+                                                 .full_spectrum_schedule =
+                                                     Schedule::Config{
+                                                         .blocks =
+                                                             {
+                                                                 Schedule::Block{.start = k_time_h(6),
+                                                                                 .duration = k_time_h(16),
+                                                                                 .value = LogicalState::ON},
+                                                                 Schedule::Block{.start = k_time_h(22),
+                                                                                 .duration = k_time_h(8),
+                                                                                 .value = LogicalState::OFF},
+                                                             }},
+                                                 .clock_idx = meta::ENUM_IDX(DataProviders::CLOCK)};
 
         auto growlights = std::make_unique<Growlights>(*hws, growlights_cfg);
         kk->hotload_component(std::move(growlights));
@@ -309,8 +315,8 @@ void setup() {
                     .pull_up = false,
                 },
             .ml_pulse_calibration = 25.8, // 25.8
-            .reading_interval = time_ms(250), //
-            .pump_timeout = time_s(10),
+            .reading_interval = k_time_ms(250), //
+            .pump_timeout = k_time_s(10),
         };
 
         using kaskas::component::Fluidsystem;
@@ -321,8 +327,8 @@ void setup() {
                                 .ground_moisture_target = 55, // target moisture percentage
                                 .calibration_dosis_ml = 250,
                                 .max_dosis_ml = 500,
-                                .time_of_injection = time_h(6),
-                                .delay_before_effect_evaluation = time_h(2)};
+                                .time_of_injection = k_time_h(6),
+                                .delay_before_effect_evaluation = k_time_h(2)};
         auto fluidsystem = std::make_unique<Fluidsystem>(*hws, fluidsystem_cfg);
         kk->hotload_component(std::move(fluidsystem));
     }
@@ -337,8 +343,8 @@ void setup() {
                                .pin_green = DigitalOutput(DigitalOutput::Config{.pin = 8, .active_on_low = false}),
                            },
                        .userbutton_cfg = DigitalInput::Config{.pin = PC13, .pull_up = false},
-                       .watchdog_interval = time_s(1),
-                       .prompt_interval = time_ms(25)};
+                       .watchdog_interval = k_time_s(1),
+                       .prompt_interval = k_time_ms(25)};
         auto ui = std::make_unique<UI>(*hws, ui_cfg);
         ui->hotload_prompt(kk->prompt());
         kk->hotload_component(std::move(ui));
@@ -368,7 +374,7 @@ void setup() {
                                              DataProviders::FLUID_EFFECT};
 
         using kaskas::component::DataAcquisition;
-        auto cfg = DataAcquisition::Config{.initial_warm_up_time = time_s(30), .active_dataproviders = datasources};
+        auto cfg = DataAcquisition::Config{.initial_warm_up_time = k_time_s(30), .active_dataproviders = datasources};
 
         auto ctrl = std::make_unique<DataAcquisition>(*hws, cfg);
         kk->hotload_component(std::move(ctrl));
@@ -378,7 +384,7 @@ void setup() {
 void loop() {
     if (kk == nullptr) {
         DBG("loop");
-        HAL::delay(time_ms(1000));
+        HAL::delay(k_time_ms(1000));
     } else {
         kk->loop();
     }

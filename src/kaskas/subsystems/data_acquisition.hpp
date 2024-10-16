@@ -20,7 +20,7 @@ public:
     using Event = spn::eventsystem::Event;
 
     struct Config {
-        time_s initial_warm_up_time = time_s(30); // don't allow timeseries access immediately after startup
+        k_time_s initial_warm_up_time = k_time_s(30); // don't allow timeseries access immediately after startup
         std::initializer_list<DataProviders> active_dataproviders; // dataproviders for which to print timeseries
     };
 
@@ -40,7 +40,7 @@ public:
     void initialize() override {
         evsys()->attach(Events::DAQWarmedUp, this);
         evsys()->attach(Events::DAQTainted, this);
-        evsys()->schedule(evsys()->event(Events::DAQWarmedUp, time_s(_cfg.initial_warm_up_time)));
+        evsys()->schedule(evsys()->event(Events::DAQWarmedUp, k_time_s(_cfg.initial_warm_up_time)));
     }
 
     void safe_shutdown(State state) override {

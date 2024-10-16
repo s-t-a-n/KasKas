@@ -48,7 +48,7 @@ public:
         : _cfg(cfg), _evsys({cfg.es_cfg}), _hws(std::move(hws)),
           _components(std::vector<std::unique_ptr<Component>>()) {
         if (_cfg.prompt_cfg) {
-            auto uart = std::make_shared<HAL::UART>(HAL::UART::Config{.stream = &Serial, .timeout = time_ms(50)});
+            auto uart = std::make_shared<HAL::UART>(HAL::UART::Config{.stream = &Serial, .timeout = k_time_ms(50)});
             using prompt::Datalink;
             auto dl =
                 std::make_shared<Datalink>(uart, Datalink::Config{.input_buffer_size = _cfg.prompt_cfg->io_buffer_size,
@@ -84,7 +84,7 @@ public:
             _prompt->initialize();
         }
 
-        _evsys.trigger(_evsys.event(Events::WakeUp, time_s(0), Event::Data()));
+        _evsys.trigger(_evsys.event(Events::WakeUp, k_time_s(0), Event::Data()));
         LOG("Kaskas: Startup complete");
         return 0;
     }

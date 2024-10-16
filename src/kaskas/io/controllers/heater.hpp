@@ -33,12 +33,12 @@ public:
     public:
         // todo: make an autotuner to find limits of normal usage experimentally
         struct Config {
-            time_s stable_timewindow = time_m(10);
+            k_time_s stable_timewindow = k_time_m(10);
 
             // minimal change in degrees within timewindow changing_timewindow
             double heating_minimal_rising_c = 0.1;
             double heating_minimal_dropping_c = 0.01;
-            time_s heating_timewindow = time_m(20);
+            k_time_s heating_timewindow = k_time_m(20);
 
             bool guard_stable_state = true;
             bool guard_changing_state = true;
@@ -58,12 +58,12 @@ public:
 
             if (_current_state == State::HEATING) {
                 if (_cfg.guard_stable_state and _last_state == State::STEADY_STATE) { // heater came out of steady state
-                    if (time_s(_current_state_duration.time_since_last(false))
+                    if (k_time_s(_current_state_duration.time_since_last(false))
                         > _cfg.stable_timewindow) { // heater went outside of steady state for too long
                         WARN("Heater went outside of steady state for too long, triggering run away! (time expired: "
-                             "%is, timewindow: %is, current temperature %.2fC)",
-                             time_s(_current_state_duration.time_since_last(false)).printable(),
-                             time_s(_cfg.stable_timewindow).printable(), temperature)
+                             "%is, timewindow: %lis, current temperature %.2fC)",
+                             k_time_s(_current_state_duration.time_since_last(false)).raw(),
+                             k_time_s(_cfg.stable_timewindow).raw(), temperature)
                         _is_runaway = true;
                     }
                     return;
@@ -134,10 +134,10 @@ public:
         PID::Config pid_cfg;
         double max_heater_setpoint = 40.0;
         double steady_state_hysteresis = 0.3;
-        time_s cooldown_min_length = time_s(180);
+        k_time_s cooldown_min_length = k_time_s(180);
 
         double dynamic_gain_factor = 0; // for every degree of error from sp, adds `dynamic gain` to Kp
-        time_s dynamic_gain_interval = time_s(60); // update gain every n seconds
+        k_time_s dynamic_gain_interval = k_time_s(60); // update gain every n seconds
 
         HardwareStack::Idx climate_temperature_idx;
         HardwareStack::Idx heating_surface_temperature_idx;
@@ -215,22 +215,22 @@ public:
     }
 
     /// Block until a temperature threshold has been reached
-    void block_until_setpoint(const double setpoint, time_ms timeout = time_ms(0), bool saturated = true) {
+    void block_until_setpoint(const double setpoint, k_time_ms timeout = k_time_ms(0), bool saturated = true) {
         auto timer = AlarmTimer(timeout);
-        while (temperature() < setpoint && (!timer.expired() || timeout == time_ms(0))) {
+        while (temperature() < setpoint && (!timer.expired() || timeout == k_time_ms(0))) {
             _heating_element.fade_to(guarded_setpoint(LogicalState::ON));
             DBG("Waiting until temperature of %.2fC reaches %.2fC, saturating thermal capacitance (surfaceT %.2f)",
                 temperature(), setpoint, _surface_temperature.value());
             _hws.update_all(); // make sure to update sensors
-            HAL::delay(time_ms(1000));
+            HAL::delay(k_time_ms(1000));
         }
         _heating_element.fade_to(LogicalState::OFF);
         if (saturated) return;
-        while (temperature() > setpoint && (!timer.expired() || timeout == time_ms(0))) {
+        while (temperature() > setpoint && (!timer.expired() || timeout == k_time_ms(0))) {
             DBG("Waiting until temperature of %f C reaches %f C, unloading thermal capacitance (surfaceT %.2f)",
                 temperature(), setpoint, _surface_temperature.value());
             _hws.update_all(); // make sure to update sensors
-            HAL::delay(time_ms(1000));
+            HAL::delay(k_time_ms(1000));
         }
     }
 

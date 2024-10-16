@@ -16,7 +16,7 @@ class DigitalInputPeripheral : public Peripheral {
 public:
     struct Config {
         DigitalInput::Config input_cfg;
-        time_ms sampling_interval = time_s(1);
+        k_time_ms sampling_interval = k_time_s(1);
         const char* id = nullptr;
     };
 

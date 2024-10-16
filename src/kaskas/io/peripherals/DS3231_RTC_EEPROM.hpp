@@ -17,7 +17,7 @@ namespace kaskas::io::clock {
 class DS3231Clock final : public Peripheral {
 public:
     struct Config {
-        time_ms update_interval = time_s(1);
+        k_time_ms update_interval = k_time_s(1);
         int sensor_lockout_threshold = 5;
     };
 

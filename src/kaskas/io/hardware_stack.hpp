@@ -60,22 +60,22 @@ public:
         DBG("Hardware stack: shutting down all components");
         for (auto& p : _peripherals) {
             if (p) {
-                HAL::delay(time_ms(100));
+                HAL::delay(k_time_ms(100));
                 p->safe_shutdown(critical);
             }
         }
     }
 
     /// Returns the time until the needed update of a peripheral
-    time_ms time_until_next_update() {
-        time_ms interval = time_ms(INT32_MAX);
+    k_time_ms time_until_next_update() {
+        k_time_ms interval = k_time_ms(INT32_MAX);
         for (auto& p : _peripherals) {
             if (p && p->is_updateable() && p->time_until_next_update() < interval) {
-                interval = std::max(p->time_until_next_update(), time_ms(1));
-                spn_assert(interval > time_ms(0));
+                interval = std::max(p->time_until_next_update(), k_time_ms(1));
+                spn_assert(interval > k_time_ms(0));
             }
         }
-        spn_assert(interval != time_ms(INT32_MAX));
+        spn_assert(interval != k_time_ms(INT32_MAX));
         return interval;
     }
 

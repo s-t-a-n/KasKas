@@ -19,7 +19,7 @@ class DS18B20TempProbe : public FilteredPeripheral {
 public:
     struct Config {
         uint8_t pin;
-        time_ms sampling_interval = time_s(1);
+        k_time_ms sampling_interval = k_time_s(1);
         int sensor_lockout_threshold = 5;
     };
 

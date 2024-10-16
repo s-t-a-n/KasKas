@@ -12,7 +12,7 @@ namespace kaskas::io {
 /// Encapsalates a single hardware peripheral
 class Peripheral {
 public:
-    explicit Peripheral(const std::optional<time_ms>& sampling_interval = std::nullopt)
+    explicit Peripheral(const std::optional<k_time_ms>& sampling_interval = std::nullopt)
         : _timer(sampling_interval ? std::make_optional(IntervalTimer(sampling_interval.value())) : std::nullopt) {}
 
     virtual ~Peripheral() = default;
@@ -22,13 +22,13 @@ public:
 
     bool needs_update() { return is_updateable() && _timer->expired(); }
     bool is_updateable() const { return _timer != std::nullopt; }
-    time_ms update_interval() const {
+    k_time_ms update_interval() const {
         spn_expect(is_updateable());
-        return is_updateable() ? _timer->interval() : time_ms(0);
+        return is_updateable() ? _timer->interval() : k_time_ms(0);
     }
-    time_ms time_until_next_update() const {
+    k_time_ms time_until_next_update() const {
         spn_expect(is_updateable());
-        return is_updateable() ? _timer->time_until_next() : time_ms(0);
+        return is_updateable() ? _timer->time_until_next() : k_time_ms(0);
     }
 
 private:
@@ -41,7 +41,7 @@ class FilteredPeripheral : public Peripheral {
 public:
     using Filter = spn::filter::Filter<double>;
 
-    explicit FilteredPeripheral(const std::optional<time_ms>& sampling_interval = std::nullopt,
+    explicit FilteredPeripheral(const std::optional<k_time_ms>& sampling_interval = std::nullopt,
                                 size_t number_of_filters = 0)
         : Peripheral(sampling_interval), _fs(number_of_filters) {}
 
