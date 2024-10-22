@@ -84,16 +84,16 @@ public:
         HAL::delay(k_time_ms(15)); // give I2C time to write data
     }
 
-    double read_temperature() {
+    float read_temperature() {
         SHT31TempHumidityProbe::update();
         return temperature();
     }
-    double read_humidity() {
+    float read_humidity() {
         SHT31TempHumidityProbe::update();
         return humidity();
     }
-    double temperature() { return _temperature_fs.value(); }
-    double humidity() { return _humidity_fs.value(); }
+    float temperature() { return _temperature_fs.value(); }
+    float humidity() { return _humidity_fs.value(); }
 
     AnalogueSensor temperature_provider() {
         return {[this]() { return this->temperature(); }};
@@ -110,8 +110,8 @@ private:
     const Config _cfg;
     SHT31 _sht31;
 
-    spn::filter::Stack<double> _temperature_fs;
-    spn::filter::Stack<double> _humidity_fs;
+    spn::filter::Stack<float> _temperature_fs;
+    spn::filter::Stack<float> _humidity_fs;
     int _sensor_lockout = 0;
 };
 } // namespace kaskas::io

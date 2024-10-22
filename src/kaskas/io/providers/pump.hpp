@@ -15,17 +15,17 @@ namespace kaskas::io {
 
 struct Pump {
 private:
-    using Flowrate = spn::filter::EWMA<double>;
+    using Flowrate = spn::filter::EWMA<float>;
     using LogicalState = spn::core::LogicalState;
 
 public:
     struct Config {
         io::HardwareStack::Idx pump_actuator_idx;
         Interrupt::Config interrupt_cfg;
-        double ml_pulse_calibration; // experimentally found flow sensor calibration factor
+        float ml_pulse_calibration; // experimentally found flow sensor calibration factor
         k_time_ms reading_interval;
         k_time_ms pump_timeout;
-        double minimal_pump_flowrate = 0.1;
+        float minimal_pump_flowrate = 0.1;
     };
 
     union Status {
@@ -41,7 +41,7 @@ public:
     explicit Pump(io::HardwareStack& hws, Config&& cfg)
         : _cfg(cfg), _status({}), _pump(hws.digital_actuator(_cfg.pump_actuator_idx)),
           _interrupt(std::move(cfg.interrupt_cfg)),
-          _flowrate(Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw<double>() / 2.0}) {}
+          _flowrate(Flowrate::Config{.K = (cfg.pump_timeout / cfg.reading_interval).raw<float>() / 2.0f}) {}
 
     void initialize() { _interrupt.initialize(); }
 
@@ -61,7 +61,7 @@ public:
         return _status.flags.has_injected_since_start ? _last_injection.time_since_last(false) : k_time_ms(0);
     }
     uint32_t lifetime_pumped_ml() const { return _lifetime_ml; }
-    double flowrate_lm() const { return _flowrate.value(); }
+    float flowrate_lm() const { return _flowrate.value(); }
 
     void start_injection(uint16_t amount_ml = 0) {
         _status.flags.has_injected_since_start = true;
@@ -136,7 +136,7 @@ private:
         // Divide the flow rate in litres/minute by 60 to determine how many litres have
         // passed through the sensor in this interval, then multiply by the milliseconds passed to
         // convert to millilitres.
-        const auto ml_since_last = (flowrate_lm / 60) * time_since_last_reading.raw<double>();
+        const auto ml_since_last = (flowrate_lm / 60) * time_since_last_reading.raw<float>();
         _ml += ml_since_last;
 
         DBG("ML injected: pulses: %i, ml_since_last: %f, ml total: %i, flowrate: %f", pulse_count, ml_since_last, _ml,
@@ -151,7 +151,7 @@ private:
     io::DigitalActuator _pump;
     Interrupt _interrupt;
 
-    spn::filter::EWMA<double> _flowrate; // tracks flowrate in liters per minute
+    spn::filter::EWMA<float> _flowrate; // tracks flowrate in liters per minute
 
     uint32_t _target_ml = 0; // the target amount before `update()` stops injection
     uint32_t _ml = 0; // tracks ml since start of last injection

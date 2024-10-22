@@ -41,24 +41,24 @@ public:
     AnalogueActuator analogue_output_provider() {
         return {AnalogueActuator::FunctionMap{
             .value_f = [this]() { return this->value(); },
-            .set_value_f = [this](double value) { AnalogueOutput::set_value(value); },
+            .set_value_f = [this](float value) { AnalogueOutput::set_value(value); },
             .fade_to_f =
-                [this](double setpoint, double increment = 0.1, k_time_ms increment_interval = k_time_ms(100)) {
+                [this](float setpoint, float increment = 0.1, k_time_ms increment_interval = k_time_ms(100)) {
                     HAL::AnalogueOutput::fade_to(setpoint, increment, increment_interval);
                 },
-            .creep_to_f = [this](double setpoint, k_time_ms travel_time) { this->creep_to(setpoint, travel_time); },
+            .creep_to_f = [this](float setpoint, k_time_ms travel_time) { this->creep_to(setpoint, travel_time); },
             .creep_stop_f = [this]() { this->creep_stop(); }}};
     }
 
     /// Set a creeping target value and let the updater approach the value with a single increment per sample
-    void creep_to(const double setpoint, const k_time_ms travel_time = k_time_s(1000)) {
+    void creep_to(const float setpoint, const k_time_ms travel_time = k_time_s(1000)) {
         if (value() == setpoint) return;
 
         _is_creeping = true;
         _creep_target_value = setpoint;
         _creep_time_on_target = AlarmTimer(travel_time);
-        spn_assert((travel_time / update_interval()).raw<double>() != 0);
-        _creep_target_increment = (setpoint - value()) / (travel_time / update_interval()).raw<double>();
+        spn_assert((travel_time / update_interval()).raw<float>() != 0);
+        _creep_target_increment = (setpoint - value()) / (travel_time / update_interval()).raw<float>();
     }
 
     /// Stop creeping to target.
@@ -68,8 +68,8 @@ private:
     using AlarmTimer = spn::structure::time::AlarmTimer;
 
     bool _is_creeping = false;
-    double _creep_target_value = 0;
-    double _creep_target_increment = 0;
+    float _creep_target_value = 0;
+    float _creep_target_increment = 0;
     AlarmTimer _creep_time_on_target;
 };
 

@@ -114,7 +114,7 @@ public:
             std::array<char, 32> buffer{};
             for (auto it = _cfg.active_dataproviders.begin(); it != _cfg.active_dataproviders.end(); ++it) {
                 const auto value = _hws.analog_sensor(meta::ENUM_IDX(*it)).value();
-                int written = std::snprintf(buffer.data(), buffer.size(), "%.3f", value);
+                int written = std::snprintf(buffer.data(), buffer.size(), "%.3f", (double)value);
                 spn_expect(written > 0 && written < buffer.size());
                 if (written > 0 && written < buffer.size()) put(std::string_view(buffer.data(), written));
                 if (std::next(it) != _cfg.active_dataproviders.end()) put(prompt::Dialect::VALUE_SEPARATOR);

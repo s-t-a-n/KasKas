@@ -33,7 +33,7 @@ public:
                                    [this](const OptStringView& s) {
                                        const auto s_str = s ? std::string{*s} : std::string();
                                        DBG("rwVariable accessed with arg: {%s}", s_str.c_str());
-                                       rwVariable = s ? rwVariable + spn::core::utils::to_double(*s) : rwVariable;
+                                       rwVariable = s ? rwVariable + spn::core::utils::to_float(*s) : rwVariable;
                                        return RPCResult(std::to_string(rwVariable));
                                    }), //
                           RPCModel("foo",
@@ -44,16 +44,16 @@ public:
                                        const auto s_str = s ? std::string{*s} : std::string();
                                        DBG("foo called with arg: '%s'", s_str.c_str());
 
-                                       return RPCResult(std::to_string(foo(spn::core::utils::to_double(s_str))));
+                                       return RPCResult(std::to_string(foo(spn::core::utils::to_float(s_str))));
                                    }),
                       }));
         return std::move(model);
     }
 
-    const double roVariable = 42;
-    double rwVariable = 42;
+    const float roVariable = 42;
+    float rwVariable = 42;
 
-    double foo(double variable) { return variable; }
+    float foo(float variable) { return variable; }
 };
 
 struct ResponsePattern {

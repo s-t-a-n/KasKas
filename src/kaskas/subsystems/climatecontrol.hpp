@@ -23,7 +23,7 @@
 namespace kaskas::component {
 
 namespace detail {
-inline double inverted(double value, double base = 100.0) { return base - value; }
+inline float inverted(float value, float base = 100.0) { return base - value; }
 } // namespace detail
 
 class ClimateControl final : public kaskas::Component {
@@ -43,7 +43,7 @@ public:
             io::HardwareStack::Idx climate_humidity_idx;
 
             PID::Config climate_fan_pid;
-            double minimal_duty_cycle = 0; // normalized value where 0.5 means 50% dutycycle
+            float minimal_duty_cycle = 0; // normalized value where 0.5 means 50% dutycycle
             Schedule::Config schedule_cfg;
             k_time_s check_interval;
         } ventilation;
@@ -182,13 +182,13 @@ public:
             _climate_fan.fade_to(LogicalState::OFF);
 
             const auto process_getter = [&]() { return detail::inverted(_climate_humidity.value()); };
-            const auto process_setter = [&](double value) { _climate_fan.fade_to(value / 100.0); };
+            const auto process_setter = [&](float value) { _climate_fan.fade_to(value / 100.0f); };
             const auto process_loop = [&]() { _hws.update_all(); };
 
             const auto tunings = _ventilation_control.autotune(
                 PID::TuneConfig{.setpoint = autotune_setpoint,
                                 .startpoint = 0,
-                                .hysteresis = 0.3,
+                                .hysteresis = 0.3f,
                                 .satured_at_start = false,
                                 .cycles = 30,
                                 .aggressiveness = spn::controller::PIDAutotuner::Aggressiveness::BasicPID},
@@ -208,7 +208,7 @@ public:
             LOG("ClimateControl: starting heating autotune..");
 
             const auto autotune_setpoint = event.data().value();
-            const auto autotune_startpoint = autotune_setpoint - 1.0;
+            const auto autotune_startpoint = autotune_setpoint - 1.0f;
 
             _power.set_state(LogicalState::ON);
 
@@ -294,7 +294,7 @@ public:
                          [this](const OptStringView& setpoint) {
                              if (!setpoint) return RPCResult(RPCResult::Status::BAD_INPUT);
                              evsys()->trigger(Events::HeatingAutoTune,
-                                              Event::Data(spn::core::utils::to_double(*setpoint)));
+                                              Event::Data(spn::core::utils::to_float(*setpoint)));
                              return RPCResult(RPCResult::Status::OK);
                          }),
                 RPCModel("heaterStatus",
@@ -307,7 +307,7 @@ public:
                          [this](const OptStringView& setpoint) {
                              if (!setpoint) return RPCResult(RPCResult::Status::BAD_INPUT);
                              evsys()->trigger(Events::VentilationAutoTune,
-                                              Event::Data(spn::core::utils::to_double(*setpoint)));
+                                              Event::Data(spn::core::utils::to_float(*setpoint)));
                              return RPCResult(RPCResult::Status::OK);
                          }),
             }));
@@ -318,7 +318,7 @@ public:
         ssf.hotload_provider(DataProviders::HEATING_SETPOINT,
                              std::make_shared<io::ContinuousValue>([this]() { return this->_heater.setpoint(); }));
         ssf.hotload_provider(DataProviders::CLIMATE_HUMIDITY_SETPOINT, std::make_shared<io::ContinuousValue>([this]() {
-                                 return 100.0 - this->_ventilation_control.setpoint();
+                                 return 100.0f - this->_ventilation_control.setpoint();
                              }));
     }
 
@@ -329,7 +329,7 @@ private:
     void heating_control_loop() {
         adjust_heater_fan_state();
 
-        if (_heater.setpoint() == 0.0) return;
+        if (_heater.setpoint() == 0.0f) return;
         _heater.update();
         if (_heater.state() != Heater::State::IDLE) _power.set_state(LogicalState::ON);
     }
