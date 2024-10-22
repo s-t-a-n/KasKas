@@ -39,7 +39,7 @@ private:
 
 class FilteredPeripheral : public Peripheral {
 public:
-    using Filter = spn::filter::Filter<double>;
+    using Filter = spn::filter::Filter<float>;
 
     explicit FilteredPeripheral(const std::optional<k_time_ms>& sampling_interval = std::nullopt,
                                 size_t number_of_filters = 0)
@@ -51,7 +51,7 @@ public:
     }
 
 protected:
-    spn::filter::Stack<double> _fs;
+    spn::filter::Stack<float> _fs;
 };
 
 } // namespace kaskas::io

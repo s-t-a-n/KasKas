@@ -13,7 +13,7 @@
 
 namespace kaskas::io {
 
-using BandPass = spn::filter::BandPass<double>;
+using BandPass = spn::filter::BandPass<float>;
 
 class DS18B20TempProbe : public FilteredPeripheral {
 public:
@@ -58,7 +58,7 @@ public:
 
     void safe_shutdown(bool critical) override {}
 
-    double temperature() const { return _fs.value(); }
+    float temperature() const { return _fs.value(); }
 
     AnalogueSensor temperature_provider() const {
         return {[this]() { return this->temperature(); }};

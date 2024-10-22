@@ -10,7 +10,7 @@ namespace kaskas::io {
 
 class AnalogueInputPeripheral : public FilteredPeripheral {
 public:
-    using Filter = spn::filter::Filter<double>;
+    using Filter = spn::filter::Filter<float>;
 
     struct Config {
         AnalogueInput::Config input_cfg;
@@ -34,8 +34,8 @@ public:
     void update() override { _fs.new_sample(raw_value()); }
     void safe_shutdown(bool critical) override {}
 
-    double raw_value() const { return _input.read(); }
-    double value() const { return _fs.value(); }
+    float raw_value() const { return _input.read(); }
+    float value() const { return _fs.value(); }
 
     AnalogueSensor analogue_value_provider() const {
         return {[this]() { return this->value(); }};

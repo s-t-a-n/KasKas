@@ -14,11 +14,11 @@
 namespace kaskas::io {
 
 // todo: put this in a configuration file
-constexpr double MIN_INSIDE_TEMPERATURE = 12.0;
-constexpr double MAX_INSIDE_TEMPERATURE = 40.0;
+constexpr float MIN_INSIDE_TEMPERATURE = 12.0;
+constexpr float MAX_INSIDE_TEMPERATURE = 40.0;
 
-constexpr double MIN_SURFACE_TEMPERATURE = 12.0;
-constexpr double MAX_SURFACE_TEMPERATURE = 50.0;
+constexpr float MIN_SURFACE_TEMPERATURE = 12.0;
+constexpr float MAX_SURFACE_TEMPERATURE = 50.0;
 
 class Heater {
 public:
@@ -26,7 +26,7 @@ public:
     static constexpr std::string_view as_stringview(State state) noexcept { return magic_enum::enum_name(state); }
     enum class TemperatureSource { UNDEFINED, SURFACE, CLIMATE };
 
-    using Value = double;
+    using Value = float;
 
     // todo: move this into a generic Spine class that monitors using an expected envelope
     class ThermalRunAway {
@@ -36,8 +36,8 @@ public:
             k_time_s stable_timewindow = k_time_m(10);
 
             // minimal change in degrees within timewindow changing_timewindow
-            double heating_minimal_rising_c = 0.1;
-            double heating_minimal_dropping_c = 0.01;
+            float heating_minimal_rising_c = 0.1;
+            float heating_minimal_dropping_c = 0.01;
             k_time_s heating_timewindow = k_time_m(20);
 
             bool guard_stable_state = true;
@@ -47,7 +47,7 @@ public:
         ThermalRunAway(const Config&& cfg)
             : _cfg(std::move(cfg)), _current_state_duration(Timer{}), _heating_time_window(_cfg.heating_timewindow) {}
 
-        void update(State state, double temperature) {
+        void update(State state, float temperature) {
             if (state != _current_state) { // heater changed states
                 _last_state = _current_state;
                 _current_state = state;
@@ -95,7 +95,7 @@ public:
             }
         }
 
-        void adjust_setpoint(double setpoint) {
+        void adjust_setpoint(float setpoint) {
             _setpoint = setpoint;
             reset_timers();
             _current_state = State::UNDEFINED;
@@ -120,11 +120,11 @@ public:
         State _current_state = State::UNDEFINED;
         State _last_state = State::UNDEFINED;
 
-        double _temperature_time_window = 0;
+        float _temperature_time_window = 0;
         IntervalTimer _heating_time_window;
 
         bool _is_runaway = false;
-        double _setpoint = 0.0;
+        float _setpoint = 0.0;
     };
 
 public:
@@ -132,11 +132,11 @@ public:
 
     struct Config {
         PID::Config pid_cfg;
-        double max_heater_setpoint = 40.0;
-        double steady_state_hysteresis = 0.3;
+        float max_heater_setpoint = 40.0;
+        float steady_state_hysteresis = 0.3;
         k_time_s cooldown_min_length = k_time_s(180);
 
-        double dynamic_gain_factor = 0; // for every degree of error from sp, adds `dynamic gain` to Kp
+        float dynamic_gain_factor = 0; // for every degree of error from sp, adds `dynamic gain` to Kp
         k_time_s dynamic_gain_interval = k_time_s(60); // update gain every n seconds
 
         HardwareStack::Idx climate_temperature_idx;
@@ -174,8 +174,8 @@ public:
             const auto response = _pid.response();
             spn_assert(_cfg.pid_cfg.output_upper_limit > 0);
             auto normalized_response = _pid.setpoint() > 0 ? response / _cfg.pid_cfg.output_upper_limit : 0;
-            spn_expect(normalized_response >= 0.0 && normalized_response <= 1.0);
-            normalized_response = std::clamp(normalized_response, 0.0, 1.0);
+            spn_expect(normalized_response >= 0.0f && normalized_response <= 1.0f);
+            normalized_response = std::clamp(normalized_response, 0.0f, 1.0f);
             _heating_element.fade_to(guarded_setpoint(normalized_response));
 
             update_state();
@@ -215,7 +215,7 @@ public:
     }
 
     /// Block until a temperature threshold has been reached
-    void block_until_setpoint(const double setpoint, k_time_ms timeout = k_time_ms(0), bool saturated = true) {
+    void block_until_setpoint(const float setpoint, k_time_ms timeout = k_time_ms(0), bool saturated = true) {
         auto timer = AlarmTimer(timeout);
         while (temperature() < setpoint && (!timer.expired() || timeout == k_time_ms(0))) {
             _heating_element.fade_to(guarded_setpoint(LogicalState::ON));
@@ -237,7 +237,7 @@ public:
     PID::Tunings autotune(PID::TuneConfig&& cfg, std::function<void()> process_loop = {}) {
         block_until_setpoint(cfg.startpoint);
         set_target_setpoint(cfg.setpoint);
-        const auto process_setter = [&](double pwm_value) {
+        const auto process_setter = [&](float pwm_value) {
             spn_assert(_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit > 0);
             const auto normalized_response = (pwm_value - _cfg.pid_cfg.output_lower_limit)
                                              / (_cfg.pid_cfg.output_upper_limit - _cfg.pid_cfg.output_lower_limit);
@@ -281,13 +281,13 @@ private:
     using LogicalState = spn::core::LogicalState;
 
     /// makes sure that when the surface temperature is exceeding the limit, that the power is decreased
-    double guarded_setpoint(double setpoint) {
+    float guarded_setpoint(float setpoint) {
         const auto surface_temperature = _surface_temperature.value();
         auto excess = surface_temperature - _cfg.max_heater_setpoint;
         auto feedback =
-            excess / 10.0; // clamp the controller to an absolute maximum of 10 degrees above the max heater setpoint
+            excess / 10.0f; // clamp the controller to an absolute maximum of 10 degrees above the max heater setpoint
 
-        const auto adjusted_setpoint = std::clamp(excess > 0.0 ? setpoint - feedback : setpoint, 0.0, 1.0);
+        const auto adjusted_setpoint = std::clamp(excess > 0.0f ? setpoint - feedback : setpoint, 0.0f, 1.0f);
 
         if (adjusted_setpoint != setpoint) {
             WARN("Heater: T %.2f C is above limit of T %.2f C, clamping response from %.2f to %.2f",

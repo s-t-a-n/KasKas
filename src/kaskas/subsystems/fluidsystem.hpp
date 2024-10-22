@@ -214,7 +214,7 @@ public:
                                  return RPCResult("cannot inject: last injection was not evaluated",
                                                   RPCResult::Status::BAD_RESULT);
                              evsys()->schedule(Events::WaterInjectStart, k_time_s(1),
-                                               Event::Data(spn::core::utils::to_double(amount_in_ml.value())));
+                                               Event::Data(spn::core::utils::to_float(amount_in_ml.value())));
                              return RPCResult(RPCResult::Status::OK);
                          }),
                 RPCModel("resetEvaluationLock",
@@ -245,7 +245,7 @@ public:
             std::make_shared<io::ContinuousValue>([this]() { return this->_cfg.ground_moisture_target; }));
         ssf.hotload_provider( //
             DataProviders::FLUID_INJECTED, std::make_shared<io::ContinuousValue>([this]() {
-                const double injected = this->_injected;
+                const float injected = this->_injected;
                 this->_injected = 0; // when injected is consumed, it is lost if not captured
                 return injected;
             }));
@@ -259,7 +259,7 @@ public:
 
 private:
     using Component = kaskas::Component;
-    using EWMA = spn::filter::EWMA<double>;
+    using EWMA = spn::filter::EWMA<float>;
 
     using Events = kaskas::Events;
     using EventSystem = spn::core::EventSystem;
@@ -273,9 +273,9 @@ private:
     Pump _pump;
 
     EWMA _ml_per_percent_of_moisture; // tracks amount of moisture raised per mL of fluid injected
-    double _moisture_level_before_injection = 0;
+    float _moisture_level_before_injection = 0;
 
-    double _injected = 0; // tracks amount injected since last lookup of FLUID_INJECTED
+    float _injected = 0; // tracks amount injected since last lookup of FLUID_INJECTED
 
 private:
 };

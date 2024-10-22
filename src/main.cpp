@@ -35,10 +35,10 @@ using spn::structure::time::Schedule;
 namespace meta = spn::core::meta;
 
 using LogicalState = spn::core::LogicalState;
-using BandPass = spn::filter::BandPass<double>;
-using EWMA = spn::filter::EWMA<double>;
-using MappedRange = spn::filter::MappedRange<double>;
-using Invert = spn::filter::Invert<double>;
+using BandPass = spn::filter::BandPass<float>;
+using EWMA = spn::filter::EWMA<float>;
+using MappedRange = spn::filter::MappedRange<float>;
+using Invert = spn::filter::Invert<float>;
 using Heater = kaskas::io::Heater;
 
 namespace Peripherals {
@@ -97,7 +97,7 @@ void setup() {
         }
 
         {
-            constexpr double moisture_sensor_limits[] = {0.2, 0.7}; // experimentally obtained, low = wet, high = dry
+            constexpr float moisture_sensor_limits[] = {0.2, 0.7}; // experimentally obtained, low = wet, high = dry
             const auto cfg =
                 AnalogueInputPeripheral::Config{.input_cfg = HAL::AnalogueInput::Config{.pin = A1, .pull_up = false},
                                                 .sampling_interval = k_time_s(60),
@@ -212,7 +212,7 @@ void setup() {
 
         const auto ventilation_sample_interval = k_time_s(3);
         const auto heating_sample_interval = k_time_ms(1000);
-        const auto max_heater_setpoint = 45.0; // maximum allowed heater setpoint
+        const auto max_heater_setpoint = 45.0f; // maximum allowed heater setpoint
 
         auto cc_cfg =
             ClimateControl::Config{
@@ -245,25 +245,25 @@ void setup() {
                         .heater_cfg =
                             Heater::Config{
                                 .pid_cfg =
-                                    PID::Config{.tunings = PID::Tunings{.Kp = 62.590051, .Ki = 0.152824, .Kd = 0},
+                                    PID::Config{.tunings = PID::Tunings{.Kp = 62.590051f, .Ki = 0.152824f, .Kd = 0},
                                                 .output_lower_limit = 0,
                                                 .output_upper_limit = 255,
                                                 .sample_interval = heating_sample_interval,
                                                 .proportionality = PID::Proportionality::ON_MEASUREMENT},
                                 .max_heater_setpoint = max_heater_setpoint,
-                                .dynamic_gain_factor = 0.8,
+                                .dynamic_gain_factor = 0.8f,
                                 .climate_temperature_idx = meta::ENUM_IDX(DataProviders::CLIMATE_TEMP),
                                 .heating_surface_temperature_idx = meta::ENUM_IDX(DataProviders::HEATING_SURFACE_TEMP),
                                 .heating_element_idx = meta::ENUM_IDX(DataProviders::HEATING_ELEMENT),
                                 .climate_trp_cfg = Heater::ThermalRunAway::Config{.stable_timewindow = k_time_m(30),
-                                                                                  .heating_minimal_rising_c = 0.1,
-                                                                                  .heating_minimal_dropping_c = 0.01,
+                                                                                  .heating_minimal_rising_c = 0.1f,
+                                                                                  .heating_minimal_dropping_c = 0.01f,
                                                                                   .heating_timewindow = k_time_m(45)}},
                         .schedule_cfg =
                             Schedule::Config{
                                 .blocks =
-                                    {Schedule::Block{.start = k_time_h(10), .duration = k_time_h(12), .value = 21.5},
-                                     Schedule::Block{.start = k_time_h(22), .duration = k_time_h(12), .value = 16.0}}},
+                                    {Schedule::Block{.start = k_time_h(10), .duration = k_time_h(12), .value = 21.5f},
+                                     Schedule::Block{.start = k_time_h(22), .duration = k_time_h(12), .value = 16.0f}}},
                         .check_interval = heating_sample_interval}};
 
         auto ventilation = std::make_unique<ClimateControl>(*hws, cc_cfg);
