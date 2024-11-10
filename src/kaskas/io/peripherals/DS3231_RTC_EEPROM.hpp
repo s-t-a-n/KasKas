@@ -56,7 +56,10 @@ public:
     void safe_shutdown(bool critical) override {}
 
     const DateTime& now() const { return _now; }
-    void set_time(const DateTime& datetime) { _ds3231.setEpoch(datetime.getUnixTime()); }
+    int set_time(const DateTime& datetime) {
+        _ds3231.setEpoch(datetime.getUnixTime());
+        return is_ready() ? 0 : -1;
+    }
     time_t epoch() { return _now.getUnixTime(); }
     bool is_ready() { return _ds3231.oscillatorCheck(); }
 
@@ -65,10 +68,11 @@ public:
     }
 
     Clock clock_provider() {
-        const auto map = Clock::FunctionMap{.now_f = [this]() { return this->now(); },
-                                            .settime_f = [this](const DateTime& datetime) { this->set_time(datetime); },
-                                            .epoch_f = [this]() { return this->epoch(); },
-                                            .isready_f = [this]() { return this->is_ready(); }};
+        const auto map =
+            Clock::FunctionMap{.now_f = [this]() { return this->now(); },
+                               .settime_f = [this](const DateTime& datetime) { return this->set_time(datetime); },
+                               .epoch_f = [this]() { return this->epoch(); },
+                               .isready_f = [this]() { return this->is_ready(); }};
         return {std::move(map)};
     }
 

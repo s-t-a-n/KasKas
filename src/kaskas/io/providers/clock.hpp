@@ -3,6 +3,7 @@
 #include "kaskas/io/provider.hpp"
 
 #include <spine/core/debugging.hpp>
+#include <spine/core/utils/string.hpp>
 #include <spine/platform/hal.hpp>
 #include <spine/structure/time/datetime.hpp>
 #include <spine/structure/units/time.hpp>
@@ -15,7 +16,7 @@ public:
 
     struct FunctionMap {
         const std::function<DateTime()> now_f;
-        const std::function<void(DateTime)> settime_f;
+        const std::function<int(DateTime)> settime_f;
         const std::function<UnixTime()> epoch_f;
         const std::function<bool()> isready_f;
     };
@@ -24,7 +25,7 @@ public:
 
 public:
     DateTime now() const { return _map.now_f(); }
-    void set_time(const DateTime& datetime) const { _map.settime_f(datetime); }
+    int set_time(const DateTime& datetime) const { return _map.settime_f(datetime); }
     UnixTime epoch() const { return _map.epoch_f(); }
     bool is_ready() const { return _map.isready_f(); }
 
@@ -50,7 +51,19 @@ public:
     }
 
     std::unique_ptr<prompt::RPCRecipe> rpc_recipe(const std::string_view& recipe_name, const std::string_view& root) {
-        return {};
+        using namespace prompt;
+        auto model = std::make_unique<RPCRecipe>(RPCRecipe(
+            "Clock", {
+                         RPCModel("setUnixTime",
+                                  [this](const OptStringView& timestamp_s) {
+                                      if (!timestamp_s) return RPCResult(RPCResult::Status::BAD_INPUT);
+                                      time_t timestamp = spn::core::utils::to_uint32(timestamp_s.value());
+                                      if (set_time(DateTime(timestamp)) != 0)
+                                          return RPCResult("Could not set clock", RPCResult::Status::BAD_RESULT);
+                                      return RPCResult(RPCResult::Status::OK);
+                                  }),
+                     }));
+        return std::move(model);
     }
 
 private:
